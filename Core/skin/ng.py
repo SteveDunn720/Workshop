@@ -1,0 +1,204 @@
+import json
+import logging
+from functools import wraps
+from pathlib import Path
+from typing import TYPE_CHECKING, Callable, ParamSpec, TypeVar
+
+import maya.cmds as cmds
+
+log = logging.getLogger(__name__)
+
+if TYPE_CHECKING:
+    from ngSkinTools2 import api as ng
+    from ngSkinTools2.api.plugin import (
+        is_plugin_loaded,
+        load_plugin,
+    )
+else:
+    ng = None
+    is_plugin_loaded = None
+    load_plugin = None
+
+HAS_NG_SKIN = False
+try:
+    from ngSkinTools2 import api as ng
+    from ngSkinTools2.api.plugin import (
+        is_plugin_loaded,
+        load_plugin,
+    )
+
+    HAS_NG_SKIN = True
+except ImportError:
+    log.warning("ngSkinTools2 not found. Skinning sub-module features will be limited.")
+
+P = ParamSpec("P")
+R = TypeVar("R")
+
+
+def require_ng_skin(func: Callable[P, R]) -> Callable[P, R]:
+    """Decorator that guards a function requiring ngSkinTools2 dependency.
+
+    If ``ngSkinTools2`` is not installed the wrapped function errors with a message instead of executing.
+    When it *is* available but the Maya plug-in has not yet been
+    loaded, the decorator loads it automatically before proceeding.
+
+    Args:
+        func: The function to wrap.
+
+    Returns:
+        A wrapper that either delegates to *func* or errors when ngSkinTools2 is unavailable.
+    """
+
+    @wraps(func)
+    def wrapper(*args: P.args, **kwargs: P.kwargs) -> R:
+        if not HAS_NG_SKIN:
+            raise RuntimeError(
+                f"Execution failed for {getattr(func, '__name__', repr(func))}. Dependency 'ngSkinTools2' is not available."
+            )
+        if is_plugin_loaded is not None and not is_plugin_loaded():
+            load_plugin()
+            log.info("Successfully loaded ngSkinTools2 plugin.")
+        return func(*args, **kwargs)
+
+    return wrapper
+
+
+@require_ng_skin
+def init_layers(shape: str) -> ng.Layers:
+    """Initialize ngSkinTools2 layers on a mesh shape and add a default base layer.
+
+    Looks up the skinCluster associated with *shape*, initialises the
+    ngSkinTools2 layer stack on it, and creates an initial ``"Base Weights"``
+    layer that acts as the foundation for subsequent paint layers.
+
+    Args:
+        shape: The mesh shape node (not the transform) that has a
+            skinCluster attached.
+
+    Returns:
+        The ``ngSkinTools2.api.Layers`` object managing the layer stack
+        for the given shape's skinCluster.
+    """
+    skin_cluster = ng.target_info.get_related_skin_cluster(shape)
+    layers = ng.layers.init_layers(skin_cluster)
+    layers.add("Base Weights")
+    return layers
+
+
+@require_ng_skin
+def get_or_create_ng_layer(skin_cluster: str, layer_name: str) -> ng.Layer:
+    """
+    Gets or creates an ngSkinTools2 layer with the given name on the specified shape.
+
+    Args:
+        skin_cluster(str): The name of the skinCluster node.
+        layer_name (str): The name of the layer to create or retrieve.
+
+    Returns:
+        ngSkinTools2.api.layers.Layer: The existing or newly created layer object.
+    """
+
+    layers: ng.Layers = ng.Layers(skin_cluster)
+
+    # Check for existing layer
+    for layer in layers.list():
+        if layer.name == layer_name:
+            return layer
+
+    # Create and return new layer
+    new_layer = layers.add(layer_name)
+    return new_layer
+
+
+@require_ng_skin
+def apply_ng_skin_weights(weights_file: Path, geometry: str) -> None:
+    """Apply an ngSkinTools2 JSON weights file to the specified geometry.
+
+    Uses name-based influence matching (not distance-based) and vertex-ID
+    transfer mode, so the topology of the target mesh must match the file.
+
+    Args:
+        weights_file: The JSON weights file to read.
+        geometry: The transform, shape, or skinCluster Node to apply to.
+    """
+    config = ng.influenceMapping.InfluenceMappingConfig()
+    config.use_distance_matching = False
+    config.use_name_matching = True
+
+    if not weights_file.exists():
+        raise RuntimeError(f"{weights_file} doesn't exist, unable to load weights.")
+
+    # Run the import
+    ng.import_json(
+        target=geometry,
+        file=str(weights_file),
+        vertex_transfer_mode=ng.transfer.VertexTransferMode.vertexId,
+        influences_mapping_config=config,
+    )
+
+
+@require_ng_skin
+def write_ng_skin_weights(filepath: Path, geometry: str, force: bool = False) -> None:
+    """
+    Writes a ngSkinTools JSON file representing the weights of the given geometry.
+
+    Args:
+        filepath: The path and filename and extension to save under.
+        geometry: The transform, shape, or skinCluster Node the weights are on.
+        force: If True, will automatically overwrite any existing file at the filepath specified.
+
+    """
+
+    # If the file exists, only write it if force = True, or after asking for confirmation.
+    if filepath.exists():
+        if force:
+            pass
+        else:
+            confirm: str = cmds.confirmDialog(
+                title="File Overwrite",
+                message=f"{filepath} already exists and will be overwritten, are you sure you want to write the file?",
+                button=["Yes", "No"],
+                defaultButton="Yes",
+                cancelButton="No",
+                dismissString="No",
+            )
+            if confirm == "Yes":
+                pass
+            else:
+                return
+
+    ng.export_json(target=geometry, file=str(filepath))
+    return
+
+
+def get_influences_from_ng_skin_weights(
+    filepath: Path,
+) -> list[str]:
+    """Return influence paths from an ngSkinTools2 JSON weights file.
+
+    Args:
+        filepath: Path to the weights file.
+    """
+    if not filepath.exists():
+        raise RuntimeError(f"{filepath} doesn't exist, unable to load weights.")
+    with open(filepath) as file:
+        data: dict = json.loads(file.read())
+    return [influence["path"] for influence in data["influences"]]
+
+
+@require_ng_skin
+def cleanup_ng_data_nodes() -> None:
+    """
+    Removes the `ngst2SkinLayerData` nodes in the scene for publish.
+
+    ngst2SkinLayerData nodes store the layer data for ngSkinTools, but their final result is baked
+    into the skin cluster so they just bloat the rig file size if left in the scene.
+
+    We once had a rig go from 450+ Mb to like 53 Mb just by removing these nodes.
+    """
+    ng_data_nodes: list[str] = cmds.ls(type="ngst2SkinLayerData")
+    if ng_data_nodes:
+        cmds.delete(ng_data_nodes)  # type: ignore
+        log.info(
+            f"Removed {len(ng_data_nodes)} ngst2SkinLayerData node(s) from the scene: {ng_data_nodes}"
+        )
