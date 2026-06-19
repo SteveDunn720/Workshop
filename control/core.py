@@ -8,13 +8,13 @@ from typing import Iterator
 from maya import cmds
 from maya.api.OpenMaya import MMatrix
 
-from Core.control.serialize import ControlShape, create_curve
-from Core.maya_api.enum import RotateOrder
-from Core.name import MIDDLE_SIDE_NAME, get_side
-from Core.transform import create_transform
-from Core.transform.matrix import get_world_matrix
-from Core.transform.structs import Direction
-from Core.transform.utils import bake_shape, partial_path_name
+from Workshop.control.serialize import ControlShape, create_curve
+from Workshop.maya_api.enum import RotateOrder
+from Workshop.name import MIDDLE_SIDE_NAME, get_side
+from Workshop.transform import create_transform
+from Workshop.transform.matrix import get_world_matrix
+from Workshop.transform.structs import Direction
+from Workshop.transform.utils import bake_shape, partial_path_name
 
 CONTROL_SUFFIX = "ctrl"
 TOP_SUFFIX = "offset"

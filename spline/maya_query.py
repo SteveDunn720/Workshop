@@ -7,7 +7,7 @@ from maya.api.OpenMaya import (
     MSpace,
 )
 
-from Core.structs.transform import Vector3
+from yrig.structs.transform import Vector3
 
 
 def maya_to_standard_knots(

@@ -4,7 +4,7 @@ from typing import Iterable, Sequence, TypeVar
 
 import numpy as np
 
-from Core.structs.transform import Vector3
+from yrig.structs.transform import Vector3
 
 # CV can be anything: a Vector3, a transform name, etc.
 CV = TypeVar("CV")
@@ -513,7 +513,7 @@ def get_point_on_spline(
 
     Args:
         cv_positions: Ordered control-vertex positions as
-            :class:`~Core.structs.transform.Vector3` instances.
+            :class:`~yrig.structs.transform.Vector3` instances.
         t: The parameter value at which to evaluate.
         degree: The curve degree.  Defaults to ``3`` (cubic).
         knots: An explicit knot vector, or ``None`` for auto-generation.
@@ -523,7 +523,7 @@ def get_point_on_spline(
             range.
 
     Returns:
-        A :class:`~Core.structs.transform.Vector3` representing the
+        A :class:`~yrig.structs.transform.Vector3` representing the
         world-space point on the curve.
     """
     position: Vector3 = Vector3()
@@ -550,13 +550,13 @@ def get_tangent_on_spline(
 
     Args:
         cv_positions: Ordered control-vertex positions as
-            :class:`~Core.structs.transform.Vector3` instances.
+            :class:`~yrig.structs.transform.Vector3` instances.
         t: The parameter value at which to evaluate.
         degree: The curve degree.  Defaults to ``3`` (cubic).
         knots: An explicit knot vector, or ``None`` for auto-generation.
 
     Returns:
-        A :class:`~Core.structs.transform.Vector3` representing the
+        A :class:`~yrig.structs.transform.Vector3` representing the
         (unnormalised) tangent direction at *t*.
     """
     tangent: Vector3 = Vector3()

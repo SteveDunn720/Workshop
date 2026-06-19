@@ -3,14 +3,14 @@ from typing import Callable, Sequence
 from maya import cmds
 from maya.api.OpenMaya import MDagPath, MFnNurbsCurve, MPoint, MSelectionList, MSpace
 
-from Core.maya_api.enum import Axis
-from Core.maya_api.node import MotionPathNode, MultiplyPointByMatrixNode
-from Core.name import get_short_name
-from Core.spline import generate_knots
-from Core.spline.math import collapse_periodic_cv_list, create_periodic_cv_list
-from Core.transform import create_transform, get_shape, get_shapes
-from Core.transform.matrix import localize_world_matrix
-from Core.transform.utils import set_position
+from yrig.maya_api.enum import Axis
+from yrig.maya_api.node import MotionPathNode, MultiplyPointByMatrixNode
+from yrig.name import get_short_name
+from yrig.spline import generate_knots
+from yrig.spline.math import collapse_periodic_cv_list, create_periodic_cv_list
+from yrig.transform import create_transform, get_shape, get_shapes
+from yrig.transform.matrix import localize_world_matrix
+from yrig.transform.utils import set_position
 
 
 def bound_curve_from_transforms(

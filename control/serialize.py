@@ -15,9 +15,9 @@ from maya.api.OpenMaya import (
     MSpace,
 )
 
-from Core.control.utils import get_tagged_controls
-from Core.transform import create_transform, get_shapes
-from Core.util import confirm_overwrite
+from yrig.control.utils import get_tagged_controls
+from yrig.transform import create_transform, get_shapes
+from yrig.util import confirm_overwrite
 
 log = logging.getLogger(__name__)
 

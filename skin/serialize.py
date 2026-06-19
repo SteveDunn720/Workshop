@@ -4,14 +4,14 @@ from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Self
 
-from Core.skin.core import (
+from yrig.skin.core import (
     get_skin_cluster,
     get_skin_cluster_influences,
     get_skin_weights,
     set_skin_weights,
 )
-from Core.transform import get_shape
-from Core.util import confirm_overwrite
+from yrig.transform import get_shape
+from yrig.util import confirm_overwrite
 
 log = logging.getLogger(__name__)
 
@@ -109,7 +109,7 @@ def export_skin_weights(
 def import_skin_weights(filepath: Path, geometry: str, skin_cluster: str | None = None) -> str:
     """
     Import skin weights from a file and apply them to the skinCluster on the given geometry.
-    The input file must be a `.yskin` JSON-based skin weight file produced by Core.
+    The input file must be a `.yskin` JSON-based skin weight file produced by yrig.
 
     Args:
         filepath: Path to `.yskin` skin weight file.

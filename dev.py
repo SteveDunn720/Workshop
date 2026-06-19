@@ -1,7 +1,7 @@
 import logging
 import sys
 
-from Core.build.mgear_api.reload import reload_components
+from yrig.build.mgear_api.reload import reload_components
 
 log = logging.getLogger(__name__)
 

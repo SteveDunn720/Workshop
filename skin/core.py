@@ -22,8 +22,8 @@ from maya.api.OpenMaya import (
 )
 from maya.api.OpenMayaAnim import MFnSkinCluster
 
-from Core.name import natural_sort_key
-from Core.transform.utils import get_shape
+from yrig.name import natural_sort_key
+from yrig.transform.utils import get_shape
 
 
 def get_skin_clusters(geometry: str) -> list[str] | None:
