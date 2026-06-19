@@ -4,11 +4,11 @@ from typing import Any, Callable, Sequence
 
 from maya import cmds
 
-from yrig.build.progress import progress_step
-from yrig.name import get_short_name, natural_sort_key
-from yrig.skin.core import get_skin_clusters, skin_geometry
-from yrig.skin.ng import apply_ng_skin_weights, get_influences_from_ng_skin_weights
-from yrig.skin.serialize import apply_skin_weight_data, skin_weight_data_from_file
+from Core.build.progress import progress_step
+from Core.name import get_short_name, natural_sort_key
+from Core.skin.core import get_skin_clusters, skin_geometry
+from Core.skin.ng import apply_ng_skin_weights, get_influences_from_ng_skin_weights
+from Core.skin.serialize import apply_skin_weight_data, skin_weight_data_from_file
 
 log = logging.getLogger(__name__)
 

@@ -14,11 +14,11 @@ from maya.api.OpenMaya import (
     MSelectionList,
 )
 
-from yrig.math import remap
-from yrig.skin.core import (
+from Core.math import remap
+from Core.skin.core import (
     get_mesh_points,
 )
-from yrig.spline.math import generate_knots, get_weights_along_spline
+from Core.spline.math import generate_knots, get_weights_along_spline
 
 # CV can be anything: a Vector3, a transform name, etc.
 CV = TypeVar("CV")
