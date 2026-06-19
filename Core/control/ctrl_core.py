@@ -8,7 +8,6 @@ from typing import Iterator
 from maya import cmds
 from maya.api.OpenMaya import MMatrix
 
-from yrig.build.mgear_api.control import add_ctl
 from yrig.control.serialize import ControlShape, create_curve
 from yrig.maya_api.enum import RotateOrder
 from yrig.name import MIDDLE_SIDE_NAME, get_side
@@ -17,8 +16,9 @@ from yrig.transform.matrix import get_world_matrix
 from yrig.transform.structs import Direction
 from yrig.transform.utils import bake_shape, partial_path_name
 
-CONTROL_SUFFIX = "_ctl"
-OFFSET_SUFFIX = "_npo"
+CONTROL_SUFFIX = "ctrl"
+TOP_SUFFIX = "offset"
+SDK_SUFFIX = "sdk"
 
 _control_collection: ContextVar[list[Control] | None] = ContextVar(
     "control_collection", default=None
@@ -60,12 +60,13 @@ def _register_control(ctrl: "Control") -> None:
 
 @dataclass
 class Control:
-    transform: str
-    offset: str
+    ctrl: str
+    sdk: str | None
+    top: str
     name: str
 
     def __str__(self) -> str:
-        return self.transform
+        return self.ctrl
 
 
 def _create_control_curve(
@@ -74,6 +75,7 @@ def _create_control_curve(
     direction: Direction = "y",
     size: float = 1,
     dimensions: tuple[float, float, float] = (1, 1, 1),
+    position_offset: tuple[float, float, float] = (0, 0, 0)
 ) -> str:
     curve_transform = create_curve(name, control_shape)
     bake: bool = False
@@ -99,6 +101,13 @@ def _create_control_curve(
             raise RuntimeError(
                 f"{direction} is not a valid direction. It should be x,y,z or -x,-y,-z."
             )
+    if position_offset != (0,0,0):
+        cmds.move(
+            position_offset[0],
+            position_offset[1],
+            position_offset[2], 
+            curve_transform)
+        bake=True
 
     if (size != 1) or (dimensions != (1, 1, 1)):
         scaled_dimensions = (size * dimension for dimension in dimensions)
@@ -114,8 +123,10 @@ def create_control(
     name: str,
     parent: str | Control | None,
     transform: str | MMatrix | None = None,
+    sdk_offset:bool = False,
     control_shape: ControlShape | str = ControlShape.CIRCLE,
     direction: Direction = "y",
+    shape_position_offset: tuple[float, float, float] =(0,0,0),
     size: float = 1,
     dimensions: tuple[float, float, float] = (1, 1, 1),
     rotation_order: RotateOrder = RotateOrder.XYZ,
@@ -133,27 +144,34 @@ def create_control(
         transform_matrix = None
     parent_transform = parent.transform if isinstance(parent, Control) else parent
 
-    offset_transform = create_transform(
-        name=f"{name}{OFFSET_SUFFIX}", parent=parent_transform, transform=transform_matrix
+    top_transform = create_transform(
+        name=f"{name}{TOP_SUFFIX}", parent=parent_transform, transform=transform_matrix
     )
+ 
 
-    control_parent = offset_transform
+    if sdk_offset:
+        sdk_transform = create_transform(
+        name=f"{name}{SDK_SUFFIX}", parent=top_transform, transform=transform_matrix
+    )
+        control_parent = sdk_transform
+    else:
+        sdk_transform = None
+        control_parent = top_transform
+    
     control_name = f"{name}{CONTROL_SUFFIX}"
     # We call a function to create an mGear compatible control here, since mGear is rather specific about what it needs.
     # Feel free to replace this if you ditch mGear.
-    control_transform_path = str(
-        add_ctl(
-            control_name,
-            control_parent,
-            None,
-            side=get_side(name) or MIDDLE_SIDE_NAME,
-            control_icon_creator=lambda: _create_control_curve(
-                control_name, control_shape, direction, size, dimensions
-            ),
-            rotation_order=str(rotation_order),
-        )
+    control_transform = build_control(
+        control_name,
+        control_parent,
+        control_shape,
+        direction,
+        size,
+        dimensions,
+        rotation_order,
+        shape_position_offset,
     )
-    control_transform = partial_path_name(control_transform_path)
+    
 
     if limit_min_scale:  # Comfort feature: make it so it's not possible to have negative scale
         min_scale: float = 0.01
@@ -167,6 +185,41 @@ def create_control(
             scaleZ=(min_scale, 1),
         )
 
-    control = Control(transform=control_transform, offset=offset_transform, name=name)
+    control = Control(ctrl=control_transform, top=top_transform, sdk=sdk_transform, name=name)
     _register_control(control)
     return control
+
+def build_control(
+    name,
+    parent,
+    control_shape,
+    direction,
+    size,
+    dimensions,
+    rotation_order,
+    position_offset
+):
+    ctrl = cmds.createNode("transform", name=name, parent=parent)
+
+    # shape build (your system)
+    shape_parent = _create_control_curve(
+        name,
+        control_shape,
+        direction,
+        size,
+        dimensions,
+        position_offset
+    )
+
+    # parent shape under ctrl
+    shapes = cmds.listRelatives(shape_parent, shapes=True, fullPath=True) or []
+    for s in shapes:
+        cmds.parent(s, ctrl, shape=True, relative=True)
+
+    cmds.delete(shape_parent)
+
+    cmds.setAttr(ctrl + ".rotateOrder", int(rotation_order))
+
+    return ctrl
+
+
