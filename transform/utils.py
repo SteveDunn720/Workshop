@@ -13,10 +13,10 @@ from maya.api.OpenMaya import (
     MTransformationMatrix,
 )
 
-from Workshop..maya_api.attribute import MatrixAttribute, ScalarAttribute
-from Workshop..maya_api.node import ConditionNode, DistanceBetweenNode, SubtractNode
-from Workshop..name import get_short_name
-from Workshop..transform.matrix import (
+from Workshop.maya_api.attribute import MatrixAttribute, ScalarAttribute
+from Workshop.maya_api.node import ConditionNode, DistanceBetweenNode, SubtractNode
+from Workshop.name import get_short_name
+from Workshop.transform.matrix import (
     get_world_matrix,
     multiply_matrices,
     set_local_matrix,
@@ -24,7 +24,7 @@ from Workshop..transform.matrix import (
 )
 
 if TYPE_CHECKING:
-    from Workshop..control import Control
+    from Workshop.control import Control
 
 
 def partial_path_name(transform: str) -> str:

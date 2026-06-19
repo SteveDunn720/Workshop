@@ -3,8 +3,8 @@ from typing import Any
 import maya.api.OpenMaya as om2
 import maya.cmds as cmds
 
-from Workshop..color.convert import lch_to_lab, oklab_to_linear_srgb
-from Workshop..skin.split import get_mesh_spline_weights, get_mesh_surface_weights
+from Workshop.color.convert import lch_to_lab, oklab_to_linear_srgb
+from Workshop.skin.split import get_mesh_spline_weights, get_mesh_surface_weights
 
 
 def visualize_weights_on_mesh(

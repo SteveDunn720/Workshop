@@ -5,9 +5,8 @@ from typing import Iterator
 from maya import cmds
 from maya.api.OpenMaya import MMatrix
 
-from Workshop..build.mgear_api.joint import add_to_joint_set
-from Workshop..control.core import Control
-from Workshop..transform import match_transform, matrix_constraint, set_world_matrix
+from Workshop.control.core import Control
+from Workshop.transform import match_transform, matrix_constraint, set_world_matrix
 
 JOINT_SUFFIX: str = "_jnt"
 
@@ -78,5 +77,5 @@ def create_joint(
 
     _register_joint(joint)
     # This is mGear specific and may need changed if you stop using mGear.
-    add_to_joint_set(joint)
-    return joint
+"""    add_to_joint_set(joint)
+    return joint"""

@@ -3,12 +3,12 @@ import math
 import maya.cmds as cmds
 from maya.api.OpenMaya import MEulerRotation, MMatrix, MSpace, MTransformationMatrix, MVector
 
-from Workshop..control import create_control
-from Workshop..joint import create_joint
-from Workshop..skin.split.tag import tag_for_weight_split
-from Workshop..spline.matrix_spline.build import matrix_spline_from_transforms
-from Workshop..transform import create_transform
-from Workshop..transform.utils import get_position
+from Workshop.control import create_control
+from Workshop.joint import create_joint
+from Workshop.skin.split.tag import tag_for_weight_split
+from Workshop.spline.matrix_spline.build import matrix_spline_from_transforms
+from Workshop.transform import create_transform
+from Workshop.transform.utils import get_position
 
 from .guide_curve import GuideCurve
 

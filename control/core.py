@@ -16,9 +16,9 @@ from Workshop.transform.matrix import get_world_matrix
 from Workshop.transform.structs import Direction
 from Workshop.transform.utils import bake_shape, partial_path_name
 
-CONTROL_SUFFIX = "ctrl"
-TOP_SUFFIX = "offset"
-SDK_SUFFIX = "sdk"
+CONTROL_SUFFIX = "_ctrl"
+TOP_SUFFIX = "_offset"
+SDK_SUFFIX = "_sdk"
 
 _control_collection: ContextVar[list[Control] | None] = ContextVar(
     "control_collection", default=None
@@ -199,7 +199,7 @@ def build_control(
     rotation_order,
     position_offset
 ):
-    ctrl = cmds.createNode("transform", name=name, parent=parent)
+
 
     # shape build (your system)
     shape_parent = _create_control_curve(
@@ -211,15 +211,9 @@ def build_control(
         position_offset
     )
 
-    # parent shape under ctrl
-    shapes = cmds.listRelatives(shape_parent, shapes=True, fullPath=True) or []
-    for s in shapes:
-        cmds.parent(s, ctrl, shape=True, relative=True)
+    cmds.setAttr(shape_parent + ".rotateOrder", int(rotation_order))
+    cmds.parent(shape_parent, parent)
 
-    cmds.delete(shape_parent)
-
-    cmds.setAttr(ctrl + ".rotateOrder", int(rotation_order))
-
-    return ctrl
+    return shape_parent
 
 

@@ -2,10 +2,10 @@ from typing import Literal
 
 from maya import cmds
 
-from Workshop..control import Control, create_control
-from Workshop..maya_api.attribute import BooleanAttribute, ScalarAttribute
-from Workshop..maya_api.node import MultiplyNode
-from Workshop..surface import surface_slide_constraint
+from Workshop.control import Control, create_control
+from Workshop.maya_api.attribute import BooleanAttribute, ScalarAttribute
+from Workshop.maya_api.node import MultiplyNode
+from Workshop.surface import surface_slide_constraint
 
 
 class MouthCorner:

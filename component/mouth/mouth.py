@@ -2,12 +2,12 @@ from dataclasses import dataclass, field
 
 from maya import cmds
 
-from Workshop..control import Control, ControlShape, create_control
-from Workshop..joint import create_joint
-from Workshop..maya_api.enum import RotateOrder
-from Workshop..surface import surface_slide_constraint
-from Workshop..transform import create_transform, matrix_constraint
-from Workshop..transform.matrix import local_constraint
+from Workshop.control import Control, ControlShape, create_control
+from Workshop.joint import create_joint
+from Workshop.maya_api.enum import RotateOrder
+from Workshop.surface import surface_slide_constraint
+from Workshop.transform import create_transform, matrix_constraint
+from Workshop.transform.matrix import local_constraint
 
 from .cheek import CheekInterpolate, CheekInterpolateGuides
 from .corner import MouthCorner

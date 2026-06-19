@@ -2,13 +2,13 @@ from typing import Iterable, Self
 
 from maya import cmds
 
-from Workshop..maya_api.attribute import (
+from Workshop.maya_api.attribute import (
     BooleanAttribute,
     IndexableMessageAttribute,
     IntegerAttribute,
     MessageAttribute,
 )
-from Workshop..skin.split.data import WeightSplitData
+from Workshop.skin.split.data import WeightSplitData
 
 
 class WeightSplitTag:

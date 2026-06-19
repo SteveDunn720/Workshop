@@ -11,9 +11,9 @@ from maya.api.OpenMaya import (
     MSpace,
 )
 
-from Workshop..maya_api import node
-from Workshop..spline.math import create_periodic_cv_list, generate_knots, get_point_on_spline
-from Workshop..structs.transform import Vector3
+from Workshop.maya_api import node
+from Workshop.spline.math import create_periodic_cv_list, generate_knots, get_point_on_spline
+from Workshop.structs.transform import Vector3
 
 
 class MatrixSpline:

@@ -17,7 +17,7 @@ from typing import (
 import maya.cmds as cmds
 from maya.api.OpenMaya import MMatrix
 
-from Workshop..maya_api.enum import (
+from Workshop.maya_api.enum import (
     Axis,
     ConditionOperation,
     MotionPathWorldUpType,
@@ -30,7 +30,7 @@ from Workshop..maya_api.enum import (
 )
 
 if TYPE_CHECKING:
-    from Workshop..maya_api.node import Node
+    from Workshop.maya_api.node import Node
 
 AttributeType = TypeVar("AttributeType", bound="Attribute")
 

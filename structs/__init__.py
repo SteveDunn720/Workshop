@@ -1,5 +1,5 @@
 """
-Lightweight data structures used throughout Workshop..
+Lightweight data structures used throughout Workshop.
 """
 
 from . import transform as transform

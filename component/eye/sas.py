@@ -1,6 +1,6 @@
 import maya.cmds as cmds
 
-from Workshop..transform.utils import match_location
+from Workshop.transform.utils import match_location
 
 
 class Socket:

@@ -1,6 +1,6 @@
 import maya.cmds as cmds
 
-from Workshop..maya_api.attribute import (
+from Workshop.maya_api.attribute import (
     AimMatrixAxisAttribute,
     AxisAttribute,
     BooleanAttribute,
@@ -35,7 +35,7 @@ from Workshop..maya_api.attribute import (
     Vector3Attribute,
     Vector4Attribute,
 )
-from Workshop..maya_api.utils import ensure_plugin_loaded
+from Workshop.maya_api.utils import ensure_plugin_loaded
 
 from .version import MAYA_API_VERSION, TARGET_API_VERSION
 

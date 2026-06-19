@@ -5,10 +5,10 @@ from typing import Any, Literal
 import maya.cmds as cmds
 from maya.api.OpenMaya import MEulerRotation, MMatrix, MSpace, MTransformationMatrix, MVector
 
-from Workshop..control import ControlShape, create_control
-from Workshop..control.core import Control
-from Workshop..joint import create_joint
-from Workshop..maya_api.node import (
+from Workshop.control import ControlShape, create_control
+from Workshop.control.core import Control
+from Workshop.joint import create_joint
+from Workshop.maya_api.node import (
     ConditionNode,
     DecomposeMatrixNode,
     MultiplyDivideNode,
@@ -16,11 +16,11 @@ from Workshop..maya_api.node import (
     PlusMinusAverageNode,
     SumNode,
 )
-from Workshop..skin.split.tag import tag_for_weight_split
-from Workshop..spline.matrix_spline.build import matrix_spline_from_transforms
-from Workshop..transform import create_transform
-from Workshop..transform.matrix import matrix_constraint
-from Workshop..transform.utils import get_position
+from Workshop.skin.split.tag import tag_for_weight_split
+from Workshop.spline.matrix_spline.build import matrix_spline_from_transforms
+from Workshop.transform import create_transform
+from Workshop.transform.matrix import matrix_constraint
+from Workshop.transform.utils import get_position
 
 from .guide_curve import GuideCurve
 
