@@ -1,14 +1,14 @@
 from dataclasses import dataclass
 from typing import Sequence
 
-from yrig.joint import create_joint
-from yrig.name import get_short_name
-from yrig.skin.split import tag_for_weight_split
-from yrig.spline.math import generate_knots
-from yrig.spline.matrix_spline.core import MatrixSpline
-from yrig.spline.matrix_spline.pin import pin_transforms_to_matrix_spline
-from yrig.transform import create_transform
-from yrig.transform.matrix import matrix_constraint
+from Workshop..joint import create_joint
+from Workshop..name import get_short_name
+from Workshop..skin.split import tag_for_weight_split
+from Workshop..spline.math import generate_knots
+from Workshop..spline.matrix_spline.core import MatrixSpline
+from Workshop..spline.matrix_spline.pin import pin_transforms_to_matrix_spline
+from Workshop..transform import create_transform
+from Workshop..transform.matrix import matrix_constraint
 
 
 @dataclass

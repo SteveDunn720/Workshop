@@ -1,14 +1,14 @@
-from yrig.maya_api.attribute import QuatAttribute
-from yrig.maya_api.node import (
+from Workshop..maya_api.attribute import QuatAttribute
+from Workshop..maya_api.node import (
     QuatInvertNode,
     QuatNormalizeNode,
     QuatProdNode,
     QuatToEulerNode,
 )
-from yrig.name import get_short_name
-from yrig.transform.matrix import localize_and_decompose_matrix, matrix_constraint
-from yrig.transform.structs import Axis
-from yrig.transform.utils import create_transform, match_transform
+from Workshop..name import get_short_name
+from Workshop..transform.matrix import localize_and_decompose_matrix, matrix_constraint
+from Workshop..transform.structs import Axis
+from Workshop..transform.utils import create_transform, match_transform
 
 
 def drive_rotation_with_quat(transform: str, quat_attribute: QuatAttribute) -> None:

@@ -4,17 +4,17 @@ from typing import Sequence
 
 from maya import cmds
 
-from yrig.control import Control, create_control
-from yrig.joint import create_joint
-from yrig.maya_api.attribute import BooleanAttribute, ClosestPointOnSurfaceResultAttribute
-from yrig.maya_api.enum import RotateOrder
-from yrig.maya_api.node import MultiplyNode
-from yrig.skin.split import tag_for_weight_split
-from yrig.spline import generate_knots
-from yrig.spline.curve import bound_curve_from_transforms, pin_to_curve_with_motion_path
-from yrig.surface import closest_point_on_surface_reader, surface_slide_constraint
-from yrig.transform import create_transform
-from yrig.transform.utils import distance_reader
+from Workshop..control import Control, create_control
+from Workshop..joint import create_joint
+from Workshop..maya_api.attribute import BooleanAttribute, ClosestPointOnSurfaceResultAttribute
+from Workshop..maya_api.enum import RotateOrder
+from Workshop..maya_api.node import MultiplyNode
+from Workshop..skin.split import tag_for_weight_split
+from Workshop..spline import generate_knots
+from Workshop..spline.curve import bound_curve_from_transforms, pin_to_curve_with_motion_path
+from Workshop..surface import closest_point_on_surface_reader, surface_slide_constraint
+from Workshop..transform import create_transform
+from Workshop..transform.utils import distance_reader
 
 from .corner import MouthCorner
 

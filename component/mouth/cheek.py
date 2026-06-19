@@ -1,15 +1,15 @@
 from dataclasses import dataclass
 from typing import Sequence
 
-from yrig.control import Control
-from yrig.joint import create_joint
-from yrig.maya_api.attribute import BooleanAttribute, UvPinCoordinateAttribute
-from yrig.maya_api.node import BlendColorsNode, UvPinNode
-from yrig.spline import generate_knots, get_point_on_spline, resample
-from yrig.structs.transform import Vector3
-from yrig.surface import uv_pin, uv_pin_multi
-from yrig.transform import create_transform
-from yrig.transform.utils import get_position, set_position
+from Workshop..control import Control
+from Workshop..joint import create_joint
+from Workshop..maya_api.attribute import BooleanAttribute, UvPinCoordinateAttribute
+from Workshop..maya_api.node import BlendColorsNode, UvPinNode
+from Workshop..spline import generate_knots, get_point_on_spline, resample
+from Workshop..structs.transform import Vector3
+from Workshop..surface import uv_pin, uv_pin_multi
+from Workshop..transform import create_transform
+from Workshop..transform.utils import get_position, set_position
 
 from .lip import LipSpline
 

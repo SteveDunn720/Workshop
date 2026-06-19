@@ -4,19 +4,19 @@ from typing import Iterable
 from maya import cmds
 from maya.api.OpenMaya import MDagPath, MFnNurbsSurface, MMatrix, MPoint, MSelectionList, MSpace
 
-from yrig.math import remap
-from yrig.maya_api.attribute import ClosestPointOnSurfaceResultAttribute, MatrixAttribute
-from yrig.maya_api.enum import Axis
-from yrig.maya_api.node import (
+from Workshop..math import remap
+from Workshop..maya_api.attribute import ClosestPointOnSurfaceResultAttribute, MatrixAttribute
+from Workshop..maya_api.enum import Axis
+from Workshop..maya_api.node import (
     ClosestPointOnSurfaceNode,
     MultiplyPointByMatrixNode,
     UvPinNode,
 )
-from yrig.name import get_short_name
-from yrig.transform import get_shape
-from yrig.transform.matrix import drive_transform_with_matrix, get_world_matrix, multiply_matrices
-from yrig.transform.structs import Direction
-from yrig.transform.utils import get_position
+from Workshop..name import get_short_name
+from Workshop..transform import get_shape
+from Workshop..transform.matrix import drive_transform_with_matrix, get_world_matrix, multiply_matrices
+from Workshop..transform.structs import Direction
+from Workshop..transform.utils import get_position
 
 
 def closest_point_on_surface(

@@ -16,13 +16,13 @@ from maya.api.OpenMaya import (
     MTransformationMatrix,
 )
 
-from yrig.maya_api import node
-from yrig.maya_api.attribute import MatrixAttribute, Vector3Attribute
-from yrig.maya_api.node import (
+from Workshop..maya_api import node
+from Workshop..maya_api.attribute import MatrixAttribute, Vector3Attribute
+from Workshop..maya_api.node import (
     DecomposeMatrixNode,
     MultMatrixNode,
 )
-from yrig.name import get_short_name
+from Workshop..name import get_short_name
 
 log = logging.getLogger(__name__)
 

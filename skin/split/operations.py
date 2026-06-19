@@ -1,8 +1,8 @@
 import logging
 from typing import Iterable
 
-from yrig.build.progress import progress_step, progress_update
-from yrig.skin.core import (
+from Workshop..build.progress import progress_step, progress_update
+from Workshop..skin.core import (
     get_shape,
     get_skin_cluster,
     get_skin_cluster_influences,
@@ -10,8 +10,8 @@ from yrig.skin.core import (
     get_skin_weights,
     set_skin_weights,
 )
-from yrig.skin.split.data import WeightSplitData, get_mesh_spline_weights
-from yrig.skin.split.tag import get_weight_split_tag
+from Workshop..skin.split.data import WeightSplitData, get_mesh_spline_weights
+from Workshop..skin.split.tag import get_weight_split_tag
 
 log = logging.getLogger(__name__)
 

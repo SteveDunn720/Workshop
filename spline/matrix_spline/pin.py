@@ -2,18 +2,18 @@ from typing import Sequence
 
 import maya.cmds as cmds
 
-from yrig.maya_api import node
-from yrig.maya_api.attribute import (
+from Workshop..maya_api import node
+from Workshop..maya_api.attribute import (
     MatrixAttribute,
     ScalarAttribute,
     Vector3Attribute,
     Vector4Attribute,
 )
-from yrig.maya_api.node import AimMatrixNode, PickMatrixNode
-from yrig.spline.math import point_on_spline_weights, resample, tangent_on_spline_weights
-from yrig.spline.matrix_spline.core import MatrixSpline
-from yrig.structs.transform import Vector3
-from yrig.transform.utils import zero_transform
+from Workshop..maya_api.node import AimMatrixNode, PickMatrixNode
+from Workshop..spline.math import point_on_spline_weights, resample, tangent_on_spline_weights
+from Workshop..spline.matrix_spline.core import MatrixSpline
+from Workshop..structs.transform import Vector3
+from Workshop..transform.utils import zero_transform
 
 CARDINALS = {(1, 0, 0), (-1, 0, 0), (0, 1, 0), (0, -1, 0), (0, 0, 1), (0, 0, -1)}
 X_AXIS = (1, 0, 0)

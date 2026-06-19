@@ -1,6 +1,6 @@
 from maya import cmds
 
-from yrig.name import get_side
+from Workshop..name import get_side
 
 
 def get_tagged_controls(side: str | None = None) -> list[str]:

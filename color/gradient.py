@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 
-from yrig.color.core import blend_colors_by_weight
-from yrig.spline.math import point_on_spline_weights
+from Workshop..color.core import blend_colors_by_weight
+from Workshop..spline.math import point_on_spline_weights
 
 
 @dataclass

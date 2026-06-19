@@ -1,9 +1,9 @@
 import maya.cmds as cmds
 from maya.api.OpenMaya import MPoint
 
-from yrig.control import create_control
-from yrig.transform import create_transform
-from yrig.transform.utils import create_space_switch, get_position
+from Workshop..control import create_control
+from Workshop..transform import create_transform
+from Workshop..transform.utils import create_space_switch, get_position
 
 
 class Look:
