@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Sequence
 
+import math
+
 import maya.cmds as cmds
 from maya.api.OpenMaya import (
     MDagPath,
@@ -11,6 +13,8 @@ from maya.api.OpenMaya import (
     MSelectionList,
     MSpace,
     MTransformationMatrix,
+    MVector,
+    MEulerRotation,
 )
 
 from Workshop.maya_api.attribute import MatrixAttribute, ScalarAttribute
@@ -145,6 +149,54 @@ def get_position(transform: str, world_space: bool = True) -> MPoint:
         An ``MPoint`` containing the XYZ translation of the transform.
     """
     return MPoint(cmds.xform(transform, query=True, worldSpace=world_space, translation=True))
+
+def get_distance_between(obj_a: str, obj_b: str, world_space: bool = True) -> float:
+    p1 = get_position(obj_a, world_space)
+    p2 = get_position(obj_b, world_space)
+
+    return p1.distanceTo(p2)
+
+
+def get_plane_normal(start, mid, end):
+    p1 = get_position(start)
+    p2 = get_position(mid)
+    p3 = get_position(end)
+
+    v1 = (p2 - p1)
+    v2 = (p3 - p2)
+
+    normal = v1 ^ v2
+    normal.normalize()
+
+    return normal
+
+
+def convert_to_matrix(
+        pos: tuple[float, float, float] = (0, 0, 0),
+        rot: tuple[float, float, float] = (0, 0, 0),
+        scale: tuple[float, float, float] = (1, 1, 1),
+    ) -> MMatrix:
+        """
+        Build an MMatrix from translation, rotation, and scale.
+        """
+
+        m = MTransformationMatrix()
+
+        # Translation
+        m.setTranslation(MVector(*pos), MSpace.kWorld)
+
+        # Rotation (Euler degrees → radians internally handled by API)
+        euler = MEulerRotation(
+            math.radians(rot[0]),
+            math.radians(rot[1]),
+            math.radians(rot[2]),
+        )
+        m.setRotation(euler)
+
+        # Scale
+        m.setScale(scale, MSpace.kWorld)
+
+        return m.asMatrix()
 
 
 def set_position(
