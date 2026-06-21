@@ -1,24 +1,18 @@
-import maya.cmds as cmds
 
-from Workshop.meta_rigs.meta_componets.root import Root
-from Workshop.transform import create_transform
+from Workshop.meta_rigs import meta_componets
 
+def build(meta_type:str='metahuman'):
 
-def build():
+    #verify and assign meta rig type, current plans for mixamo and metahuman, may add more later
 
-    rig_root_grp = create_transform(name="components", parent='rig')
+    if meta_type == 'metahuman':
+        rig_root = meta_componets.configure_metahuman_scene()
+    else:
+        print(f'meta_type:{meta_type} is incompatible with this build, only metahuman is curently compatable')
+    
+    body_rig_root:str = rig_root.body_rig #type:ignore
+    rig_size:float = rig_root.scene_size #type:ignore
 
-
-
-
-    bbox = cmds.exactWorldBoundingBox("body_lod0_mesh")
-
-    size_x = bbox[3] - bbox[0]
-    size_z = bbox[5] - bbox[2]
-
-    average = (size_x + size_z) / 3
-
-
-    root_rig = Root(control_size=average)
+    root_rig = meta_componets.Root(control_size=rig_size, parent=body_rig_root)
     root_rig.root_build()
 

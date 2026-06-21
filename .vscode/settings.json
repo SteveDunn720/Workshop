@@ -1,5 +1,6 @@
 {
     "python.analysis.extraPaths": [
-        "H:/Documents/maya/scripts"
+        "H:/Documents/maya/scripts",
+        "C:/Users/sldun/Documents/maya/scripts"
     ]
 }
