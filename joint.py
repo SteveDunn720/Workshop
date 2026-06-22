@@ -77,5 +77,5 @@ def create_joint(
 
     _register_joint(joint)
     # This is mGear specific and may need changed if you stop using mGear.
-"""    add_to_joint_set(joint)
-    return joint"""
+    """    add_to_joint_set(joint) """
+    return joint

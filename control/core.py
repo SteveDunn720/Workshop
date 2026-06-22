@@ -3,6 +3,7 @@ from __future__ import annotations
 from contextlib import contextmanager
 from contextvars import ContextVar
 from dataclasses import dataclass
+from turtle import shape
 from typing import Iterator
 
 from maya import cmds
@@ -14,7 +15,7 @@ from Workshop.name import MIDDLE_SIDE_NAME, get_side
 from Workshop.transform import create_transform
 from Workshop.transform.matrix import get_world_matrix
 from Workshop.transform.structs import Direction
-from Workshop.transform.utils import bake_shape, partial_path_name
+from Workshop.transform.utils import bake_shape, match_location, partial_path_name
 
 CONTROL_SUFFIX = "_ctrl"
 TOP_SUFFIX = "_offset"
@@ -212,7 +213,11 @@ def build_control(
     )
 
     cmds.setAttr(shape_parent + ".rotateOrder", int(rotation_order))
+    
     cmds.parent(shape_parent, parent)
+
+    for attr in ['rotateX', 'rotateY', 'rotateZ', 'translateX', 'translateY', 'translateZ']:
+        cmds.setAttr(f'{shape_parent}.{attr}', 0)
 
     return shape_parent
 

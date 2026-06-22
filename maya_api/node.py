@@ -498,6 +498,16 @@ class MultiplyDivideNode(Node):
         self.operation = MultiplyDivideOperationAttribute(f"{self.name}.operation")
         self.output = Vector3Attribute(f"{self.name}.output")
 
+class ReverseNode(Node):
+    """Maya reverse node with enhanced interface."""
+
+    def __init__(self, name: str = "reverse") -> None:
+        super().__init__("reverse", name)
+
+    def _setup_attributes(self) -> None:
+        self.input = Vector3Attribute(f"{self.name}.input")
+        self.output = Vector3Attribute(f"{self.name}.output")
+
 
 class MultiplyPointByMatrixNode(Node):
     """Maya multiplyPointByMatrix node with enhanced interface."""

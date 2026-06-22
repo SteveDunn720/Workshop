@@ -45,7 +45,7 @@ class Root:
             transform=self.joints[0],
             size=self.control_size,
             control_shape="circle",
-            direction="y",
+            direction="z",
         )
 
         self.local_ctrl = create_control(
@@ -54,7 +54,7 @@ class Root:
             transform=self.joints[0],
             size=self.control_size * .8,
             control_shape="circle",
-            direction="y",
+            direction="z",
         )
 
         self.offset_ctrl = create_control(
@@ -63,7 +63,7 @@ class Root:
             transform=self.joints[0],
             size=self.control_size * .6,
             control_shape="circle",
-            direction="y",
+            direction="z",
         )
 
         cmds.parentConstraint(self.offset_ctrl.ctrl, self.joints[0], mo=True)

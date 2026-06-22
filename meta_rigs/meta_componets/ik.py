@@ -16,7 +16,7 @@ class IK_data:
 
 def create_IK_rotate_plane(name:str, start_joint:str, end_joint:str, mid_joint:str, pole_vector_guide:str, auto_pv:bool=False)->IK_data:
     ik_handle, effector = cmds.ikHandle(                                                 #type:ignore
-            name=name,
+            name=f'{name}_IK_handle',
             startJoint=start_joint,
             endEffector=end_joint,
             solver="ikRPsolver"
