@@ -3,6 +3,7 @@ import maya.cmds as cmds
 
 from Workshop.control import create_control
 from Workshop.transform import create_transform
+from .module_initialize import module_prep
 
 
 @dataclass
@@ -31,13 +32,11 @@ class Root:
     # Build steps
     # -------------------
 
-    def component_prep(self):
-        self.main_grp = create_transform(name=f"{self.part}_{self.side}", parent=self.parent)
-        self.control_grp = create_transform(name=f"{self.part}_CTRLS_{self.side}", parent=self.main_grp)
-        self.guts = create_transform(name=f"{self.part}_GUTS_{self.side}", parent=self.main_grp)
-
     def root_build(self):
-        self.component_prep()
+        prep = module_prep(part=self.part, parent=self.parent, side=self.side, fkik=False)
+        self.main_grp = prep.main_grp
+        self.control_grp = prep.control_grp
+        self.guts = prep.guts
 
         self.root_ctrl = create_control(
             name=self.part,

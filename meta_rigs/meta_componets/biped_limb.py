@@ -10,6 +10,7 @@ from Workshop.control.core import create_control
 from Workshop.joint import create_joint
 from Workshop.maya_api.node import ReverseNode
 from Workshop.transform.utils import create_transform
+from .module_initialize import module_prep
 
 
 
@@ -64,15 +65,13 @@ class Limb:
             for control in controls:
                 cmds.addAttr(control, longName='FKIK_Switch', proxy=self.FK_IK_Switch)
 
-    def component_prep(self):
-            self.main_grp = create_transform(name=f"{self.part}_{self.side}", parent=self.parent)
-            self.control_grp = create_transform(name=f"{self.part}_CTRLS_{self.side}", parent=self.main_grp)
-            self.guts = create_transform(name=f"{self.part}_GUTS_{self.side}", parent=self.main_grp)
-            self.ik_control_grp = create_transform(name=f"{self.part}_IK_controls_{self.side}", parent=self.control_grp)
-            self.fk_control_grp = create_transform(name=f"{self.part}_Fk_controls_{self.side}", parent=self.control_grp)
-
     def limb_build(self):
-        self.component_prep()
+        prep = module_prep(part=self.part, parent=self.parent, side=self.side, fkik=True)
+        self.main_grp = prep.main_grp
+        self.control_grp = prep.control_grp
+        self.guts = prep.guts
+        self.ik_control_grp = prep.ik_grp
+        self.fk_control_grp = prep.fk_grp
 
         self.controls = []
 
