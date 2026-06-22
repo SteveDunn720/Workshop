@@ -15,6 +15,8 @@ def build(meta_type:str='metahuman'):
 
     root = meta_componets.Root(control_size=rig_size, parent=body_rig_root)
     root.root_build()
+    """root = meta_componets.Root(control_size=rig_size, parent=body_rig_root)
+    root.root_build()"""
 
     for side in ['l', 'r']:
         leg = meta_componets.Limb(part='leg', control_size=rig_size, parent=body_rig_root, side=side, joints= [f'thigh_{side}', f'calf_{side}', f'foot_{side}'],ik_end_control = True)
