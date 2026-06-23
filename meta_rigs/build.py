@@ -21,7 +21,9 @@ def build(meta_type:str='metahuman'):
     spineinfo = spine.spine_build()
 
     for side in ['l', 'r']:
+        clav = meta_componets.Clavicle(part='clav', control_size=rig_size, parent=body_rig_root, side=side, joints= [f'clavicle_{side}'], control_space=[spineinfo.fk_spine_controls_list[-1].ctrl], )
+        clavinfo = clav.clavicle_build()
         leg = meta_componets.Limb(part='leg', control_size=rig_size, parent=body_rig_root, side=side, joints= [f'thigh_{side}', f'calf_{side}', f'foot_{side}'],ik_end_control = True, fk_control_space=[hipinfo.hip_control.ctrl], ik_control_space=[hipinfo.hip_control.ctrl, root_info.offset_control.ctrl, ])
         leg.limb_build()
-        arm = meta_componets.Limb(part='arm',control_size=rig_size, parent=body_rig_root, side=side, joints= [f'upperarm_{side}', f'lowerarm_{side}', f'hand_{side}'],ik_end_control = True)
+        arm = meta_componets.Limb(part='arm', control_size=rig_size, parent=body_rig_root, side=side, joints= [f'upperarm_{side}', f'lowerarm_{side}', f'hand_{side}'],ik_end_control = True, fk_control_space=[clavinfo.clav_control.ctrl], ik_control_space=[clavinfo.clav_control.ctrl, root_info.offset_control.ctrl, ])
         arm.limb_build()

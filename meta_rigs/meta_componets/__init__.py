@@ -4,12 +4,14 @@ from . import scene_configure as scene_configure
 from . import biped_limb as biped_limb
 from . import hip as hip
 from . import spine as spine
+from . import clavicle as clavicle
 
 from .root import Root
 from .scene_configure import configure_metahuman_scene
 from .biped_limb import Limb
 from .hip import Hip
 from .spine import Spine
+from .clavicle import Clavicle
 
 
 
@@ -23,6 +25,8 @@ __all__ = [
 "Limb", #Limb Class
 "hip", #hip
 "Hip", #hip class
-"spine" #spine
-"Spine" #spine class
+"spine", #spine
+"Spine", #spine class
+"clavicle", #clavicle
+"Clavicle", #clavicle class
 ]
