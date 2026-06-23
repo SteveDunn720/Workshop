@@ -6,7 +6,8 @@ from Workshop.meta_rigs.meta_componets.ik import create_IK_rotate_plane
 from Workshop.control.core import create_control
 from Workshop.joint import create_joint
 from Workshop.maya_api.node import ReverseNode
-from .module_initialize import module_prep
+from .module_initialize import module_prep, module_space
+
 
 
 
@@ -26,6 +27,8 @@ class Limb:
         parent: str = "body_rig",
         control_size: float = 1.0,
         joints: list = ['thigh_l', 'calf_l', 'foot_l'],
+        fk_control_space:list = [],
+        ik_control_space:list = [],
         ik_end_control:bool = False
 
     ):
@@ -35,6 +38,8 @@ class Limb:
         self.control_size: float = control_size
         self.joints: list = joints
         self.ik_end_control = ik_end_control
+        self.fk_control_space = fk_control_space
+        self.ik_control_space = ik_control_space
 
 
     def fkik_switch(self, controls:list|None):
@@ -108,6 +113,7 @@ class Limb:
             
 
         self.ik_joints = []
+        module_space(space_list=self.fk_control_space, control=self.fk_controls[0])
         jnt_par = self.guts
         #IK_build 
         for i,jnt in enumerate(self.joints):
@@ -125,6 +131,7 @@ class Limb:
                 control_shape="cube",
                 direction="x",
             )
+        module_space(space_list=self.ik_control_space, control=self.ik_root_ctrl)
         self.controls.append(self.ik_root_ctrl.ctrl)
         cmds.parentConstraint(self.ik_root_ctrl.ctrl, self.ik_handle.start_joint, maintainOffset=True)
         self.ik_pv_ctrl = create_control(
@@ -135,6 +142,7 @@ class Limb:
                 control_shape="diamond",
                 direction="x",
             )
+        module_space(space_list=self.ik_control_space, control=self.ik_pv_ctrl)
         self.controls.append(self.ik_pv_ctrl.ctrl)
         cmds.parentConstraint(self.ik_pv_ctrl.ctrl, self.ik_handle.pole_vector, maintainOffset=True)
 
@@ -149,12 +157,16 @@ class Limb:
             )
             cmds.parentConstraint(self.ik_end_ctrl.ctrl, self.ik_handle.handle, maintainOffset=True)
             cmds.orientConstraint(self.ik_end_ctrl.ctrl, self.ik_joints[2], maintainOffset=True)
+            module_space(space_list=self.ik_control_space, control=self.ik_end_ctrl)
             self.controls.append(self.ik_end_ctrl.ctrl)
         else:
             self.ik_hook = self.ik_handle.handle
 
 
         self.fkik_switch(controls=self.controls)
+
+
+        
 
 
 

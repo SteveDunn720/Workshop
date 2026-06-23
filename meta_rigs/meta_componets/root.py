@@ -1,4 +1,5 @@
 from attr import dataclass
+from Workshop.control.core import Control
 import maya.cmds as cmds
 
 from Workshop.control import create_control
@@ -6,8 +7,10 @@ from .module_initialize import module_prep
 
 
 @dataclass
-class Root_guides:
-    root:str
+class module_info:
+    root_control:Control
+    local_control:Control
+    offset_control:Control
 
 class Root:
     def __init__(
@@ -31,7 +34,7 @@ class Root:
     # Build steps
     # -------------------
 
-    def root_build(self):
+    def root_build(self)->module_info:
         prep = module_prep(part=self.part, parent=self.parent, side=self.side, fkik=False)
         self.main_grp = prep.main_grp
         self.control_grp = prep.control_grp
@@ -65,3 +68,5 @@ class Root:
         )
 
         cmds.parentConstraint(self.offset_ctrl.ctrl, self.joints[0], maintainOffset=True)
+        root_info = module_info(root_control =self.root_ctrl, local_control=self.local_ctrl, offset_control=self.offset_ctrl)
+        return root_info

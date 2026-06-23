@@ -2,10 +2,12 @@
 from . import root as root
 from . import scene_configure as scene_configure
 from . import biped_limb as biped_limb
+from . import hip as hip
 
 from .root import Root
 from .scene_configure import configure_metahuman_scene
 from .biped_limb import Limb
+from . hip import Hip
 
 
 
@@ -16,4 +18,6 @@ __all__ = [
 "configure_metahuman_scene",  #scene_configure function
 "biped_limb", #biped_limb
 "Limb", #Limb Class
+"hip", #hip
+"Hip", #hip class
 ]

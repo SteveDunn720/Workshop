@@ -1,6 +1,10 @@
 from attr import dataclass
 
+import maya.cmds as cmds
+
 from Workshop.transform.utils import create_transform
+from Workshop.control.core import Control
+from Workshop.transform.utils import create_space_switch
 
 
 @dataclass
@@ -25,3 +29,11 @@ def module_prep(part: str, side: str, parent: str, fkik:bool=False)->module:
     prep = module(main_grp=main_grp, control_grp=control_grp, guts=guts, fk_grp=fk_control_grp, ik_grp=ik_control_grp)
     
     return prep
+
+def module_space(space_list:list, control:Control):
+    if len(space_list) == 0:
+        pass
+    elif len(space_list) == 1:
+        cmds.parentConstraint(space_list[0], control.top, maintainOffset=True)
+    else:
+        create_space_switch(target_transform=control.top, parents=space_list, target_control=control.ctrl)
