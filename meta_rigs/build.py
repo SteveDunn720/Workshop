@@ -17,6 +17,8 @@ def build(meta_type:str='metahuman'):
     root_info = root.root_build()
     hip = meta_componets.Hip(control_size=rig_size, parent=body_rig_root, control_space=[root_info.offset_control.ctrl])
     hipinfo = hip.hip_build()
+    spine = meta_componets.Spine(control_size=rig_size, parent=body_rig_root, fk_control_space=[hipinfo.cog_control.ctrl])
+    spineinfo = spine.spine_build()
 
     for side in ['l', 'r']:
         leg = meta_componets.Limb(part='leg', control_size=rig_size, parent=body_rig_root, side=side, joints= [f'thigh_{side}', f'calf_{side}', f'foot_{side}'],ik_end_control = True, fk_control_space=[hipinfo.hip_control.ctrl], ik_control_space=[hipinfo.hip_control.ctrl, root_info.offset_control.ctrl, ])
