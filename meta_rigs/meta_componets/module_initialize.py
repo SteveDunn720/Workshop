@@ -5,6 +5,7 @@ import maya.cmds as cmds
 from Workshop.transform.utils import create_transform
 from Workshop.control.core import Control
 from Workshop.transform.utils import create_space_switch
+from Workshop.tag.core import obj_vis_tag
 
 
 @dataclass
@@ -25,6 +26,8 @@ def module_prep(part: str, side: str, parent: str, fkik:bool=False)->module:
     else:
         ik_control_grp = ''
         fk_control_grp = ''
+
+    obj_vis_tag(guts, 'ALWAYS')
 
     prep = module(main_grp=main_grp, control_grp=control_grp, guts=guts, fk_grp=fk_control_grp, ik_grp=ik_control_grp)
     

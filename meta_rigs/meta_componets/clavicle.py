@@ -39,7 +39,6 @@ class Clavicle:
         self.main_grp = prep.main_grp
         self.control_grp = prep.control_grp
         self.guts = prep.guts
-        print(self.joints[0])
 
         self.clav_ctrl = create_control(
             name=f'{self.part}_{self.side}',

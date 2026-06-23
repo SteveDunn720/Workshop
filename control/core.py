@@ -16,6 +16,7 @@ from Workshop.transform import create_transform
 from Workshop.transform.matrix import get_world_matrix
 from Workshop.transform.structs import Direction
 from Workshop.transform.utils import bake_shape, match_location, partial_path_name
+from Workshop.tag.core import lock_tag
 
 CONTROL_SUFFIX = "_ctrl"
 TOP_SUFFIX = "_offset"
@@ -148,13 +149,17 @@ def create_control(
     top_transform = create_transform(
         name=f"{name}{TOP_SUFFIX}", parent=parent_transform, transform=transform_matrix
     )
+    lock_tag(object=top_transform)
+    
  
 
     if sdk_offset:
         sdk_transform = create_transform(
         name=f"{name}{SDK_SUFFIX}", parent=top_transform, transform=transform_matrix
     )
+        lock_tag(object=sdk_transform)
         control_parent = sdk_transform
+
     else:
         sdk_transform = None
         control_parent = top_transform

@@ -1,5 +1,7 @@
 
 from Workshop.meta_rigs import meta_componets
+import maya.cmds as cmds
+from Workshop.tag.core import get_tags
 
 def build(meta_type:str='metahuman'):
 
@@ -9,9 +11,15 @@ def build(meta_type:str='metahuman'):
         rig_root = meta_componets.configure_metahuman_scene()
     else:
         print(f'meta_type:{meta_type} is incompatible with this build, only metahuman is curently compatable')
+
+
+    #prep    
     
     body_rig_root:str = rig_root.body_rig #type:ignore
     rig_size:float = rig_root.scene_size #type:ignore
+
+
+    #middle rig parts
 
     root = meta_componets.Root(control_size=rig_size, parent=body_rig_root)
     root_info = root.root_build()
@@ -20,6 +28,8 @@ def build(meta_type:str='metahuman'):
     spine = meta_componets.Spine(control_size=rig_size, parent=body_rig_root, fk_control_space=[hipinfo.cog_control.ctrl])
     spineinfo = spine.spine_build()
 
+    #side parts
+
     for side in ['l', 'r']:
         clav = meta_componets.Clavicle(part='clav', control_size=rig_size, parent=body_rig_root, side=side, joints= [f'clavicle_{side}'], control_space=[spineinfo.fk_spine_controls_list[-1].ctrl], )
         clavinfo = clav.clavicle_build()
@@ -27,3 +37,15 @@ def build(meta_type:str='metahuman'):
         leg.limb_build()
         arm = meta_componets.Limb(part='arm', control_size=rig_size, parent=body_rig_root, side=side, joints= [f'upperarm_{side}', f'lowerarm_{side}', f'hand_{side}'],ik_end_control = True, fk_control_space=[clavinfo.clav_control.ctrl], ik_control_space=[clavinfo.clav_control.ctrl, root_info.offset_control.ctrl, ])
         arm.limb_build()
+
+
+
+
+    # check for and apply tags
+
+    rig_nodes = cmds.listRelatives(body_rig_root, allDescendents=True, fullPath=False, shapes=False, type="transform")
+
+    for node in rig_nodes:
+        get_tags(node)
+
+    
