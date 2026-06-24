@@ -46,7 +46,7 @@ class Root:
             parent=self.control_grp,
             transform=self.joints[0],
             size=self.control_size,
-            control_shape="Character_base",
+            control_shape="circle",
             direction="z",
             color_type='Root'
         )
