@@ -29,6 +29,7 @@ class Clavicle:
         self.control_size: float = control_size
         self.joints: list = joints
         self.control_space = control_space 
+        self.main_control_color = 'Left' if self.side == 'l' else 'Right'
 
     # -------------------
     # Build steps
@@ -47,6 +48,7 @@ class Clavicle:
             size=self.control_size * .3,
             control_shape="circle",
             direction="x",
+            color_type=self.main_control_color
         )
 
 

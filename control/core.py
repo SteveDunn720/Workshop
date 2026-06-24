@@ -16,7 +16,7 @@ from Workshop.transform import create_transform
 from Workshop.transform.matrix import get_world_matrix
 from Workshop.transform.structs import Direction
 from Workshop.transform.utils import bake_shape, match_location, partial_path_name
-from Workshop.tag.core import lock_tag
+from Workshop.tag.core import control_color_tag, lock_tag
 
 CONTROL_SUFFIX = "_ctrl"
 TOP_SUFFIX = "_offset"
@@ -133,6 +133,7 @@ def create_control(
     dimensions: tuple[float, float, float] = (1, 1, 1),
     rotation_order: RotateOrder = RotateOrder.XYZ,
     limit_min_scale: bool = True,
+    color_type:str = 'MISC'
 ) -> Control:
     transform_matrix: MMatrix | None
     if transform is not None:
@@ -177,6 +178,7 @@ def create_control(
         rotation_order,
         shape_position_offset,
     )
+
     
 
     if limit_min_scale:  # Comfort feature: make it so it's not possible to have negative scale
@@ -193,6 +195,8 @@ def create_control(
 
     control = Control(ctrl=control_transform, top=top_transform, sdk=sdk_transform, name=name)
     _register_control(control)
+
+    control_color_tag(control.ctrl, rig_color_type=color_type)
     return control
 
 def build_control(

@@ -40,6 +40,7 @@ class Limb:
         self.ik_end_control = ik_end_control
         self.fk_control_space = fk_control_space
         self.ik_control_space = ik_control_space
+        self.main_control_color = 'Left' if self.side == 'l' else 'Right'
 
 
     def fkik_switch(self, controls:list|None):
@@ -100,6 +101,7 @@ class Limb:
                 size=self.control_size/4,
                 control_shape="circle",
                 direction="x",
+                color_type=self.main_control_color
             )
 
             fk_jnt = create_joint(name=f'FK_{jnt}', transform=ctrl.ctrl, parent=jnt_par)
@@ -130,6 +132,7 @@ class Limb:
                 size=self.control_size/8,
                 control_shape="cube",
                 direction="x",
+                color_type=self.main_control_color
             )
         module_space(space_list=self.ik_control_space, control=self.ik_root_ctrl)
         self.controls.append(self.ik_root_ctrl.ctrl)
@@ -141,6 +144,7 @@ class Limb:
                 size=self.control_size/40,
                 control_shape="diamond",
                 direction="x",
+                color_type=self.main_control_color
             )
         module_space(space_list=self.ik_control_space, control=self.ik_pv_ctrl)
         self.controls.append(self.ik_pv_ctrl.ctrl)
@@ -154,6 +158,7 @@ class Limb:
                 size=self.control_size/8,
                 control_shape="cube",
                 direction="x",
+                color_type=self.main_control_color
             )
             cmds.parentConstraint(self.ik_end_ctrl.ctrl, self.ik_handle.handle, maintainOffset=True)
             cmds.orientConstraint(self.ik_end_ctrl.ctrl, self.ik_joints[2], maintainOffset=True)

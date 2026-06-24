@@ -1,6 +1,7 @@
 from attr import dataclass
 import maya.cmds as cmds
 from Workshop.tag.lock_hide_key import hide_channels, lock_channels, not_keyable_channels, object_visibility
+from Workshop.tag.apply_rig_color import apply_color_tag
 
 @dataclass
 class tag_info:
@@ -149,7 +150,7 @@ def get_tags(object):
         elif tag_type == 'OBJECT_VISIBILITY_TAG':
             object_visibility(object=object)
         elif tag_type == 'CONTROL_COLOR_TAG':
-            pass
+            apply_color_tag(object=object)
 
 
 

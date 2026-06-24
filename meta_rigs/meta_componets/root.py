@@ -3,6 +3,7 @@ from Workshop.control.core import Control
 import maya.cmds as cmds
 
 from Workshop.control import create_control
+from Workshop.tag.core import lock_tag
 from .module_initialize import module_prep
 
 
@@ -35,7 +36,7 @@ class Root:
     # -------------------
 
     def root_build(self)->module_info:
-        prep = module_prep(part=self.part, parent=self.parent, side=self.side, fkik=False)
+        prep = module_prep(part=self.part, parent=self.parent, side=self.side, fkik=False, gut=False)
         self.main_grp = prep.main_grp
         self.control_grp = prep.control_grp
         self.guts = prep.guts
@@ -47,6 +48,7 @@ class Root:
             size=self.control_size,
             control_shape="circle",
             direction="z",
+            color_type='Root'
         )
 
         self.local_ctrl = create_control(
@@ -66,6 +68,29 @@ class Root:
             control_shape="circle",
             direction="z",
         )
+
+
+        self.vis_control = create_control(
+            name='visibility_options',
+            parent=self.local_ctrl.ctrl,
+            transform=self.joints[0],
+            size=self.control_size * .05,
+            control_shape="circle",
+            direction="z",
+            shape_position_offset=(self.control_size * .9, self.control_size * .1, 0 )
+        )
+
+        self.color_control = create_control(
+            name='color_options',
+            parent=self.local_ctrl.ctrl,
+            transform=self.joints[0],
+            size=self.control_size * .05,
+            control_shape="circle",
+            direction="z",
+            shape_position_offset=(self.control_size * .9, self.control_size * -.1, 0)
+        )
+        lock_tag(self.color_control.ctrl, hide_tag=True)
+        lock_tag(self.vis_control.ctrl, hide_tag=True)
 
         cmds.parentConstraint(self.offset_ctrl.ctrl, self.joints[0], maintainOffset=True)
         root_info = module_info(root_control =self.root_ctrl, local_control=self.local_ctrl, offset_control=self.offset_ctrl)

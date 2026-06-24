@@ -24,7 +24,6 @@ def not_keyable_channels(object):
 
 def object_visibility(object):
     tag = cmds.getAttr(f'{object}.OBJECT_VISIBILITY_TAG')
-    print(tag)
     if tag == 'ALWAYS':
         cmds.setAttr(f'{object}.visibility', 0) #type:ignore
     elif tag == 'COMPONENT':
