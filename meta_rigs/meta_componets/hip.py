@@ -46,7 +46,7 @@ class Hip:
             parent=self.control_grp,
             transform=self.joints[0],
             size=self.control_size * .6,
-            control_shape="circle",
+            control_shape="COG",
             direction="x",
         )
 
