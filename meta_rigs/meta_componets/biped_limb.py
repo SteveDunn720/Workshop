@@ -141,10 +141,11 @@ class Limb:
                 name=f'{self.part}_IK_PV_{self.side}',
                 parent=self.ik_control_grp,
                 transform=self.ik_handle.pole_vector,
-                size=self.control_size/40,
-                control_shape="diamond",
-                direction="x",
-                color_type=self.main_control_color
+                size=self.control_size/10,
+                control_shape="sims",
+                direction="y",
+                color_type=self.main_control_color,
+                shape_rotation_offset=(90,-90,0)
             )
         module_space(space_list=self.ik_control_space, control=self.ik_pv_ctrl)
         self.controls.append(self.ik_pv_ctrl.ctrl)

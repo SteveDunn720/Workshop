@@ -41,6 +41,7 @@ class ControlShape(Enum):
     SEMI_CIRCLE = "semi_circle"
     CHARACTER_BASE = 'Character_base'
     COG = 'COG'
+    SIMS = 'sims'
 
     @property
     def filename(self) -> str:

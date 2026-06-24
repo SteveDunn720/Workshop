@@ -20,7 +20,7 @@ def not_keyable_channels(object):
     channels = ast.literal_eval(tag)
 
     for channel in channels:
-        cmds.setAttr(f'{object}.{channel}', keyable=True)
+        cmds.setAttr(f'{object}.{channel}', keyable=False)
 
 def object_visibility(object):
     tag = cmds.getAttr(f'{object}.OBJECT_VISIBILITY_TAG')

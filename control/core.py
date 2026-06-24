@@ -77,7 +77,8 @@ def _create_control_curve(
     direction: Direction = "y",
     size: float = 1,
     dimensions: tuple[float, float, float] = (1, 1, 1),
-    position_offset: tuple[float, float, float] = (0, 0, 0)
+    position_offset: tuple[float, float, float] = (0, 0, 0),
+    rotation_offset: tuple[float, float, float] = (0, 0, 0)
 ) -> str:
     curve_transform = create_curve(name, control_shape)
     bake: bool = False
@@ -103,11 +104,10 @@ def _create_control_curve(
             raise RuntimeError(
                 f"{direction} is not a valid direction. It should be x,y,z or -x,-y,-z."
             )
-    if position_offset != (0,0,0):
-        cmds.move(
-            position_offset[0],
-            position_offset[1],
-            position_offset[2], 
+    if rotation_offset != (0,0,0):
+        cmds.rotate(rotation_offset[0],
+            rotation_offset[1],
+            rotation_offset[2], 
             curve_transform)
         bake=True
 
@@ -115,6 +115,14 @@ def _create_control_curve(
         scaled_dimensions = (size * dimension for dimension in dimensions)
         cmds.scale(*scaled_dimensions, curve_transform, relative=False)  # type: ignore
         bake = True
+
+    if position_offset != (0,0,0):
+        cmds.move(
+            position_offset[0],
+            position_offset[1],
+            position_offset[2], 
+            curve_transform)
+        bake=True
 
     if bake:
         bake_shape(transform=curve_transform)
@@ -129,6 +137,7 @@ def create_control(
     control_shape: ControlShape | str = ControlShape.CIRCLE,
     direction: Direction = "y",
     shape_position_offset: tuple[float, float, float] =(0,0,0),
+    shape_rotation_offset: tuple[float, float, float] = (0, 0, 0),
     size: float = 1,
     dimensions: tuple[float, float, float] = (1, 1, 1),
     rotation_order: RotateOrder = RotateOrder.XYZ,
@@ -177,6 +186,7 @@ def create_control(
         dimensions,
         rotation_order,
         shape_position_offset,
+        shape_rotation_offset
     )
 
     
@@ -207,7 +217,8 @@ def build_control(
     size,
     dimensions,
     rotation_order,
-    position_offset
+    position_offset,
+    rotation_offset
 ):
 
 
@@ -218,7 +229,8 @@ def build_control(
         direction,
         size,
         dimensions,
-        position_offset
+        position_offset,
+        rotation_offset
     )
 
     cmds.setAttr(shape_parent + ".rotateOrder", int(rotation_order))

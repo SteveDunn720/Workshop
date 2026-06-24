@@ -15,7 +15,7 @@ def apply_color_tag(object):
             f"{channels.color}",
             f"{object}.overrideColorRGB",
         )
-
-    #cmds.connectAttr(f'{channels.r}', f'{object}.drawOverride.overrideColorRGB.overrideColorR' )
-    #cmds.connectAttr(f'{channels.g}', f'{object}.drawOverride.overrideColorRGB.overrideColorG' )
-    #cmds.connectAttr(f'{channels.b}', f'{object}.drawOverride.overrideColorRGB.overrideColorB' )
+    
+    cmds.addAttr(object, longName=f'{tag}_Color', proxy=channels.color)
+    #cmds.addAttr(object, longName=f'{tag}_Thickness', proxy=channels.thickness)
+    cmds.addAttr(object, longName=f'{tag}_Draw_On_Top', proxy=channels.draw_on_top)
