@@ -16,6 +16,22 @@ def add_tag(object:str, tag_type:str, tag_value:str):
         cmds.addAttr(object, longName=tag_type, dataType='string')
     cmds.setAttr(f'{object}.{tag_type}', tag_value, type="string")
 
+def remove_tag(object: str, tag_type: str):
+    """
+    Removes a custom string tag attribute from a node.
+    Matches the style of add_tag().
+    """
+
+    if not cmds.objExists(object):
+        print(f"{object} does not exist")
+        return
+
+    if cmds.attributeQuery(tag_type, node=object, exists=True):
+        cmds.deleteAttr(f"{object}.{tag_type}")
+        print(f"{object}: removed tag {tag_type}")
+    else:
+        print(f"{object}: no tag {tag_type} found to remove")
+
 
 
 def lock_tag(

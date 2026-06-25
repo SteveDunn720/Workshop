@@ -1,0 +1,8 @@
+WindowA
+BrickKitA
+WoodKitA
+DoorA
+BarrelA
+ChimneA
+ChimneyShootA
+HouseA
