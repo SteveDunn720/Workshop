@@ -2,10 +2,11 @@ import unreal
 import os
 
 # --- CONFIGURATION ---
+ASSET = 'DoorA'
 # The local path where your Maya exports are located
-SOURCE_DIR = "C:/Users/sd547/Box/Sprint2026/Mistborn/test_repo/DoorA" 
+SOURCE_DIR = f"C:/Users/sd547/Box/Sprint2026/Mistborn/test_repo/{ASSET}" 
 # Where in the Content Browser you want them to go
-GAME_PATH = "/Game/Assets/Doors/DoorA"
+GAME_PATH = f"/Game/Assets/{ASSET}"
 
 EXTENSIONS = (".fbx", ".obj")
  
