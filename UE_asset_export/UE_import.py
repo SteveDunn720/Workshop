@@ -2,7 +2,7 @@ import unreal
 import os
 
 # --- CONFIGURATION ---
-ASSET = 'DoorA'
+ASSET = 'BarrelA'
 # The local path where your Maya exports are located
 SOURCE_DIR = f"C:/Users/sd547/Box/Sprint2026/Mistborn/test_repo/{ASSET}" 
 # Where in the Content Browser you want them to go

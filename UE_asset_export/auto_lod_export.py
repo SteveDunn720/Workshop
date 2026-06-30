@@ -85,7 +85,7 @@ def export_verified_asset(asset_name: str, ignore_warnings: bool = False, export
             # -----------------------------------
             # B. export OBJ
             # -----------------------------------
-            export_path = os.path.join(lod_dir, f"{sub}.obj")
+            export_path = os.path.join(lod_dir, f"{sub}.fbx")
 
             cmds.select(sub, r=True)
 
@@ -93,7 +93,7 @@ def export_verified_asset(asset_name: str, ignore_warnings: bool = False, export
                 export_path,
                 force=True,
                 options="groups=0;ptgroups=0;materials=0;smoothing=1;normals=1",
-                type="OBJexport",
+                type="FBX export",
                 exportSelected=True
             )
 
