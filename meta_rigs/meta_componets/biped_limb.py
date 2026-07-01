@@ -7,16 +7,19 @@ from Workshop.control.core import create_control
 from Workshop.joint import create_joint
 from Workshop.maya_api.node import ReverseNode
 from .module_initialize import module_prep, module_space
-
+from Workshop.control.core import Control
 
 
 
 
 @dataclass
-class limb_moudle:
-    fk_root:str
-    ik_root:str
-
+class moudle_info:
+    fk_root:Control
+    ik_root:Control
+    fk_ik_switch:str
+    end_ik_hook:list
+    ik_controls:list
+    fk_controls:list
 
 
 class Limb:
@@ -51,6 +54,8 @@ class Limb:
         rev.output.x.connect_to(f'{self.ik_control_grp}.visibility')
         cmds.connectAttr(self.FK_IK_Switch, f'{self.fk_control_grp}.visibility')
         for i,jnt in enumerate(self.joints):
+            if not self.ik_end_control and i == len(self.joints) - 1:
+                continue
             parent_con:str = cmds.parentConstraint(self.fk_joints[i], self.ik_joints[i], self.switch_joints[i], maintainOffset=True)[0] #type:ignore
             #scale_con:str = cmds.scaleConstraint(self.fk_joints[i], self.ik_joints[i], self.switch_joints[i], maintainOffset=True)[0] #type:ignore
             parent_weights = cmds.parentConstraint(parent_con, query=True, weightAliasList=True)
@@ -82,6 +87,8 @@ class Limb:
         jnt_par = self.guts
         #switch_joints
         for i,jnt in enumerate(self.joints):
+            if not self.ik_end_control and i == len(self.joints) - 1:
+                continue
             switch_jnt = create_joint(name=f'switch_{jnt}', transform=jnt, parent=jnt_par, connect=False)
             self.switch_joints.append(switch_jnt)
             jnt_par = switch_jnt
@@ -94,6 +101,8 @@ class Limb:
         jnt_par = self.guts
         ctrl_par = self.fk_control_grp
         for i,jnt in enumerate(self.joints):
+            if not self.ik_end_control and i == len(self.joints) - 1:
+                continue
             ctrl = create_control(
                 name=f'FK_{jnt}',
                 parent=ctrl_par,
@@ -115,11 +124,16 @@ class Limb:
             
 
         self.ik_joints = []
+        self.ik_controls = []
         module_space(space_list=self.fk_control_space, control=self.fk_controls[0])
         jnt_par = self.guts
         #IK_build 
+
         for i,jnt in enumerate(self.joints):
-            ik_jnt = create_joint(name=f'IK_{jnt}', transform=jnt, parent=jnt_par, connect=False)
+            jnt_name = jnt
+            if not self.ik_end_control and i == len(self.joints) - 1:
+                jnt_name = f'{jnt}_hook'
+            ik_jnt = create_joint(name=f'IK_{jnt_name}', transform=jnt, parent=jnt_par, connect=False)
             self.ik_joints.append(ik_jnt)
             jnt_par = ik_jnt
 
@@ -136,6 +150,7 @@ class Limb:
             )
         module_space(space_list=self.ik_control_space, control=self.ik_root_ctrl)
         self.controls.append(self.ik_root_ctrl.ctrl)
+        self.ik_controls.append(self.ik_root_ctrl.ctrl)
         cmds.parentConstraint(self.ik_root_ctrl.ctrl, self.ik_handle.start_joint, maintainOffset=True)
         self.ik_pv_ctrl = create_control(
                 name=f'{self.part}_IK_PV_{self.side}',
@@ -149,6 +164,7 @@ class Limb:
             )
         module_space(space_list=self.ik_control_space, control=self.ik_pv_ctrl)
         self.controls.append(self.ik_pv_ctrl.ctrl)
+        self.ik_controls.append(self.ik_pv_ctrl.ctrl)
         cmds.parentConstraint(self.ik_pv_ctrl.ctrl, self.ik_handle.pole_vector, maintainOffset=True)
 
         if self.ik_end_control:
@@ -165,11 +181,27 @@ class Limb:
             cmds.orientConstraint(self.ik_end_ctrl.ctrl, self.ik_joints[2], maintainOffset=True)
             module_space(space_list=self.ik_control_space, control=self.ik_end_ctrl)
             self.controls.append(self.ik_end_ctrl.ctrl)
+            self.ik_controls.append(self.ik_pv_ctrl.ctrl)
+            self.ik_hook = None
         else:
             self.ik_hook = self.ik_handle.handle
+            self.ik_controls.append('')
 
 
         self.fkik_switch(controls=self.controls)
+
+
+        self.info = moudle_info(
+                fk_root = self.fk_controls[0],
+                ik_root = self.ik_controls[0],
+                fk_ik_switch = self.FK_IK_Switch,
+                end_ik_hook = [self.ik_hook, self.ik_joints[-1]],
+                ik_controls = self.ik_controls,
+                fk_controls = self.fk_controls,
+                )
+        
+        return self.info
+
 
 
         
