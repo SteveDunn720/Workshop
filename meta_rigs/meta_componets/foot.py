@@ -147,7 +147,7 @@ class Foot:
                 control_shape="circle",
                 direction="x",
                 color_type=self.main_control_color,
-                shape_position_offset=(0, -ground_offset, 0)
+                shape_position_offset=(-ground_offset, 0, 0)
             )
         self.ik_controls.append(self.ik_foot)
         self.controls.append(self.ik_foot)

@@ -476,3 +476,22 @@ def create_space_switch(
         condition.out_color.r.connect_to(f"{parent_constraint}.{weight_attr}")
 
     return parent_constraint
+
+def get_flat_y_aim_rotation(source: str, target: str) -> float:
+    """
+    Returns Y-axis rotation (degrees) from source → target,
+    ignoring Y height (XZ plane only).
+    """
+
+    p1 = get_position(transform=source)
+    p2 = get_position(transform=target)
+
+    # Flatten Y
+    dx = p2.x - p1.x
+    dz = p2.z - p1.z
+
+    # Angle in radians
+    angle = math.atan2(dx, dz)
+
+    # Convert to degrees
+    return math.degrees(angle)
