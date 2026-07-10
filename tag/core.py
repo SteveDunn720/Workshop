@@ -2,6 +2,7 @@ from attr import dataclass
 import maya.cmds as cmds
 from Workshop.tag.lock_hide_key import hide_channels, lock_channels, not_keyable_channels, object_visibility
 from Workshop.tag.apply_rig_color import apply_color_tag
+from Workshop.tag.sets import add_to_set
 
 @dataclass
 class tag_info:
@@ -149,10 +150,18 @@ def obj_vis_tag(object:str, visibility:str):
     """
     add_tag(object=object, tag_type='OBJECT_VISIBILITY_TAG', tag_value=visibility)
 
+def sets_tag(object:str, set:list[str]):
+    """
+    args:
+    object: well ill let you take a guess
+    set: will connect it to selection sets based on the set you give it
+    """
+    add_tag(object=object, tag_type='SETS_TAG', tag_value=repr(set))
+
 
 
 def get_tags(object):
-    tag_lib = ['LOCK_TAG', 'HIDE_TAG', 'NOT_KEYABLE_TAG', 'CONTROL_COLOR_TAG', 'OBJECT_VISIBILITY_TAG']
+    tag_lib = ['LOCK_TAG', 'HIDE_TAG', 'NOT_KEYABLE_TAG', 'CONTROL_COLOR_TAG', 'OBJECT_VISIBILITY_TAG', 'SETS_TAG']
 
     for tag_type in tag_lib:
         if not cmds.attributeQuery(tag_type, node=object, exists=True):
@@ -167,6 +176,8 @@ def get_tags(object):
             object_visibility(object=object)
         elif tag_type == 'CONTROL_COLOR_TAG':
             apply_color_tag(object=object)
+        elif tag_type == 'SETS_TAG':
+            add_to_set(object=object)
 
 
 

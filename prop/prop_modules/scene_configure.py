@@ -29,6 +29,7 @@ def configure_prop_scene()->scene_config:
     cmds.parent('geo', top)
 
     size = get_model_size(model='geo')
+    cmds.hide(skel)
 
     config = scene_config(top='rig', geo='geo', skel = skel, rig=rig, scene_size=size)
     return config

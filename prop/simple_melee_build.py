@@ -1,6 +1,7 @@
 from Workshop.prop import prop_modules
 from Workshop.control.core import create_control
 from Workshop.joint import create_joint
+from Workshop.prop.geo_handeling import prop_skinning, geo_tags
 
 import maya.cmds as cmds
 
@@ -27,9 +28,18 @@ def build_simple_melee_prop(guides:list, rig_name:str):
 
 
 
+    geo_tags()
+
     # check for and apply tags
 
-    rig_nodes = cmds.listRelatives(rig_root, allDescendents=True, fullPath=False, shapes=False, type="transform")
+    cmds.select(clear=True)
+
+    rig_nodes = cmds.listRelatives('root', allDescendents=True, fullPath=False, shapes=False, type="transform")
 
     for node in rig_nodes:
         get_tags(node)
+
+
+    #skin
+
+    prop_skinning()

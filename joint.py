@@ -7,6 +7,7 @@ from maya.api.OpenMaya import MMatrix
 
 from Workshop.control.core import Control
 from Workshop.transform import match_transform, matrix_constraint, set_world_matrix
+from Workshop.tag.core import sets_tag
 
 JOINT_SUFFIX: str = "_jnt"
 
@@ -53,6 +54,8 @@ def create_joint(
     connect: bool = True,
     radius: float = 1,
     suffix:bool = True,
+    bind_set:bool = True,
+    ue_set:bool = True
 ) -> str:
     if suffix:
         joint = cmds.createNode("joint", name=f"{name}{JOINT_SUFFIX}")
@@ -78,6 +81,15 @@ def create_joint(
 
     if radius != 1:
         cmds.setAttr(f"{joint}.radius", radius)  # type: ignore
+
+    sets = []
+    if bind_set:
+        sets.append('bind_joints_set')
+    if ue_set:
+        sets.append('unreal_set')
+
+    if sets != []:
+        sets_tag(joint, sets)
 
     _register_joint(joint)
     # This is mGear specific and may need changed if you stop using mGear.
