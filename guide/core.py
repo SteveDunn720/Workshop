@@ -15,7 +15,7 @@ class guide_info:
     extra_channels:list
 
 
-def create_guide_from_position(pos, guide_name, parent):
+def create_guide_from_position(pos, guide_name, parent)->guide_info:
     guide = create_joint(name=guide_name, connect=False, parent=parent, suffix=False)
 
     if isinstance(pos, str):

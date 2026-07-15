@@ -2,6 +2,7 @@
 from Workshop.meta_rigs import meta_componets
 import maya.cmds as cmds
 from Workshop.tag.core import get_tags
+from Workshop.meta_rigs.metahuman_rig_prep import generate_foot_guides
 
 def build(meta_type:str='metahuman'):
 
@@ -38,7 +39,9 @@ def build(meta_type:str='metahuman'):
 
         leg = meta_componets.Limb(part='leg', control_size=rig_size, parent=body_rig_root, side=side, joints= [f'thigh_{side}', f'calf_{side}', f'foot_{side}'],ik_end_control = False, fk_control_space=[hipinfo.hip_control.ctrl], ik_control_space=[hipinfo.hip_control.ctrl, root_info.offset_control.ctrl, ])
         leg_info = leg.limb_build()
-        foot = meta_componets.Foot(part='feet', control_size=rig_size, parent=body_rig_root, side=side, joints= [f'foot_{side}', f'ball_{side}'], fk_control_space=[leg_info.fk_controls[-1].ctrl], ik_control_space=[root_info.offset_control.ctrl, hipinfo.hip_control.ctrl, ], ik_hook=leg_info.end_ik_hook)
+
+        footguide = generate_foot_guides(parent=rig_root.guides, side=side)
+        foot = meta_componets.Foot(part='feet', control_size=rig_size, parent=body_rig_root, side=side, joints= [f'foot_{side}', f'ball_{side}'], fk_control_space=[leg_info.fk_controls[-1].ctrl], ik_control_space=[root_info.offset_control.ctrl, hipinfo.hip_control.ctrl, ], ik_hook=leg_info.end_ik_hook, foot_guides=footguide)
         foot_info = foot.foot_build()
 
 

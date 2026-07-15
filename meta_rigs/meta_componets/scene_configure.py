@@ -14,6 +14,7 @@ class scene_config:
     body_rig:str
     face_rig:str
     scene_size:float
+    guides:str
     
 
 def configure_metahuman_scene()->scene_config:
@@ -26,8 +27,10 @@ def configure_metahuman_scene()->scene_config:
 
     rig_container = create_transform(name='body_rig', parent='rig',)
     size = get_model_size(model='body_lod0_mesh')
+    if not cmds.objExists('guides'):
+        guides = create_transform(name='guides')
 
-    config = scene_config(top='rig', body_geo='body_grp', face_geo='head_grp', joints = 'joints_gro', body_rig=rig_container, face_rig='headRig_grp', scene_size=size)
+    config = scene_config(top='rig', body_geo='body_grp', face_geo='head_grp', joints = 'joints_gro', body_rig=rig_container, face_rig='headRig_grp', scene_size=size, guides='guides')
     return config
 
 
