@@ -10,7 +10,7 @@ from Workshop.control.core import create_control
 from Workshop.joint import create_joint
 from Workshop.maya_api.node import ReverseNode
 from .module_initialize import module_prep, module_space
-
+from Workshop.meta_rigs.metahuman_rig_prep import foot_guides
 
 @dataclass
 class module_info:
@@ -20,6 +20,7 @@ class module_info:
 class Foot:
     def __init__(
         self,
+        feet_guides:foot_guides,
         part: str = "foot",
         side: str = "l",
         parent: str = "components",
@@ -41,6 +42,7 @@ class Foot:
         self.ik_control_space = ik_control_space
         self.main_control_color = 'Left' if self.side == 'l' else 'Right' 
         self.ik_hook = ik_hook
+        self.feet_guides = feet_guides
 
     # -------------------
     # Build steps

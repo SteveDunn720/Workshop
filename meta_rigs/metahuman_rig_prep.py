@@ -16,7 +16,7 @@ class foot_guides:
     true_outbank:guide_info
     true_ball:guide_info
     og_foot_pos:list[guide_info]
-    aim_angle:str
+    aim_angle:float
 
 
 
@@ -57,19 +57,32 @@ def generate_foot_guides(parent:str, side='l'):
     toe_tip_dist = get_distance_between(obj_a=side_list[1].name, obj_b=ball_guide.name)
     true_toetip_guide = create_guide_from_position(pos=(0,0,toe_tip_dist), guide_name=f'{side}_toetip_guide', parent=side_parent)
     heel_dist = get_distance_between(obj_a=side_list[0].name, obj_b=ball_guide.name)
-    true_toetip_guide = create_guide_from_position(pos=(0,0,-toe_tip_dist), guide_name=f'{side}_heel_guide', parent=side_parent)
+    true_heel_guide = create_guide_from_position(pos=(0,0,-heel_dist), guide_name=f'{side}_heel_guide', parent=side_parent)
     bank_dist = get_distance_between(obj_a=side_list[2].name, obj_b=side_list[3].name)
     if side == 'r':
         side_01 = 'inner'
         side_02 = 'outer'
+        mod = -1
     else:
         side_01 = 'outer'
         side_02 = 'inner'
-    bank_01 = create_guide_from_position(pos=(bank_dist/2,0,0), guide_name=f'{side}_{side_01}_guide', parent=side_parent)
-    bank_02 = create_guide_from_position(pos=(bank_dist/2,0,0), guide_name=f'{side}_{side_02}_guide', parent=side_parent)
+        mod = 1
+    bank_01_guide = create_guide_from_position(pos=((bank_dist/2) * mod,0,0), guide_name=f'{side}_{side_01}_guide', parent=side_parent)
+    bank_02_guide = create_guide_from_position(pos=((-bank_dist/2) * mod,0,0), guide_name=f'{side}_{side_02}_guide', parent=side_parent)
     foot_dist = get_distance_between(obj_a=foot_guide.name, obj_b=ball_guide.name)
-    true_footground_guide = create_guide_from_position(pos=(bank_dist/2,0,0), guide_name=f'{side}_footground_guide', parent=side_parent)
-    true_foot_guide = create_guide_from_position(pos=(bank_dist/2, foot_pos[0], 0), guide_name=f'{side}_foot_guide', parent=side_parent)
+    true_footground_guide = create_guide_from_position(pos=(0,0,-foot_dist), guide_name=f'{side}_footground_guide', parent=side_parent)
+    true_foot_guide = create_guide_from_position(pos=(0, foot_pos[0], -foot_dist), guide_name=f'{side}_foot_guide', parent=side_parent)
+
+    guides_info = foot_guides(true_heel=true_heel_guide,
+                                true_foot=true_foot_guide,
+                                true_groundfoot=true_footground_guide,
+                                true_toe=true_toetip_guide,
+                                true_inbank=bank_01_guide if side == 'l' else bank_02_guide,
+                                true_outbank=bank_02_guide if side == 'l' else bank_01_guide,
+                                true_ball=true_ball_guide,
+                                og_foot_pos=side_list,
+                                aim_angle=aim)
+    return guides_info
 
 
 
