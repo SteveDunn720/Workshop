@@ -8,7 +8,7 @@ from .module_initialize import module_prep, module_space
 from Workshop.meta_rigs.meta_componets.ik import create_IK_rotate_plane
 from Workshop.control.core import create_control
 from Workshop.joint import create_joint
-from Workshop.maya_api.node import AddDLNode, RemapValueNode, ReverseNode, SumNode
+from Workshop.maya_api.node import AddDLNode, MultiplyDivideNode, RemapValueNode, ReverseNode, SumNode
 from .module_initialize import module_prep, module_space
 from Workshop.meta_rigs.metahuman_rig_prep import foot_guides
 
@@ -66,6 +66,9 @@ class Foot:
             parent=tform
             back_tforms.append(tform)
 
+        sensitivty = MultiplyDivideNode(name=f'roll_{self.side}_md')
+        sensitivty.input1.z.connect_from
+
         #toe_tip_roll
 
         toe_tip_remap = RemapValueNode(name=f'toe_roll_{self.side}_remap')
@@ -89,6 +92,8 @@ class Foot:
         ball_remap1.output_max.connect_from(f'{self.smart_roll.ctrl}.roll_angle')
 
         ball_remap2.input_min.connect_from(f'{self.smart_roll.ctrl}.roll_angle')
+        ball_remap2.input_max.connect_from(toe_tip_adl.output)
+        
 
 
 
