@@ -1,6 +1,6 @@
 from attr import dataclass
 import maya.cmds as cmds
-from Workshop.tag.lock_hide_key import hide_channels, lock_channels, not_keyable_channels, object_visibility
+from Workshop.tag.lock_hide_key import hide_channels, lock_channels, not_keyable_channels, object_reference, object_visibility
 from Workshop.tag.apply_rig_color import apply_color_tag
 from Workshop.tag.sets import add_to_set
 
@@ -158,10 +158,17 @@ def sets_tag(object:str, set:list[str]):
     """
     add_tag(object=object, tag_type='SETS_TAG', tag_value=repr(set))
 
+def obj_ref_tag(object:str):
+    """
+    args:
+    object: makes an object a reference display type
+    """
+    add_tag(object=object, tag_type='OBJECT_REF_TAG', tag_value='True')
+
 
 
 def get_tags(object):
-    tag_lib = ['LOCK_TAG', 'HIDE_TAG', 'NOT_KEYABLE_TAG', 'CONTROL_COLOR_TAG', 'OBJECT_VISIBILITY_TAG', 'SETS_TAG']
+    tag_lib = ['LOCK_TAG', 'HIDE_TAG', 'NOT_KEYABLE_TAG', 'CONTROL_COLOR_TAG', 'OBJECT_VISIBILITY_TAG', 'SETS_TAG', 'OBJECT_REF_TAG']
 
     for tag_type in tag_lib:
         if not cmds.attributeQuery(tag_type, node=object, exists=True):
@@ -178,6 +185,9 @@ def get_tags(object):
             apply_color_tag(object=object)
         elif tag_type == 'SETS_TAG':
             add_to_set(object=object)
+        elif tag_type == 'OBJECT_REF_TAG':
+            object_reference(object=object)
+
 
 
 

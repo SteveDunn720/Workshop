@@ -33,3 +33,8 @@ def object_visibility(object):
             cmds.connectAttr(tag, f'{object}.visibilty')
         except RuntimeError as e:
             print(f'failed to connect object:{object} visibilty to {tag} : error {e}')
+
+
+def object_reference(object):
+    cmds.setAttr(f"{object}.overrideEnabled", 1)
+    cmds.setAttr(f"{object}.overrideDisplayType", 2)

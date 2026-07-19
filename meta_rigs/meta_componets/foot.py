@@ -43,6 +43,7 @@ class Foot:
         self.ik_hook = ik_hook
         self.feet_guides = feet_guides
         self.fkik_switch_attr = fkik_switch_attr
+        self.mod = 1 if side == 'l' else -1
 
     # -------------------
     # Build steps
@@ -149,7 +150,7 @@ class Foot:
                 control_shape="circle",
                 direction="x",
                 color_type=self.main_control_color,
-                shape_position_offset=(-ground_offset, 0, 0)
+                shape_position_offset=(-ground_offset * self.mod, 0, 0)
             )
         
         self.ik_controls.append(self.ik_foot)
@@ -181,7 +182,7 @@ class Foot:
         cmds.parentConstraint(roll_info.down_driver, self.ik_toes.top, maintainOffset=True)
         cmds.parentConstraint(roll_info.up_driver, self.ik_hook[0], maintainOffset=True)
         cmds.parentConstraint(self.ik_hook[1], self.ik_joints[0])
-        cmds.orientConstraint(roll_info.down_driver, self.ik_hook[1], maintainOffset=True)
+        cmds.orientConstraint(roll_info.up_driver, self.ik_hook[1], maintainOffset=True)
 
 
 

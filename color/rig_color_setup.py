@@ -18,11 +18,12 @@ class rig_color_channels:
     draw_on_top:str
     thickness:str
     color_control:str
+    des:str
 
 def initialize_rig_color_type(rig_type:str):
     color_control = 'color_options_ctrl'
     if cmds.attributeQuery(f'{rig_type}', node=color_control, exists=True):
-        rig_colors = rig_color_channels(r=f'{color_control}.{rig_type}_Color_R', g=f'{color_control}.{rig_type}_Color_G', b=f'{color_control}.{rig_type}_Color_B', draw_on_top=f'{color_control}.{rig_type}_draw_on_top', thickness=f'{color_control}.{rig_type}_Thickness', color_control=color_control, color=f'{color_control}.{rig_type}_color')
+        rig_colors = rig_color_channels(r=f'{color_control}.{rig_type}_Color_R', g=f'{color_control}.{rig_type}_Color_G', b=f'{color_control}.{rig_type}_Color_B', draw_on_top=f'{color_control}.{rig_type}_draw_on_top', thickness=f'{color_control}.{rig_type}_Thickness', color_control=color_control, color=f'{color_control}.{rig_type}_color', des=f'{color_control}.{rig_type}')
         return rig_colors
     
     preset = False
@@ -79,7 +80,7 @@ def initialize_rig_color_type(rig_type:str):
         cmds.setAttr(f'{color_control}.{attr}', keyable=False, channelBox=True)
 
 
-    rig_colors = rig_color_channels(r=f'{color_control}.{rig_type}_Color_R', g=f'{color_control}.{rig_type}_Color_G', b=f'{color_control}.{rig_type}_Color_B', draw_on_top=f'{color_control}.{rig_type}_draw_on_top', thickness=f'{color_control}.{rig_type}_Thickness', color_control=color_control, color=f'{color_control}.{rig_type}_color')
+    rig_colors = rig_color_channels(r=f'{color_control}.{rig_type}_Color_R', g=f'{color_control}.{rig_type}_Color_G', b=f'{color_control}.{rig_type}_Color_B', draw_on_top=f'{color_control}.{rig_type}_draw_on_top', thickness=f'{color_control}.{rig_type}_Thickness', color_control=color_control, color=f'{color_control}.{rig_type}_color', des=f'{color_control}.{rig_type}')
 
     return rig_colors
 

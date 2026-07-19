@@ -16,6 +16,10 @@ def apply_color_tag(object):
             f"{object}.overrideColorRGB",
         )
     
-    cmds.addAttr(object, longName=f'{tag}_Color', proxy=channels.color)
+    if object == 'color_options_ctrl':
+        return
+    
+    cmds.addAttr(object, longName=f'{tag}_Display_Options', proxy=channels.des)
+    cmds.addAttr(object, longName='Color', proxy=channels.color)
     #cmds.addAttr(object, longName=f'{tag}_Thickness', proxy=channels.thickness)
     cmds.addAttr(object, longName=f'{tag}_Draw_On_Top', proxy=channels.draw_on_top)

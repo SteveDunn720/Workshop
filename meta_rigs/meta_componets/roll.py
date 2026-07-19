@@ -4,12 +4,8 @@ import maya.cmds as cmds
 
 from Workshop.control import create_control
 from Workshop.transform.utils import create_transform, get_position
-from .module_initialize import module_prep, module_space
-from Workshop.meta_rigs.meta_componets.ik import create_IK_rotate_plane
-from Workshop.control.core import create_control
-from Workshop.joint import create_joint
-from Workshop.maya_api.node import AddDLNode, ConditionNode, MultiplyDivideNode, RemapValueNode, ReverseNode, SumNode
-from .module_initialize import module_prep, module_space
+from Workshop.tag.core import lock_tag, obj_ref_tag
+from Workshop.maya_api.node import AddDLNode, ConditionNode, MultiplyDivideNode, RemapValueNode
 from Workshop.meta_rigs.metahuman_rig_prep import foot_guides
 
 
@@ -39,7 +35,7 @@ class Roll:
         self.control_parent: str | None = control_parent
         self.control_size: float = control_size
         self.joints: list = joints
-        self.main_control_color = 'Left' if self.side == 'l' else 'Right' 
+        self.main_control_color = 'SubLeft' if self.side == 'l' else 'SubRight' 
         self.guides = guides
 
     # -------------------
@@ -47,7 +43,11 @@ class Roll:
     # -------------------
 
     def roll_build(self):
+        roll_tforms = []
         roll_group = create_transform(name=f'roll_{self.side}_grp', transform=self.guides.true_ball.name,)
+        roll_tforms.append(roll_group)
+
+        roll_ctrls = []
         self.smart_roll = create_control(
                 name=f'foot_roll_{self.side}',
                 parent=roll_group,
@@ -58,6 +58,23 @@ class Roll:
                 color_type=self.main_control_color,
                 ignore_rotations=True,
             )
+        roll_ctrls.append(self.smart_roll)
+
+        lock_tag(object=self.smart_roll.ctrl, rotate=(False, True, False), extra_channels=['DEV_bank_sensitivity'], hide_tag=True)
+
+        self.smart_twist = create_control(
+                name=f'foot_twist_{self.side}',
+                parent=roll_group,
+                transform=self.guides.true_ball.name,
+                size=self.control_size/8,
+                control_shape="circle",
+                direction="y",
+                color_type=self.main_control_color,
+                ignore_rotations=True,
+            )
+        roll_ctrls.append(self.smart_twist)
+
+        lock_tag(object=self.smart_twist.ctrl, translate=(False,False,False), rotate=(True, False, True), hide_tag=True)
         
         for attr in ['roll_twist', 'roll_sway', 'roll_angle', 'bank_width', 'DEV_bank_sensitivity']:
             cmds.addAttr(self.smart_roll.ctrl, longName=attr, attributeType='double', keyable=True)
@@ -67,6 +84,7 @@ class Roll:
 
     
         roll_center = create_transform(name=f'roll_{self.side}_center', transform=self.guides.true_ball.name,)
+        roll_tforms.append(roll_center)
 
         parent = roll_center
         back_tforms = []
@@ -74,6 +92,7 @@ class Roll:
             tform = create_transform(name=f"{guide.name}_back", transform=guide.name, parent=parent)
             parent=tform
             back_tforms.append(tform)
+            roll_tforms.append(tform)
 
         #senstivity_mult
 
@@ -131,37 +150,33 @@ class Roll:
             tform = create_transform(name=f"{guide.name}_front", transform=guide.name, parent=parent)
             parent=tform
             front_tforms.append(tform)
+            roll_tforms.append(tform)
 
         for axis in ['X', 'Y', 'Z']:
             cmds.connectAttr(f'{back_tforms[2]}.rotate{axis}', f'{front_tforms[0]}.rotate{axis}')
             cmds.connectAttr(f'{back_tforms[0]}.rotate{axis}', f'{front_tforms[1]}.rotate{axis}')
 
-        
-        self.smart_twist = create_control(
-                name=f'foot_twist_{self.side}',
-                parent=roll_group,
-                transform=self.guides.true_ball.name,
-                size=self.control_size/8,
-                control_shape="circle",
-                direction="y",
-                color_type=self.main_control_color,
-                ignore_rotations=True,
-            )
-
 
         #bank_and roll_pivot
         twist_main = create_transform(name=f"{self.guides.true_ball.name}_twist", transform=self.guides.true_ball.name, parent=roll_group)
+        roll_tforms.append(twist_main)
         #twist_offset = create_transform(name=f"{self.guides.true_ball.name}_twist_offset", transform=self.guides.true_ball.name, parent=twist_main)
 
         bank_main = create_transform(name=f"{self.guides.true_ball.name}_bank_main", transform=self.guides.true_ball.name, parent=roll_group)
+        roll_tforms.append(bank_main)
         bank_twist_offset = create_transform(name=f"{self.guides.true_ball.name}_bank_twist_offset", transform=self.guides.true_ball.name, parent=bank_main)
+        roll_tforms.append(bank_twist_offset)
 
         #cmds.parentConstraint(twist_main, bank_main)
 
         inbank_main = create_transform(name=f"{self.guides.true_inbank.name}_main", transform=self.guides.true_inbank.name, parent=twist_main)
+        roll_tforms.append(inbank_main)
         inbank_offset = create_transform(name=f"{self.guides.true_inbank.name}_offset", transform=self.guides.true_ball.name, parent=inbank_main)
+        roll_tforms.append(inbank_offset)
         outbank_main = create_transform(name=f"{self.guides.true_outbank.name}_main", transform=self.guides.true_outbank.name, parent=twist_main)
+        roll_tforms.append(outbank_main)
         outbank_offset = create_transform(name=f"{self.guides.true_outbank.name}_offset", transform=self.guides.true_ball.name, parent=outbank_main)
+        roll_tforms.append(outbank_offset)
 
         constraint = cmds.parentConstraint(outbank_offset,inbank_offset, bank_main)
         weight_attrs = cmds.parentConstraint(
@@ -221,6 +236,38 @@ class Roll:
 
         cmds.connectAttr(f"{self.smart_twist}.translate", f"{twist_main}.translate")
         cmds.connectAttr(f"{self.smart_twist}.rotate", f"{twist_main}.rotate")
+
+        for t in roll_tforms:
+            lock_tag(object=t, hide_tag=False)
+
+
+
+
+        #bank_ref
+
+        bank_in = create_control(
+                name=f'bank_in_ref_{self.side}',
+                parent=inbank_main,
+                transform=inbank_main,
+                size=self.control_size/32,
+                control_shape="locator",
+                direction="y",
+                color_type=self.main_control_color,
+                ignore_rotations=True,
+            )
+        
+        bank_out = create_control(
+                name=f'bank_out_ref_{self.side}',
+                parent=outbank_main,
+                transform=outbank_main,
+                size=self.control_size/32,
+                control_shape="locator",
+                direction="y",
+                color_type=self.main_control_color,
+                ignore_rotations=True,
+            )
+        obj_ref_tag(bank_out.ctrl)
+        obj_ref_tag(bank_in.ctrl)
 
         info = module_info(up_driver=back_tforms[-1], down_driver=front_tforms[-1], roll_grp=roll_group, roll_ctrl=self.smart_roll, twist_ctrl=self.smart_twist)
         return info
