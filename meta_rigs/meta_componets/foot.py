@@ -3,14 +3,12 @@ from Workshop.control.core import Control
 import maya.cmds as cmds
 
 from Workshop.control import create_control
-from Workshop.transform.utils import get_position
+from Workshop.transform.utils import get_position, match_transform
 from .module_initialize import module_prep, module_space
-from Workshop.meta_rigs.meta_componets.ik import create_IK_rotate_plane
-from Workshop.control.core import create_control
 from Workshop.joint import create_joint
 from Workshop.maya_api.node import ReverseNode
-from .module_initialize import module_prep, module_space
 from Workshop.meta_rigs.metahuman_rig_prep import foot_guides
+from Workshop.meta_rigs.meta_componets.roll import Roll
 
 @dataclass
 class module_info:
@@ -30,6 +28,7 @@ class Foot:
         fk_control_space:list = [],
         ik_control_space:list = [],
         ik_hook:str='',
+        fkik_switch_attr:str = '',
 
     ):
         self.part: str = part
@@ -43,6 +42,7 @@ class Foot:
         self.main_control_color = 'Left' if self.side == 'l' else 'Right' 
         self.ik_hook = ik_hook
         self.feet_guides = feet_guides
+        self.fkik_switch_attr = fkik_switch_attr
 
     # -------------------
     # Build steps
@@ -56,9 +56,9 @@ class Foot:
         
 
 
-    def fkik_switch(self, controls:list|None):
-        cmds.addAttr(self.main_grp, longName='FK_IK_Switch', attributeType='double', defaultValue=1, maxValue=1, minValue=0, keyable=True)
-        self.FK_IK_Switch = f'{self.main_grp}.FK_IK_Switch'
+    def fkik_switch(self, controls:list|None, attr=''):
+        #cmds.addAttr(self.main_grp, longName='FK_IK_Switch', attributeType='double', defaultValue=1, maxValue=1, minValue=0, keyable=True)
+        self.FK_IK_Switch = attr #f'{self.main_grp}.FK_IK_Switch'
         rev = ReverseNode(name=f"{self.part}_FKIK_rev")
         rev.input.x.connect_from(self.FK_IK_Switch)
         rev.output.x.connect_to(f'{self.ik_control_grp}.visibility')
@@ -151,10 +151,37 @@ class Foot:
                 color_type=self.main_control_color,
                 shape_position_offset=(-ground_offset, 0, 0)
             )
+        
         self.ik_controls.append(self.ik_foot)
-        self.controls.append(self.ik_foot)
 
-        self.fkik_switch(controls=self.controls)
+        
+
+        self.controls.append(self.ik_foot)
+        self.ik_toes = create_control(
+                name=f'IK_{self.joints[1]}',
+                parent=ctrl_par,
+                transform=f'{self.joints[1]}',
+                size=self.control_size/8,
+                control_shape="circle",
+                direction="x",
+                color_type=self.main_control_color,
+            )
+        cmds.parentConstraint(self.ik_toes.ctrl, self.ik_joints[1])
+        self.ik_controls.append(self.ik_toes)
+        self.controls.append(self.ik_toes)
+
+        self.fkik_switch(controls=self.controls, attr=self.fkik_switch_attr)
+
+        roll = Roll(part='roll', control_size=self.control_size, side=self.side, joints= [f'foot_{self.side}', f'ball_{self.side}'], guides=self.feet_guides, control_parent=self.ik_foot.ctrl)
+        roll_info = roll.roll_build()
+
+        match_transform(transform=roll_info.roll_grp, target_transform=self.feet_guides.og_foot_pos[-2].name)
+        cmds.setAttr(f'{roll_info.roll_grp}.rotateY', self.feet_guides.aim_angle)
+        cmds.parent(roll_info.roll_grp, self.ik_foot.ctrl)
+        cmds.parentConstraint(roll_info.down_driver, self.ik_toes.top, maintainOffset=True)
+        cmds.parentConstraint(roll_info.up_driver, self.ik_hook[0], maintainOffset=True)
+        cmds.parentConstraint(self.ik_hook[1], self.ik_joints[0])
+        cmds.orientConstraint(roll_info.down_driver, self.ik_hook[1], maintainOffset=True)
 
 
 

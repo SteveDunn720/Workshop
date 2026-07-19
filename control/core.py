@@ -142,7 +142,8 @@ def create_control(
     dimensions: tuple[float, float, float] = (1, 1, 1),
     rotation_order: RotateOrder = RotateOrder.XYZ,
     limit_min_scale: bool = True,
-    color_type:str = 'MISC'
+    color_type:str = 'MISC',
+    ignore_rotations:bool = False,
 ) -> Control:
     transform_matrix: MMatrix | None
     if transform is not None:
@@ -205,6 +206,9 @@ def create_control(
 
     control = Control(ctrl=control_transform, top=top_transform, sdk=sdk_transform, name=name)
     _register_control(control)
+    if ignore_rotations:
+        for axis in ['X', 'Y', 'Z']:
+            cmds.setAttr(f"{control.top}.rotate{axis}", 0)
 
     control_color_tag(control.ctrl, rig_color_type=color_type)
     return control

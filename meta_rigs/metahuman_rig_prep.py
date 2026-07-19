@@ -17,6 +17,8 @@ class foot_guides:
     true_ball:guide_info
     og_foot_pos:list[guide_info]
     aim_angle:float
+    neg:str
+    pos:str
 
 
 
@@ -32,7 +34,6 @@ def generate_foot_guides(parent:str, side='l'):
 
     #side = 'l'
     side_list = []
-    true_guides = []
     vert_list = mh_left_verts if side == 'l' else mh_right_verts
     side_parent = create_transform(name=f'{side}_foot_guides', parent=foot_parent)
     for i, vert in enumerate(vert_list):
@@ -71,7 +72,7 @@ def generate_foot_guides(parent:str, side='l'):
     bank_02_guide = create_guide_from_position(pos=((-bank_dist/2) * mod,0,0), guide_name=f'{side}_{side_02}_guide', parent=side_parent)
     foot_dist = get_distance_between(obj_a=foot_guide.name, obj_b=ball_guide.name)
     true_footground_guide = create_guide_from_position(pos=(0,0,-foot_dist), guide_name=f'{side}_footground_guide', parent=side_parent)
-    true_foot_guide = create_guide_from_position(pos=(0, foot_pos[0], -foot_dist), guide_name=f'{side}_foot_guide', parent=side_parent)
+    true_foot_guide = create_guide_from_position(pos=(0, foot_pos[0] * mod, -foot_dist), guide_name=f'{side}_foot_guide', parent=side_parent)
 
     guides_info = foot_guides(true_heel=true_heel_guide,
                                 true_foot=true_foot_guide,
@@ -81,7 +82,9 @@ def generate_foot_guides(parent:str, side='l'):
                                 true_outbank=bank_02_guide if side == 'l' else bank_01_guide,
                                 true_ball=true_ball_guide,
                                 og_foot_pos=side_list,
-                                aim_angle=aim)
+                                aim_angle=aim,
+                                neg='outer' if side == 'r' else 'inner',
+                                pos='inner' if side == 'r' else 'outer',)
     return guides_info
 
 

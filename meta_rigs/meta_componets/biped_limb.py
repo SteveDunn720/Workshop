@@ -32,7 +32,8 @@ class Limb:
         joints: list = ['thigh_l', 'calf_l', 'foot_l'],
         fk_control_space:list = [],
         ik_control_space:list = [],
-        ik_end_control:bool = False
+        ik_end_control:bool = False,
+        ikfk_blend:float = 1
 
     ):
         self.part: str = part
@@ -44,6 +45,7 @@ class Limb:
         self.fk_control_space = fk_control_space
         self.ik_control_space = ik_control_space
         self.main_control_color = 'Left' if self.side == 'l' else 'Right'
+        self.ikfk_blend = ikfk_blend
 
 
     def fkik_switch(self, controls:list|None):
@@ -189,6 +191,7 @@ class Limb:
 
 
         self.fkik_switch(controls=self.controls)
+        cmds.setAttr(self.FK_IK_Switch, self.ikfk_blend)
 
 
         self.info = moudle_info(
