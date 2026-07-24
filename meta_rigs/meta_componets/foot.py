@@ -154,9 +154,6 @@ class Foot:
             )
         
         self.ik_controls.append(self.ik_foot)
-
-        
-
         self.controls.append(self.ik_foot)
         self.ik_toes = create_control(
                 name=f'IK_{self.joints[1]}',
@@ -173,6 +170,10 @@ class Foot:
 
         self.fkik_switch(controls=self.controls, attr=self.fkik_switch_attr)
 
+
+
+        
+
         roll = Roll(part='roll', control_size=self.control_size, side=self.side, joints= [f'foot_{self.side}', f'ball_{self.side}'], guides=self.feet_guides, control_parent=self.ik_foot.ctrl)
         roll_info = roll.roll_build()
 
@@ -183,6 +184,8 @@ class Foot:
         cmds.parentConstraint(roll_info.up_driver, self.ik_hook[0], maintainOffset=True)
         cmds.parentConstraint(self.ik_hook[1], self.ik_joints[0])
         cmds.orientConstraint(roll_info.up_driver, self.ik_hook[1], maintainOffset=True)
+
+
 
 
 

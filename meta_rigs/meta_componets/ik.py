@@ -72,6 +72,18 @@ def generate_autoPV(joints: list, name: str = "pv_name") -> str:
 
     return pv_object
 
+def create_IK_single_chain(name:str, start_joint:str, end_joint:str,)->IK_data:
+    ik_handle, effector = cmds.ikHandle(                                                 #type:ignore
+            name=f'{name}_IK_handle',
+            startJoint=start_joint,
+            endEffector=end_joint,
+            solver="ikSCsolver"
+        )                            
+    
+    handle = IK_data(start_joint=start_joint, end_joint=end_joint, handle=ik_handle, effector=effector, spline_curve='', type='single_chain', pole_vector='')       
+    
+    return handle  
+
 
 
     

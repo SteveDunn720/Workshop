@@ -158,12 +158,14 @@ def sets_tag(object:str, set:list[str]):
     """
     add_tag(object=object, tag_type='SETS_TAG', tag_value=repr(set))
 
-def obj_ref_tag(object:str):
+def obj_ref_tag(object:str, ref_type:str = 'template'):
     """
     args:
     object: makes an object a reference display type
+    ref_type: reference - turns the object into a reference
+              template - turns the object into a template
     """
-    add_tag(object=object, tag_type='OBJECT_REF_TAG', tag_value='True')
+    add_tag(object=object, tag_type='OBJECT_REF_TAG', tag_value=ref_type)
 
 
 

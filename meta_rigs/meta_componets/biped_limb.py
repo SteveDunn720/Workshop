@@ -1,11 +1,10 @@
-
-
 from attr import dataclass
 import maya.cmds as cmds
-from Workshop.meta_rigs.meta_componets.ik import create_IK_rotate_plane
+from Workshop.meta_rigs.meta_componets.ik import create_IK_rotate_plane, create_IK_single_chain
 from Workshop.control.core import create_control
 from Workshop.joint import create_joint
-from Workshop.maya_api.node import ReverseNode
+from Workshop.maya_api.node import MultiplyDivideNode, ReverseNode, DistanceBetweenNode
+from Workshop.transform.utils import get_distance_between
 from .module_initialize import module_prep, module_space
 from Workshop.control.core import Control
 
@@ -20,6 +19,7 @@ class moudle_info:
     end_ik_hook:list
     ik_controls:list
     fk_controls:list
+    ik_len:list
 
 
 class Limb:
@@ -33,7 +33,8 @@ class Limb:
         fk_control_space:list = [],
         ik_control_space:list = [],
         ik_end_control:bool = False,
-        ikfk_blend:float = 1
+        ikfk_blend:float = 1,
+        ik_length:bool = False,
 
     ):
         self.part: str = part
@@ -46,6 +47,7 @@ class Limb:
         self.ik_control_space = ik_control_space
         self.main_control_color = 'Left' if self.side == 'l' else 'Right'
         self.ikfk_blend = ikfk_blend
+        self.ik_length = ik_length
 
 
     def fkik_switch(self, controls:list|None):
@@ -194,6 +196,50 @@ class Limb:
         cmds.setAttr(self.FK_IK_Switch, self.ikfk_blend)
 
 
+        if self.ik_length:
+            self.ik_len_joints = []
+            jnt_par = self.guts
+            for i,jnt in enumerate(self.joints):
+                if i == 1:
+                    pass
+                else:
+                    jnt_name = jnt
+                    ik_jnt = create_joint(name=f'IK_len_{jnt_name}', transform=jnt, parent=jnt_par, connect=False)
+                    self.ik_len_joints.append(ik_jnt)
+                    jnt_par = ik_jnt
+            self.ik_length = create_IK_single_chain(name=f'{self.part}_len_{self.side}', start_joint=self.ik_len_joints[0], end_joint=self.ik_len_joints[1],)
+            cmds.parentConstraint(self.ik_joints[0], self.ik_len_joints[0])
+            ik_len = [self.ik_length, self.ik_len_joints[0], self.ik_len_joints[1]]
+        else:
+            ik_len = []
+
+        #stretch
+        """limb_len = get_distance_between(obj_a=self.joints[0],  obj_b=self.joints[2]) 
+        cmds.addAttr(self.main_grp, longName='limb_length', dv=limb_len)
+        cmds.addAttr(self.main_grp, longName='stretch', dv=1, minValue=0, maxValue=1)
+
+        distance = DistanceBetweenNode(name=f'{self.joints[0]}_stretch_db')
+        distance.point1.connect_from(f'{self.ik_joints[0]}.translate')
+        distance.point2.connect_from(f'{self.ik_joints[2]}.translate')
+
+        stretch_md = MultiplyDivideNode(name=f'{self.joints[0]}_stretch_md')
+
+        stretch_md.input1.x.connect_from(distance.distance)
+        stretch_md.input2.x.connect_from(f'{self.main_grp}.limb_length')
+        stretch_md.operation.set(2)
+
+        stretch_mult_md = MultiplyDivideNode(name=f'{self.joints[0]}_stretch_mult_md')
+        
+        stretch_mult_md.input1.x.connect_from(stretch_md.output.x)
+        stretch_mult_md.input2.x.connect_from(f'{self.main_grp}.stretch')
+
+        for jnt in self.ik_joints:
+            stretch_mult_md.output.x.connect_to(f'{jnt}.scaleX')"""
+
+
+
+
+
         self.info = moudle_info(
                 fk_root = self.fk_controls[0],
                 ik_root = self.ik_controls[0],
@@ -201,6 +247,7 @@ class Limb:
                 end_ik_hook = [self.ik_hook, self.ik_joints[-1]],
                 ik_controls = self.ik_controls,
                 fk_controls = self.fk_controls,
+                ik_len=ik_len
                 )
         
         return self.info

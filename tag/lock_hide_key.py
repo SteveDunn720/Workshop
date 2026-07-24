@@ -36,5 +36,10 @@ def object_visibility(object):
 
 
 def object_reference(object):
+    tag = cmds.getAttr(f'{object}.OBJECT_REF_TAG')
+    if tag == 'reference':
+        num = 2
+    elif tag == 'template':
+        num = 1
     cmds.setAttr(f"{object}.overrideEnabled", 1)
-    cmds.setAttr(f"{object}.overrideDisplayType", 2)
+    cmds.setAttr(f"{object}.overrideDisplayType", num)

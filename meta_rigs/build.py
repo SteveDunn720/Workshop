@@ -38,7 +38,7 @@ def build(meta_type:str='metahuman'):
         arm = meta_componets.Limb(part='arm', control_size=rig_size, parent=body_rig_root, side=side, joints= [f'upperarm_{side}', f'lowerarm_{side}', f'hand_{side}'],ik_end_control = False, fk_control_space=[clavinfo.clav_control.ctrl], ik_control_space=[clavinfo.clav_control.ctrl, root_info.offset_control.ctrl, ])
         arm_info = arm.limb_build()
 
-        leg = meta_componets.Limb(part='leg', control_size=rig_size, parent=body_rig_root, side=side, joints= [f'thigh_{side}', f'calf_{side}', f'foot_{side}'],ik_end_control = False, fk_control_space=[hipinfo.hip_control.ctrl], ik_control_space=[hipinfo.hip_control.ctrl, root_info.offset_control.ctrl, ], ikfk_blend=0)
+        leg = meta_componets.Limb(part='leg', control_size=rig_size, parent=body_rig_root, side=side, joints= [f'thigh_{side}', f'calf_{side}', f'foot_{side}'],ik_end_control = False, fk_control_space=[hipinfo.hip_control.ctrl], ik_control_space=[hipinfo.hip_control.ctrl, root_info.offset_control.ctrl, ], ikfk_blend=0, ik_length=True)
         leg_info = leg.limb_build()
 
         footguide = generate_foot_guides(parent=rig_root.guides, side=side)

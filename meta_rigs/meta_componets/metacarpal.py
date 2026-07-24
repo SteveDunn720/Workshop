@@ -65,7 +65,7 @@ class Metacarpal:
                 control_shape="sphere",
                 direction="x",
                 color_type=self.sub_control_color,
-                shape_position_offset=(.5, 0, 0)
+                shape_position_offset=(0, -4, 0)
             )
         
         self.controls.append(self.roll_ctrl.ctrl)

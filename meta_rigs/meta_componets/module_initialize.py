@@ -26,7 +26,7 @@ def module_prep(part: str, side: str, parent: str, fkik:bool=False, gut:bool=Tru
         guts = ''
     if fkik:
         ik_control_grp = create_transform(name=f"{part}_IK_controls_{side}", parent=control_grp)
-        fk_control_grp = create_transform(name=f"{part}_Fk_controls{side}", parent=control_grp)
+        fk_control_grp = create_transform(name=f"{part}_Fk_controls_{side}", parent=control_grp)
     else:
         ik_control_grp = ''
         fk_control_grp = ''
