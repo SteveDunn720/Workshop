@@ -42,7 +42,7 @@ def build(meta_type:str='metahuman'):
         leg_info = leg.limb_build()
 
         footguide = generate_foot_guides(parent=rig_root.guides, side=side)
-        foot = meta_componets.Foot(part='feet', control_size=rig_size, parent=body_rig_root, side=side, joints= [f'foot_{side}', f'ball_{side}'], fk_control_space=[leg_info.fk_controls[-1].ctrl], ik_control_space=[root_info.offset_control.ctrl, hipinfo.hip_control.ctrl, ], ik_hook=leg_info.end_ik_hook, feet_guides=footguide, fkik_switch_attr=leg_info.fk_ik_switch)
+        foot = meta_componets.Foot(part='feet', control_size=rig_size, parent=body_rig_root, side=side, joints= [f'foot_{side}', f'ball_{side}'], fk_control_space=[leg_info.fk_controls[-1].ctrl], ik_control_space=[root_info.offset_control.ctrl, hipinfo.hip_control.ctrl, ], ik_hook=leg_info.end_ik_hook, feet_guides=footguide, fkik_switch_attr=leg_info.fk_ik_switch, leg_info=leg_info)
         foot_info = foot.foot_build()
 
 

@@ -226,6 +226,17 @@ class BlendColorsNode(Node):
         self.output: ColorAttribute = ColorAttribute(f"{self.name}.output")
         self.blender = ScalarAttribute(f"{self.name}.blender")
 
+class BlendTwoAttrNode(Node):
+    """Maya blendTwoAttr node with enhanced interface."""
+
+    def __init__(self, name: str = "blendTwoAttr") -> None:
+        super().__init__("blendTwoAttr", name)
+
+    def _setup_attributes(self) -> None:
+        self.output: ScalarAttribute = ScalarAttribute(f"{self.name}.output")
+        self.input: IndexableScalarAttribute = IndexableScalarAttribute(f"{self.name}.input")
+        self.blend: ScalarAttribute = ScalarAttribute(f"{self.name}.attributesBlender")
+
 
 class ClampRangeNode(Node):
     """Maya clampRange node with enhanced interface."""

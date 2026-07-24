@@ -1,9 +1,11 @@
+from turtle import distance
+
 from attr import dataclass
 import maya.cmds as cmds
 from Workshop.meta_rigs.meta_componets.ik import create_IK_rotate_plane, create_IK_single_chain
 from Workshop.control.core import create_control
 from Workshop.joint import create_joint
-from Workshop.maya_api.node import MultiplyDivideNode, ReverseNode, DistanceBetweenNode
+from Workshop.maya_api.node import ConditionNode, MultiplyDivideNode, ReverseNode, DistanceBetweenNode, BlendTwoAttrNode, SumNode
 from Workshop.transform.utils import get_distance_between
 from .module_initialize import module_prep, module_space
 from Workshop.control.core import Control
@@ -20,6 +22,7 @@ class moudle_info:
     ik_controls:list
     fk_controls:list
     ik_len:list
+    ik_stretch_attr:str
 
 
 class Limb:
@@ -48,6 +51,92 @@ class Limb:
         self.main_control_color = 'Left' if self.side == 'l' else 'Right'
         self.ikfk_blend = ikfk_blend
         self.ik_length = ik_length
+
+
+    def build_stretchy_ik(self,
+            name: str,
+            root_reference: str,
+            ik_control: str,
+            upper_joint: str,
+            lower_joint: str,
+            end_joint: str,
+            stretch_attr: str = "stretch",
+            len:bool = False,
+            len_joint:str = ''
+        ):
+            """Build a basic non-compressing stretchy IK setup.
+
+            Assumes the limb joints extend along local translate X.
+            """
+
+            if not cmds.attributeQuery(stretch_attr, node=ik_control, exists=True):
+                cmds.addAttr(
+                    ik_control,
+                    longName=stretch_attr,
+                    attributeType="double",
+                    minValue=0.0,
+                    maxValue=1.0,
+                    defaultValue=.2,
+                    keyable=True,
+                )
+
+            upper_length = cmds.getAttr(f"{lower_joint}.translateX")
+            lower_length = cmds.getAttr(f"{end_joint}.translateX")
+
+            original_length = abs(upper_length) + abs(lower_length)
+
+            ik_distance = DistanceBetweenNode(name=f"{name}_stretch_distance")
+
+            ik_distance.input_matrix1.connect_from(f"{root_reference}.worldMatrix[0]")
+            ik_distance.input_matrix2.connect_from(f"{ik_control}.worldMatrix[0]")
+
+            ratio = MultiplyDivideNode(name = f"{name}_stretch_ratio")
+            ratio.operation.set(2)
+            ratio.input2.x.set(original_length)
+            ratio.input1.x.connect_from(ik_distance.distance)
+
+            clamp = ConditionNode(name=f"{name}_stretch_condition")
+            clamp.operation.set(2)
+            clamp.second_term.set(1)
+            clamp.color_if_false.r.set(1)
+            clamp.first_term.connect_from(ratio.output.x)
+            clamp.color_if_true.r.connect_from(ratio.output.x)
+            
+            blend = BlendTwoAttrNode(name=f"{name}_stretch_condition")
+            blend.input[0].set(1)
+            blend.input[1].connect_from(clamp.color_if_true.r)
+            blend.blend.connect_from(f"{ik_control}.{stretch_attr}")
+
+            length = MultiplyDivideNode(name=f"{name}_stretch_lengths")
+            length.input1.x.set(upper_length)
+            length.input1.y.set(lower_length)
+            length.input2.x.connect_from(blend.output)
+            length.input2.y.connect_from(blend.output)
+            length.output.x.connect_to(f"{lower_joint}.translateX",)
+            length.output.x.connect_to(f"{end_joint}.translateX",)
+
+            if len:
+                len_mult = MultiplyDivideNode(name=f"{name}_ik_len")
+                if upper_length >= 0:
+                    mod = 1
+                elif upper_length < 0:
+                    mod = -1
+                len_mult.input1.x.connect_from(ik_distance.distance)
+                len_mult.input2.x.set(mod)
+
+                len_sum = SumNode(name = f"{name}_limb_len")
+                len_sum.input[0].connect_from(length.output.x)
+                len_sum.input[1].connect_from(length.output.y)
+
+                len_clamp = ConditionNode(name=f"{name}_stretch_condition_len")
+                len_clamp.first_term.connect_from(ratio.output.x)
+                len_clamp.second_term.set(1)
+                len_clamp.color_if_true.r.connect_from(len_sum.output)
+                len_clamp.color_if_false.r.connect_from(ratio.output.x)
+
+                len_clamp.out_color.r.connect_to(f'{len_joint}.translateX')
+
+
 
 
     def fkik_switch(self, controls:list|None):
@@ -188,8 +277,23 @@ class Limb:
             self.ik_controls.append(self.ik_pv_ctrl.ctrl)
             self.ik_hook = None
         else:
-            self.ik_hook = self.ik_handle.handle
-            self.ik_controls.append('')
+            self.ik_end_ctrl = create_control(
+                name=f'IK_{self.joints[2]}',
+                parent=self.ik_control_grp,
+                transform=self.joints[2],
+                size=self.control_size/8,
+                control_shape="cube",
+                direction="x",
+                color_type=self.main_control_color
+            )
+            cmds.parentConstraint(self.ik_end_ctrl.ctrl, self.ik_handle.handle, maintainOffset=True)
+            cmds.orientConstraint(self.ik_end_ctrl.ctrl, self.ik_joints[2], maintainOffset=True)
+            self.controls.append(self.ik_end_ctrl.ctrl)
+            self.ik_controls.append(self.ik_pv_ctrl.ctrl)
+            cmds.hide(self.ik_end_ctrl.ctrl)
+            #self.ik_hook = None
+            self.ik_hook = self.ik_end_ctrl.ctrl
+            #self.ik_controls.append('')
 
 
         self.fkik_switch(controls=self.controls)
@@ -207,13 +311,26 @@ class Limb:
                     ik_jnt = create_joint(name=f'IK_len_{jnt_name}', transform=jnt, parent=jnt_par, connect=False)
                     self.ik_len_joints.append(ik_jnt)
                     jnt_par = ik_jnt
-            self.ik_length = create_IK_single_chain(name=f'{self.part}_len_{self.side}', start_joint=self.ik_len_joints[0], end_joint=self.ik_len_joints[1],)
-            cmds.parentConstraint(self.ik_joints[0], self.ik_len_joints[0])
-            ik_len = [self.ik_length, self.ik_len_joints[0], self.ik_len_joints[1]]
+            self.ik_len_chain = create_IK_single_chain(name=f'{self.part}_len_{self.side}', start_joint=self.ik_len_joints[0], end_joint=self.ik_len_joints[1],)
+            cmds.pointConstraint(self.ik_joints[0], self.ik_len_joints[0])
+            ik_len = [self.ik_len_chain, self.ik_len_joints[0], self.ik_len_joints[1]]
         else:
             ik_len = []
 
         #stretch
+
+        self.build_stretchy_ik(
+            name=f'{self.joints[0]}',
+            root_reference=self.ik_root_ctrl.ctrl,
+            ik_control=self.ik_end_ctrl.ctrl,
+            upper_joint=self.ik_joints[0],
+            lower_joint=self.ik_joints[1],
+            end_joint=self.ik_joints[2],
+            stretch_attr= "stretch",
+            len=self.ik_length,
+            len_joint=ik_len[2] if self.ik_length else '')
+        
+
         """limb_len = get_distance_between(obj_a=self.joints[0],  obj_b=self.joints[2]) 
         cmds.addAttr(self.main_grp, longName='limb_length', dv=limb_len)
         cmds.addAttr(self.main_grp, longName='stretch', dv=1, minValue=0, maxValue=1)
@@ -247,7 +364,8 @@ class Limb:
                 end_ik_hook = [self.ik_hook, self.ik_joints[-1]],
                 ik_controls = self.ik_controls,
                 fk_controls = self.fk_controls,
-                ik_len=ik_len
+                ik_len=ik_len,
+                ik_stretch_attr = f'{self.ik_end_ctrl}.stretch'
                 )
         
         return self.info

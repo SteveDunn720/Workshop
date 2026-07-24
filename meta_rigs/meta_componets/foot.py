@@ -1,3 +1,4 @@
+
 from attr import dataclass
 from Workshop.control.core import Control
 import maya.cmds as cmds
@@ -18,6 +19,7 @@ class module_info:
 class Foot:
     def __init__(
         self,
+        leg_info,
         feet_guides:foot_guides,
         part: str = "foot",
         side: str = "l",
@@ -29,6 +31,7 @@ class Foot:
         ik_control_space:list = [],
         ik_hook:str='',
         fkik_switch_attr:str = '',
+        
 
     ):
         self.part: str = part
@@ -44,6 +47,7 @@ class Foot:
         self.feet_guides = feet_guides
         self.fkik_switch_attr = fkik_switch_attr
         self.mod = 1 if side == 'l' else -1
+        self.leg_info = leg_info
 
     # -------------------
     # Build steps
@@ -172,7 +176,7 @@ class Foot:
 
 
 
-        
+
 
         roll = Roll(part='roll', control_size=self.control_size, side=self.side, joints= [f'foot_{self.side}', f'ball_{self.side}'], guides=self.feet_guides, control_parent=self.ik_foot.ctrl)
         roll_info = roll.roll_build()
@@ -183,7 +187,9 @@ class Foot:
         cmds.parentConstraint(roll_info.down_driver, self.ik_toes.top, maintainOffset=True)
         cmds.parentConstraint(roll_info.up_driver, self.ik_hook[0], maintainOffset=True)
         cmds.parentConstraint(self.ik_hook[1], self.ik_joints[0])
-        cmds.orientConstraint(roll_info.up_driver, self.ik_hook[1], maintainOffset=True)
+        cmds.addAttr(self.ik_foot.ctrl, longName='stretch', proxy = self.leg_info.ik_stretch_attr)
+        
+        #cmds.orientConstraint(roll_info.up_driver, self.ik_hook[1], maintainOffset=True)
 
 
 
