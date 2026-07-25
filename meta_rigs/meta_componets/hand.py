@@ -156,6 +156,8 @@ class Hand:
         cmds.parentConstraint(self.ik_hand.ctrl, self.ik_hook[0], maintainOffset=True)
         cmds.orientConstraint(self.ik_hand.ctrl, self.ik_hook[1], maintainOffset=True)
         cmds.parentConstraint(self.ik_hook[1], self.ik_joints[0], maintainOffset=True)
+        cmds.parentConstraint(self.ik_hand.ctrl, self.ik_hook[2], maintainOffset=True)
+        cmds.addAttr(self.ik_hand.ctrl, longName='stretch', proxy=f'{self.ik_hook[2]}.stretch')
 
 
 

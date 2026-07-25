@@ -32,6 +32,7 @@ def build(meta_type:str='metahuman'):
     #side parts
 
     for side in ['l', 'r']:
+        sidemod = 1 if side == 'l' else -1
         clav = meta_componets.Clavicle(part='clav', control_size=rig_size, parent=body_rig_root, side=side, joints= [f'clavicle_{side}'], control_space=[spineinfo.fk_spine_controls_list[-1].ctrl], )
         clavinfo = clav.clavicle_build()
 
@@ -54,19 +55,29 @@ def build(meta_type:str='metahuman'):
 
         #metacarples
 
-        metacarpal = meta_componets.Metacarpal(part='metacarpal', control_size=rig_size, parent=body_rig_root, side=side, joints= [f'index_metacarpal_{side}', f'middle_metacarpal_{side}', f'ring_metacarpal_{side}', f'pinky_metacarpal_{side}'], fk_control_space=[hand_info.switch],)
+        metacarpal = meta_componets.Metacarpal(part='metacarpal', control_size=rig_size, parent=body_rig_root, side=side, joints=[f'index_metacarpal_{side}', f'middle_metacarpal_{side}', f'ring_metacarpal_{side}', f'pinky_metacarpal_{side}'], fk_control_space=[hand_info.switch], mod=-1 * sidemod)
         metacarpal_info = metacarpal.metacarpal_build()
 
+        #metatoes
 
+        metacartoes = meta_componets.Metacarpal(part='metatoes', control_size=rig_size, parent=body_rig_root, side=side, joints= [f'bigtoe_01_{side}', f'indextoe_01_{side}', f'middletoe_01_{side}', f'ringtoe_01_{side}', f'littletoe_01_{side}'], fk_control_space=[foot_info.swtich_joints[-1]], name_offset='meta', mod=1 * sidemod, bind=False)
+        metacartoes_info = metacartoes.metacarpal_build()
 
-        for i, finger in enumerate(['index', 'middle', 'ring', 'pinky', 'thumb']):
-            if finger == 'thumb':
+        for i, fingers in enumerate(['index', 'middle', 'ring', 'pinky', 'thumb']):
+            if fingers == 'thumb':
                 parent = hand_info.switch
             else:
                 parent = metacarpal_info.fk_controls[i].ctrl
 
-            finger = meta_componets.Chain(part=finger, control_size=rig_size, parent=body_rig_root, side=side, joints= [f'{finger}_01_{side}', f'{finger}_02_{side}', f'{finger}_03_{side}',], fk_control_space=parent, )
+            finger = meta_componets.Chain(part=fingers, control_size=rig_size, parent=body_rig_root, side=side, joints= [f'{fingers}_01_{side}', f'{fingers}_02_{side}', f'{fingers}_03_{side}',], fk_control_space=parent, mod=1 * sidemod)
             finger.chain_build()
+
+        for i, toes in enumerate(['big', 'index', 'middle', 'ring', 'little', ]):
+
+            parent = metacartoes_info.fk_controls[i].ctrl
+
+            toe = meta_componets.Chain(part=f"{toes}toe", control_size=rig_size, parent=body_rig_root, side=side, joints= [f'{toes}toe_01_{side}', f'{toes}toe_02_{side}'], fk_control_space=parent, mod=-1 * sidemod)
+            toe.chain_build()
 
 
 

@@ -13,8 +13,11 @@ from Workshop.meta_rigs.meta_componets.roll import Roll
 
 @dataclass
 class module_info:
-    cog_control:Control
-    hip_control:Control
+    ik_controls:list
+    fk_control:list
+    swtich_joints:list
+    fk_joints:list
+    ik_joints:list
 
 class Foot:
     def __init__(
@@ -188,9 +191,15 @@ class Foot:
         cmds.parentConstraint(roll_info.up_driver, self.ik_hook[0], maintainOffset=True)
         cmds.parentConstraint(self.ik_hook[1], self.ik_joints[0])
         cmds.addAttr(self.ik_foot.ctrl, longName='stretch', proxy = self.leg_info.ik_stretch_attr)
-        
+        cmds.parentConstraint(self.ik_foot.ctrl, self.leg_info.ik_len[0].handle, maintainOffset=True)
+        cmds.orientConstraint(self.ik_foot.ctrl, self.leg_info.ik_len[2], maintainOffset=True)
+        cmds.parentConstraint(self.leg_info.ik_len[2], roll_info.roll_grp, maintainOffset=True)
+        cmds.parentConstraint(self.ik_foot.ctrl, self.leg_info.end_ik_hook[2])
+
         #cmds.orientConstraint(roll_info.up_driver, self.ik_hook[1], maintainOffset=True)
 
+        feet_info = module_info(fk_control=self.fk_controls, ik_controls=self.ik_controls, swtich_joints=self.switch_joints, fk_joints=self.fk_joints, ik_joints=self.ik_joints)
+        return feet_info
 
 
 

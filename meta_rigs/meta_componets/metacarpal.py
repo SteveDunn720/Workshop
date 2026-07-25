@@ -28,6 +28,9 @@ class Metacarpal:
         control_size: float = 1.0,
         joints: list = ['thigh_l', 'calf_l', 'foot_l'],
         fk_control_space:list = [],
+        mod=-1,
+        bind=True,
+        name_offset:str=''
 
     ):
         self.part: str = part
@@ -38,6 +41,9 @@ class Metacarpal:
         self.fk_control_space = fk_control_space
         self.main_control_color = 'Left' if self.side == 'l' else 'Right'
         self.sub_control_color = 'SubLeft' if self.side == 'l' else 'SubRight'
+        self.mod=mod
+        self.bind=bind
+        self.name_offset = name_offset
 
     def metacarpal_build(self):
         prep = module_prep(part=self.part, parent=self.parent, side=self.side, fkik=True)
@@ -65,7 +71,7 @@ class Metacarpal:
                 control_shape="sphere",
                 direction="x",
                 color_type=self.sub_control_color,
-                shape_position_offset=(0, -4, 0)
+                shape_position_offset=(0, 4 * self.mod, 0)
             )
         
         self.controls.append(self.roll_ctrl.ctrl)
@@ -73,7 +79,7 @@ class Metacarpal:
 
         for i,jnt in enumerate(self.joints):
             ctrl = create_control(
-                name=f'FK_{jnt}',
+                name=f'FK_{self.name_offset}{jnt}',
                 parent=ctrl_par,
                 transform=jnt,
                 size=self.control_size/32,
@@ -90,7 +96,10 @@ class Metacarpal:
             self.fk_controls.append(ctrl)
             self.controls.append(ctrl.ctrl)
             ctrl_par = ctrl.ctrl
-            cmds.parentConstraint(ctrl.ctrl, jnt, maintainOffset=True)
+            if self.bind:
+                cmds.parentConstraint(ctrl.ctrl, jnt, maintainOffset=True)
+            else:
+                cmds.hide(ctrl.ctrl)
             
             
 

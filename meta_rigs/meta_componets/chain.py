@@ -28,6 +28,7 @@ class Chain:
         control_size: float = 1.0,
         joints: list = ['thigh_l', 'calf_l', 'foot_l'],
         fk_control_space:list = [],
+        mod = 1
 
     ):
         self.part: str = part
@@ -38,6 +39,7 @@ class Chain:
         self.fk_control_space = fk_control_space
         self.main_control_color = 'Left' if self.side == 'l' else 'Right'
         self.sub_control_color = 'SubLeft' if self.side == 'l' else 'SubRight'
+        self.mod = mod
 
     def chain_build(self):
         prep = module_prep(part=self.part, parent=self.parent, side=self.side, fkik=True)
@@ -65,7 +67,7 @@ class Chain:
                 control_shape="sphere",
                 direction="x",
                 color_type=self.sub_control_color,
-                shape_position_offset=(0, -3, 0)
+                shape_position_offset=(0, -3 * self.mod, 0)
             )
 
 
