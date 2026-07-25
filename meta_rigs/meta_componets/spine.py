@@ -30,6 +30,7 @@ class Spine:
         self.control_size: float = control_size
         self.joints: list = joints
         self.fk_control_space = fk_control_space 
+        self.rig_color = 'Middle'
 
     def spine_build(self) ->module_info:
         prep = module_prep(part=self.part, parent=self.parent, side=self.side, fkik=False)
@@ -50,6 +51,7 @@ class Spine:
                 size=self.control_size * .3,
                 control_shape="circle",
                 direction="x",
+                color_type=self.rig_color,
             )
             self.fk_controls.append(control)
             self.controls.append(control)

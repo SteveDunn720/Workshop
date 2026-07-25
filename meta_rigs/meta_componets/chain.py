@@ -39,6 +39,9 @@ class Chain:
         self.fk_control_space = fk_control_space
         self.main_control_color = 'Left' if self.side == 'l' else 'Right'
         self.sub_control_color = 'SubLeft' if self.side == 'l' else 'SubRight'
+        if self.side == 'm':
+            self.main_control_color = 'Middle' 
+            self.sub_control_color = 'SubMiddle'
         self.mod = mod
 
     def chain_build(self):
