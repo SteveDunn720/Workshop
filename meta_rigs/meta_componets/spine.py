@@ -19,7 +19,7 @@ class Spine:
         parent: str = "components",
         control_parent: str | None = None,
         control_size: float = 1.0,
-        joints: list = ['spine_01', 'spine_02', 'spine_03', 'spine_04', 'spine_05'],
+        joints: list = ['spine_01', 'spine_02', 'spine_03', 'spine_04',],
         fk_control_space = [],
 
     ):
