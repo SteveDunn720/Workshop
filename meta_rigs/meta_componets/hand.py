@@ -153,6 +153,20 @@ class Hand:
 
         self.fkik_switch(controls=self.controls, attr=self.fkik_switch_attr)
 
+        self.prop = create_control(
+                name=f'prop_{self.side}',
+                parent=self.control_grp,
+                transform=f'{self.joints[0]}',
+                size=self.control_size/32,
+                control_shape="cube",
+                direction="x",
+                color_type=self.main_control_color,
+            )
+        cmds.parentConstraint(self.switch_joints[0], self.prop.top, maintainOffset=True)
+        self.controls.append(self.prop)
+
+
+
         cmds.parentConstraint(self.ik_hand.ctrl, self.ik_hook[0], maintainOffset=True)
         cmds.orientConstraint(self.ik_hand.ctrl, self.ik_hook[1], maintainOffset=True)
         cmds.parentConstraint(self.ik_hook[1], self.ik_joints[0], maintainOffset=True)

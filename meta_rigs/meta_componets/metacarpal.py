@@ -68,7 +68,7 @@ class Metacarpal:
                 parent=ctrl_par,
                 transform=self.joints[0],
                 size=self.control_size/32,
-                control_shape="sphere",
+                control_shape="cube",
                 direction="x",
                 color_type=self.sub_control_color,
                 shape_position_offset=(0, 4 * self.mod, 0)
