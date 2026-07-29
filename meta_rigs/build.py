@@ -29,8 +29,8 @@ def build(meta_type:str='metahuman'):
     spine = meta_componets.Spine(control_size=rig_size, parent=body_rig_root, fk_control_space=[hipinfo.cog_control.ctrl])
     spineinfo = spine.spine_build()
 
-    neck = meta_componets.Chain(part='neck', control_size=rig_size * 2, parent=body_rig_root, side='m', joints= ['neck_01', 'neck_02', 'head',], fk_control_space=[spineinfo.fk_spine_controls_list[-1].ctrl], mod=2 )
-    neck_info = neck.chain_build()
+    neck = meta_componets.Neck(part='neck', control_size=rig_size * 2, parent=body_rig_root, side='m', joints= ['neck_01', 'neck_02', 'head',], fk_control_space=[spineinfo.fk_spine_controls_list[-1].ctrl], mod=2 )
+    neck_info = neck.neck_build()
 
     #side parts
 

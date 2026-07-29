@@ -9,6 +9,7 @@ from . import foot as foot
 from . import chain as chain
 from . import metacarpal as metacarpal
 from . import hand as hand
+from . import neck as neck
 
 from .root import Root
 from .scene_configure import configure_metahuman_scene
@@ -20,6 +21,7 @@ from .foot import Foot
 from .chain import Chain
 from .metacarpal import Metacarpal
 from .hand import Hand
+from .neck import Neck
 
 
 
@@ -45,5 +47,7 @@ __all__ = [
 "metacarpal",
 "Metacarpal",
 "hand",
-"Hand"
+"Hand",
+"neck",
+"Neck",
 ]
