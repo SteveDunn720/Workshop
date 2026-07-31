@@ -13,11 +13,14 @@ from Workshop.transform.utils import create_transform
 from Workshop.snapshots.image_planes import create_control_helper_plane
 from Workshop.control.core import  _create_control_curve
 from Workshop.control.serialize import write_curve_to_library
+from Workshop.snapshots.camera_core import delete_snapshot_camera, place_snapshot_camera, take_snapshot
+
 
 from pathlib import Path
 
 WORKSHOP_ROOT = Path(__file__).resolve().parents[1]  # Adjust if needed
 IMAGE_PATH = WORKSHOP_ROOT / "control" / "AA_control_sizer.png"
+ICON_PATH = WORKSHOP_ROOT / "control" / "shape_icons"
 
 
 # -------------------------------------------------
@@ -204,6 +207,24 @@ class ControlCreatorUI(QtWidgets.QDialog):
             ctrl_shp = self.control_name
         
         write_curve_to_library(curve=str(ctrl_shp), name=self.control_name, force = True)
+
+        if cmds.objExists('control_creater_helper_grp'):
+            cmds.setAttr('control_creater_helper_grp.visibility', False)
+
+        camera = place_snapshot_camera(
+            obj=ctrl_shp,
+            swivel=45.0,
+            tilt=45.0,
+            orthographic=True,
+        )
+
+        take_snapshot(
+            camera=camera,
+            path=ICON_PATH,
+            name=self.control_name,
+        )
+
+        delete_snapshot_camera()
     
 
     def load_shape(self) -> None:
