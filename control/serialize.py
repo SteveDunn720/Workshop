@@ -3,7 +3,6 @@ from __future__ import annotations
 import json
 import logging
 from dataclasses import asdict, dataclass
-from enum import Enum
 from pathlib import Path
 
 from maya import cmds
@@ -22,31 +21,9 @@ from Workshop.util import confirm_overwrite
 log = logging.getLogger(__name__)
 
 SHAPE_LIBRARY_DIR = Path(Path(__file__).resolve().parent / "shape_library")
-_control_shape_data_cache: dict[ControlShape, ControlShapeData] = {}
+DEFAULT_CONTROL_SHAPE = "circle"
+_control_shape_data_cache: dict[str, ControlShapeData] = {}
 
-
-class ControlShape(Enum):
-    """Enum for available control shapes with file names."""
-
-    CIRCLE = "circle"
-    SQUARE = "square"
-    ROUND_SQUARE = "round_square"
-    CUBE = "cube"
-    SPHERE = "sphere"
-    LOCATOR = "locator"
-    DIAMOND = "diamond"
-    TRIANGLE = "triangle"
-    HEXAGON = "hexagon"
-    LINE = "line"
-    SEMI_CIRCLE = "semi_circle"
-    CHARACTER_BASE = 'Character_base'
-    COG = 'COG'
-    SIMS = 'sims'
-
-    @property
-    def filename(self) -> str:
-        """returns the filename of the json file representing the control shape."""
-        return self.value
 
 
 @dataclass(frozen=True)
@@ -92,6 +69,37 @@ class ControlShapeData:
                 for name, curve_data in data.items()
             ]
         )
+    
+
+def resolve_control_shape_path(control_shape: str) -> Path:
+    """Return the requested shape file, falling back to circle."""
+
+    shape_name = control_shape.strip()
+
+    # Allow callers to pass either "cube" or "cube.json".
+    if shape_name.lower().endswith(".json"):
+        shape_name = shape_name[:-5]
+
+    shape_path = SHAPE_LIBRARY_DIR / f"{shape_name}.json"
+
+    if shape_path.exists():
+        return shape_path
+
+    default_path = SHAPE_LIBRARY_DIR / f"{DEFAULT_CONTROL_SHAPE}.json"
+
+    if not default_path.exists():
+        raise RuntimeError(
+            f"Requested control shape does not exist: {shape_path}\n"
+            f"Default control shape also does not exist: {default_path}"
+        )
+
+    log.warning(
+        "Control shape '%s' was not found. Using '%s' instead.",
+        shape_name,
+        DEFAULT_CONTROL_SHAPE,
+    )
+
+    return default_path
 
 
 def get_cv_data(curve_shape: str) -> tuple[list[tuple[float, float, float]], list[float]]:
@@ -159,28 +167,22 @@ def control_shape_data_from_json(json_str: str) -> ControlShapeData:
     return ControlShapeData.from_dict(data)
 
 
-def control_shape_data_from_library(curve_shape: ControlShape | str) -> ControlShapeData:
-    """
-    Args:
-        curve_shape(ControlShape): Name of the control shape to retrieve.
-    Returns:
-        dict: Curve data.
-    """
-    if isinstance(curve_shape, str):
-        curve_shape: ControlShape = ControlShape[curve_shape.strip().upper()]
-    if curve_shape not in _control_shape_data_cache:
-        # check if curve dict is a file and convert it to dictionary if it is
-        file_path: Path = SHAPE_LIBRARY_DIR / f"{curve_shape.filename}.json"
-        if not file_path.exists():
-            raise RuntimeError(
-                f"The shape file for {curve_shape.filename} couldn't be found in the shape library. "
-                f"You must write out the file {file_path} before reading."
-            )
+def control_shape_data_from_library(
+    control_shape: str,
+) -> ControlShapeData:
+    """Load control shape data from the shape library."""
 
-        with open(file_path, "r") as json_file:
-            json_data = json_file.read()
-            _control_shape_data_cache[curve_shape] = control_shape_data_from_json(json_data)
-    return _control_shape_data_cache[curve_shape]
+    file_path = resolve_control_shape_path(control_shape)
+    resolved_shape_name = file_path.stem
+
+    if resolved_shape_name not in _control_shape_data_cache:
+        json_data = file_path.read_text(encoding="utf-8")
+
+        _control_shape_data_cache[resolved_shape_name] = (
+            control_shape_data_from_json(json_data)
+        )
+
+    return _control_shape_data_cache[resolved_shape_name]
 
 
 def create_shape_from_named_curve_data(
@@ -229,21 +231,24 @@ def create_curve_from_data(
 
 def create_curve(
     name: str | None = None,
-    control_shape: ControlShape | str = ControlShape.CIRCLE,
+    control_shape: str = DEFAULT_CONTROL_SHAPE,
     parent: str | None = None,
 ) -> str:
-    """
-    Creates a curve from the specified item in the shape library.
+    """Create a curve from a JSON file in the shape library."""
 
-    Args:
-        curve_shape(ControlShape): Name of the control shape to generate.
-    Returns:
-        str: Name of the generated curve transform.
-    """
-    if isinstance(control_shape, str):
-        control_shape: ControlShape = ControlShape[control_shape.strip().upper()]
-    curve_data = control_shape_data_from_library(curve_shape=control_shape)
-    curve_transform = create_curve_from_data(curve_data, name or control_shape.name)
+    file_path = resolve_control_shape_path(control_shape)
+    resolved_shape_name = file_path.stem
+
+    curve_data = control_shape_data_from_library(
+        control_shape=resolved_shape_name,
+    )
+
+    curve_transform = create_curve_from_data(
+        curve_data=curve_data,
+        name=name or resolved_shape_name,
+        parent=parent,
+    )
+
     return curve_transform
 
 

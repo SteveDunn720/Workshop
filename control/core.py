@@ -3,13 +3,12 @@ from __future__ import annotations
 from contextlib import contextmanager
 from contextvars import ContextVar
 from dataclasses import dataclass
-from turtle import shape
 from typing import Iterator
 
 from maya import cmds
 from maya.api.OpenMaya import MMatrix
 
-from Workshop.control.serialize import ControlShape, create_curve
+from Workshop.control.serialize import create_curve
 from Workshop.maya_api.enum import RotateOrder
 from Workshop.name import MIDDLE_SIDE_NAME, get_side
 from Workshop.transform import create_transform
@@ -73,7 +72,7 @@ class Control:
 
 def _create_control_curve(
     name: str,
-    control_shape: ControlShape | str = ControlShape.CIRCLE,
+    control_shape:str = 'circle',
     direction: Direction = "y",
     size: float = 1,
     dimensions: tuple[float, float, float] = (1, 1, 1),
@@ -134,7 +133,7 @@ def create_control(
     parent: str | Control | None,
     transform: str | MMatrix | None = None,
     sdk_offset:bool = False,
-    control_shape: ControlShape | str = ControlShape.CIRCLE,
+    control_shape:str = 'circle',
     direction: Direction = "y",
     shape_position_offset: tuple[float, float, float] =(0,0,0),
     shape_rotation_offset: tuple[float, float, float] = (0, 0, 0),
