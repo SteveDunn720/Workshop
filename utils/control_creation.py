@@ -1,10 +1,23 @@
 
 from __future__ import annotations
 
+
 try:
     from PySide6 import QtCore, QtWidgets
 except ImportError:
     from PySide2 import QtCore, QtWidgets
+
+import maya.cmds as cmds
+
+from Workshop.transform.utils import create_transform
+from Workshop.snapshots.image_planes import create_control_helper_plane
+from Workshop.control.core import  _create_control_curve
+from Workshop.control.serialize import write_curve_to_library
+
+from pathlib import Path
+
+WORKSHOP_ROOT = Path(__file__).resolve().parents[1]  # Adjust if needed
+IMAGE_PATH = WORKSHOP_ROOT / "control" / "AA_control_sizer.png"
 
 
 # -------------------------------------------------
@@ -91,7 +104,12 @@ class ControlCreatorUI(QtWidgets.QDialog):
         setup_btn = QtWidgets.QPushButton("Setup Scene")
         setup_btn.clicked.connect(self.setup_scene)
 
+        clean_btn = QtWidgets.QPushButton("Clean Scene")
+        clean_btn.clicked.connect(self.clean_scene)
+
         setup_layout.addWidget(setup_btn)
+
+        setup_layout.addWidget(clean_btn)
 
         main_layout.addWidget(setup_section)
 
@@ -124,6 +142,9 @@ class ControlCreatorUI(QtWidgets.QDialog):
 
         control_layout.addRow("", button_layout)
 
+        self.use_selected_checkbox = QtWidgets.QCheckBox("Use Selected")
+        control_layout.addRow("", self.use_selected_checkbox)
+
         main_layout.addWidget(control_section)
 
     # -------------------------------------------------
@@ -132,16 +153,33 @@ class ControlCreatorUI(QtWidgets.QDialog):
 
     @property
     def control_name(self) -> str:
-        """Return the current text from the name field."""
+        """Return the current text from the name field.""" #self.control_name
         return self.name_field.text().strip()
+    
+    @property
+    def use_selected(self) -> bool:
+        """Whether to use the selected object.""" #self.use_selected
+        return self.use_selected_checkbox.isChecked()
 
     # -------------------------------------------------
     # Button Functions
     # -------------------------------------------------
 
+    def clean_scene(self) -> None:
+        """Set up the scene for control creation."""
+        cmds.delete('control_creater_helper_grp')
+
     def setup_scene(self) -> None:
         """Set up the scene for control creation."""
-        print("Setup Scene")
+        parent_tform = create_transform(name='control_creater_helper_grp')
+        tform, shp = create_control_helper_plane(
+            image_path=str(IMAGE_PATH),
+            name="reference_image",
+        )
+
+        cmds.parent(tform, parent_tform)
+        cmds.setAttr(f"{shp}.alphaGain", .5)
+        
 
         # Add your scene setup code here.
 
@@ -159,10 +197,14 @@ class ControlCreatorUI(QtWidgets.QDialog):
 
         print(f"Save Control: {control_name}")
 
-        # Add your save control code here.
-        #
-        # Example:
-        # save_control_shape(control_name)
+        if self.use_selected:
+            ctrl_shp = cmds.ls(selection=True)[0]
+
+        else:
+            ctrl_shp = self.control_name
+        
+        write_curve_to_library(curve=str(ctrl_shp), name=self.control_name, force = True)
+    
 
     def load_shape(self) -> None:
         """Load the control shape using the current name."""
@@ -175,6 +217,11 @@ class ControlCreatorUI(QtWidgets.QDialog):
                 "Enter a control name before loading.",
             )
             return
+        
+        _create_control_curve(
+            name= control_name,
+            control_shape = control_name,
+        )
 
         print(f"Load Shape: {control_name}")
 
