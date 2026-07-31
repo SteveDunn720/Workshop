@@ -66,8 +66,8 @@ class Neck:
                 name=f'{self.part}_curl_{self.side}',
                 parent=ctrl_par,
                 transform=self.joints[0],
-                size=self.control_size/16,
-                control_shape="sphere",
+                size=self.control_size/8,
+                control_shape="sims",
                 direction="x",
                 color_type=self.sub_control_color,
                 shape_position_offset=(self.control_size/3, 0, 0)

@@ -45,16 +45,17 @@ class Hip:
             name='COG',
             parent=self.control_grp,
             transform=self.joints[0],
-            size=self.control_size * .6,
+            size=self.control_size * .45,
             control_shape="COG",
             direction="x",
+            shape_rotation_offset=(0,90,-90)
         )
 
         self.hip_ctrl = create_control(
             name='hip',
             parent=self.COG_ctrl.ctrl,
             transform=self.joints[0],
-            size=self.control_size * .4,
+            size=self.control_size * .35,
             control_shape="circle",
             direction="x",
         )

@@ -46,7 +46,7 @@ class Root:
             parent=self.control_grp,
             transform=self.joints[0],
             size=self.control_size,
-            control_shape="circle",
+            control_shape="Character_base",
             direction="z",
             color_type='Root'
         )
@@ -55,7 +55,7 @@ class Root:
             name='local',
             parent=self.root_ctrl.ctrl,
             transform=self.joints[0],
-            size=self.control_size * .8,
+            size=self.control_size * .56,
             control_shape="circle",
             direction="z",
         )
@@ -64,7 +64,7 @@ class Root:
             name='offset',
             parent=self.local_ctrl.ctrl,
             transform=self.joints[0],
-            size=self.control_size * .6,
+            size=self.control_size * .4,
             control_shape="circle",
             direction="z",
         )
@@ -75,9 +75,9 @@ class Root:
             parent=self.local_ctrl.ctrl,
             transform=self.joints[0],
             size=self.control_size * .05,
-            control_shape="circle",
+            control_shape="gear",
             direction="z",
-            shape_position_offset=(self.control_size * .9, self.control_size * .1, 0 )
+            shape_position_offset=(self.control_size * 0.88, 0, 0 )
         )
 
         self.color_control = create_control(
@@ -85,9 +85,9 @@ class Root:
             parent=self.local_ctrl.ctrl,
             transform=self.joints[0],
             size=self.control_size * .05,
-            control_shape="circle",
+            control_shape="gear",
             direction="z",
-            shape_position_offset=(self.control_size * .9, self.control_size * -.1, 0)
+            shape_position_offset=(self.control_size * -0.88, 0, 0 )
         )
         lock_tag(self.color_control.ctrl, hide_tag=True)
         lock_tag(self.vis_control.ctrl, hide_tag=True)

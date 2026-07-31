@@ -253,7 +253,7 @@ class Limb:
                 parent=self.ik_control_grp,
                 transform=self.ik_handle.pole_vector,
                 size=self.control_size/10,
-                control_shape="sims",
+                control_shape="diamond",
                 direction="y",
                 color_type=self.main_control_color,
                 shape_rotation_offset=(90,-90,0)
