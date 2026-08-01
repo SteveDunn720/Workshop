@@ -4,7 +4,8 @@ from maya.api.OpenMaya import MMatrix
 
 from Workshop.joint import create_joint
 from Workshop.transform.matrix import set_local_matrix
-from Workshop.transform.utils import match_location
+from Workshop.transform.utils import match_location, match_transform
+from Workshop.transform.curve import create_line_curve, style_curve, curve_cvs
 
 @dataclass 
 class guide_info:
@@ -13,10 +14,26 @@ class guide_info:
     rot:tuple
     guide_type:str
     extra_channels:list
+    descriptor:str
+
+@dataclass
+class spline_guide_info:
+    curve:guide_info
+    lower:guide_info
+    lower_tan:guide_info
+    upper:guide_info
+    upper_tan:guide_info
+
+@dataclass
+class chain_guide_info:
+    guides:list[guide_info]
+
+
+
 
 
 def create_guide_from_position(pos, guide_name, parent)->guide_info:
-    guide = create_joint(name=guide_name, connect=False, parent=parent, suffix=False)
+    guide = create_joint(name=f'{guide_name}_guide', connect=False, parent=parent, suffix=False)
 
     if isinstance(pos, str):
         if not cmds.objExists(pos):
@@ -33,6 +50,69 @@ def create_guide_from_position(pos, guide_name, parent)->guide_info:
     return_pos = cmds.xform(guide, query=True, translation=True, worldSpace=True)
     return_rot = cmds.xform(guide, query=True, rotation=True, worldSpace=True)
     
-    info = guide_info(name=guide_name, pos=return_pos, rot=return_rot, guide_type='joint', extra_channels=[] ) #type:ignore
+    info = guide_info(name=guide, pos=return_pos, rot=return_rot, guide_type='joint', extra_channels=[], descriptor=guide_name) #type:ignore
+    return info
+
+
+
+
+
+
+def create_spline_guide(parent:str, lower_name:str='lower', upper_name:str='upper', curve_name:str='spline', side:str='M', position:list=[]):
+    if position:
+        upper_pos = position[0]
+        lower_pos = position[1]
+    else:
+        upper_pos = (0,5,0)
+        lower_pos = (0,0,0)
+
+    upper = create_guide_from_position(pos=upper_pos, guide_name=f"{upper_name}_{side}", parent=parent)
+    lower = create_guide_from_position(pos=lower_pos, guide_name=f"{lower_name}_{side}", parent=parent)
+
+    curve = create_line_curve(name=f'{curve_name}_{side}_guide', start_position=lower_pos, end_position=upper_pos)
+    style_curve(curve=curve, line_width=5, draw_on_top=True, template=True)
+    cmds.displaySmoothness(
+        curve,
+        pointsWire=16,
+        pointsShaded=4,
+        polygonObject=3,
+    )
+    cmds.parent(curve, parent)
+
+    curve_guide = guide_info(name=f'{curve_name}_{side}_guide', pos=(0,0,0), rot=(0,0,0), guide_type='curve', extra_channels=[], descriptor=f"{upper_name}_{side}")
+
+    clusters, pos = curve_cvs(curve=curve, clusters=True)
+
+    upper_tan = create_guide_from_position(pos=tuple(pos[2]), guide_name=f'{upper_name}_tan_{side}', parent=upper.name)
+    lower_tan = create_guide_from_position(pos=tuple(pos[1]), guide_name=f'{lower_name}_tan_{side}', parent=lower.name)
+
+    guides = [lower, lower_tan, upper_tan, upper]
+
+    for i,cluster in enumerate(clusters): 
+        #match_transform(transform=cluster, target_transform=guides[i].name)
+        cmds.parent(cluster, guides[i].name)
+        tform = cmds.listRelatives(parent=True)[0]
+        if tform == guides[i].name:
+            cmds.setAttr(f'{cluster}.visibility', False)
+            cmds.setAttr(f"{cluster}.hiddenInOutliner", True)
+        else:
+            tform = cmds.rename(tform, f"{guides[i].name}_offset")
+            cmds.setAttr(f'{tform}.visibility', False)
+            cmds.setAttr(f"{tform}.hiddenInOutliner", True)
+
+    info = spline_guide_info(curve=curve_guide, upper=upper, upper_tan=upper_tan, lower=lower, lower_tan=lower_tan)
+    return info
+
+
+
+
+
+
+def chain_guides(names:list, side:str='M', position:list=[], parent:str=''):
+    guide_list=[]
+    for i,g in enumerate(names):
+        guide = create_guide_from_position(pos=position[i], guide_name=f"{g}_{side}", parent=parent)
+        guide_list.append(guide)
+    info = chain_guide_info(guides=guide_list)
     return info
 
