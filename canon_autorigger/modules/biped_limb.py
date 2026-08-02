@@ -1,12 +1,16 @@
 from attr import dataclass
+
 import maya.cmds as cmds
-from Workshop.meta_rigs.meta_componets.ik import create_IK_rotate_plane, create_IK_single_chain
+
+from .ik import create_IK_rotate_plane, create_IK_single_chain, IK_data
 from Workshop.control.core import create_control
 from Workshop.joint import create_joint
 from Workshop.maya_api.node import ConditionNode, MultiplyDivideNode, ReverseNode, DistanceBetweenNode, BlendTwoAttrNode, SumNode
-from Workshop.transform.utils import create_transform, get_distance_between
-from .module_initialize import module_prep, module_space
+from Workshop.transform.utils import create_transform
 from Workshop.control.core import Control
+
+from .module_initialize import module_prep, module_space
+
 
 
 
@@ -20,6 +24,15 @@ class moudle_info:
     fk_controls:list
     ik_len:list
     ik_stretch_attr:str
+    ik_joints:list
+    fk_joints:list
+    switch_joints:list
+    bind_joints:list
+    controls:list
+    ik_main_handle: IK_data
+    ik_singlechain: IK_data | None
+    ik_len_joints:list
+
 
 
 class Limb:
@@ -28,8 +41,9 @@ class Limb:
         part: str = "leg",
         side: str = "L",
         parent: str = "body_rig",
+        joint_parent:str = None,
         control_size: float = 1.0,
-        joints: list = ['thigh_l', 'calf_l', 'foot_l'],
+        guides: list = ['thigh_l', 'calf_l', 'foot_l'],
         fk_control_space:list = [],
         ik_control_space:list = [],
         ik_end_control:bool = False,
@@ -41,13 +55,14 @@ class Limb:
         self.side: str = side
         self.parent: str = parent
         self.control_size: float = control_size
-        self.joints: list = joints
+        self.guides: list = guides
         self.ik_end_control = ik_end_control
         self.fk_control_space = fk_control_space
         self.ik_control_space = ik_control_space
         self.main_control_color = 'Left' if self.side == 'l' else 'Right'
         self.ikfk_blend = ikfk_blend
         self.ik_length = ik_length
+        self.joint_parent = joint_parent
 
 
     def build_stretchy_ik(self,
@@ -146,8 +161,8 @@ class Limb:
         rev.input.x.connect_from(self.FK_IK_Switch)
         rev.output.x.connect_to(f'{self.ik_control_grp}.visibility')
         cmds.connectAttr(self.FK_IK_Switch, f'{self.fk_control_grp}.visibility')
-        for i,jnt in enumerate(self.joints):
-            if not self.ik_end_control and i == len(self.joints) - 1:
+        for i,jnt in enumerate(self.guides):
+            if not self.ik_end_control and i == len(self.guides) - 1:
                 continue
             parent_con:str = cmds.parentConstraint(self.fk_joints[i], self.ik_joints[i], self.switch_joints[i], maintainOffset=True)[0] #type:ignore
             #scale_con:str = cmds.scaleConstraint(self.fk_joints[i], self.ik_joints[i], self.switch_joints[i], maintainOffset=True)[0] #type:ignore
@@ -174,13 +189,15 @@ class Limb:
         self.fk_control_grp = prep.fk_grp
 
         self.controls = []
+        self.bind_joints = []
 
 
         self.switch_joints = []
         jnt_par = self.guts
+
         #switch_joints
-        for i,jnt in enumerate(self.joints):
-            if not self.ik_end_control and i == len(self.joints) - 1:
+        for i,jnt in enumerate(self.guides):
+            if not self.ik_end_control and i == len(self.guides) - 1:
                 continue
             switch_jnt = create_joint(name=f'switch_{jnt}', transform=jnt, parent=jnt_par, connect=False)
             self.switch_joints.append(switch_jnt)
@@ -193,8 +210,8 @@ class Limb:
 
         jnt_par = self.guts
         ctrl_par = self.fk_control_grp
-        for i,jnt in enumerate(self.joints):
-            if not self.ik_end_control and i == len(self.joints) - 1:
+        for i,jnt in enumerate(self.guides):
+            if not self.ik_end_control and i == len(self.guides) - 1:
                 continue
             ctrl = create_control(
                 name=f'FK_{jnt}',
@@ -222,9 +239,9 @@ class Limb:
         jnt_par = self.guts
         #IK_build 
 
-        for i,jnt in enumerate(self.joints):
+        for i,jnt in enumerate(self.guides):
             jnt_name = jnt
-            if not self.ik_end_control and i == len(self.joints) - 1:
+            if not self.ik_end_control and i == len(self.guides) - 1:
                 jnt_name = f'{jnt}_hook'
             ik_jnt = create_joint(name=f'IK_{jnt_name}', transform=jnt, parent=jnt_par, connect=False)
             self.ik_joints.append(ik_jnt)
@@ -233,7 +250,7 @@ class Limb:
         self.ik_handle = create_IK_rotate_plane(name=f'{self.part}_{self.side}', start_joint=self.ik_joints[0], mid_joint=self.ik_joints[1], end_joint=self.ik_joints[2], auto_pv=True, pole_vector_guide='')
         cmds.parent(self.ik_handle.handle, self.ik_handle.pole_vector, self.guts)
         self.ik_root_ctrl = create_control(
-                name=f'IK_{self.joints[0]}',
+                name=f'IK_{self.guides[0]}',
                 parent=self.ik_control_grp,
                 transform=self.ik_handle.start_joint,
                 size=self.control_size/8,
@@ -262,9 +279,9 @@ class Limb:
 
         if self.ik_end_control:
             self.ik_end_ctrl = create_control(
-                name=f'IK_{self.joints[2]}',
+                name=f'IK_{self.guides[2]}',
                 parent=self.ik_control_grp,
-                transform=self.joints[2],
+                transform=self.guides[2],
                 size=self.control_size/8,
                 control_shape="cube",
                 direction="x",
@@ -278,9 +295,9 @@ class Limb:
             self.ik_hook = None
         else:
             self.ik_end_ctrl = create_control(
-                name=f'IK_{self.joints[2]}',
+                name=f'IK_{self.guides[2]}',
                 parent=self.ik_control_grp,
-                transform=self.joints[2],
+                transform=self.guides[2],
                 size=self.control_size/8,
                 control_shape="cube",
                 direction="x",
@@ -291,9 +308,7 @@ class Limb:
             self.controls.append(self.ik_end_ctrl.ctrl)
             self.ik_controls.append(self.ik_pv_ctrl.ctrl)
             cmds.hide(self.ik_end_ctrl.ctrl)
-            #self.ik_hook = None
             self.ik_hook = self.ik_end_ctrl.ctrl
-            #self.ik_controls.append('')
 
 
         self.fkik_switch(controls=self.controls)
@@ -303,7 +318,7 @@ class Limb:
         if self.ik_length:
             self.ik_len_joints = []
             jnt_par = self.guts
-            for i,jnt in enumerate(self.joints):
+            for i,jnt in enumerate(self.guides):
                 if i == 1:
                     pass
                 else:
@@ -321,12 +336,12 @@ class Limb:
         #stretch
         
         if not self.ik_end_control:
-            end_pos = create_transform(name=f'{self.joints[2]}_len_pos', transform=self.joints[2], parent=self.guts)
+            end_pos = create_transform(name=f'{self.guides[2]}_len_pos', transform=self.guides[2], parent=self.guts)
         else:
             end_pos = self.ik_end_ctrl.ctrl
 
         self.build_stretchy_ik(
-            name=f'{self.joints[0]}',
+            name=f'{self.guides[0]}',
             root_reference=self.ik_root_ctrl.ctrl,
             ik_control=end_pos,
             upper_joint=self.ik_joints[0],
@@ -335,6 +350,16 @@ class Limb:
             stretch_attr= "stretch",
             drive_length_joint=self.ik_length,
             len_joint=ik_len[2] if self.ik_length else '')
+
+        jnt_par = self.joint_parent
+
+        #bind chain
+        for i,jnt in enumerate(self.guides):
+                    if not self.ik_end_control and i == len(self.guides) - 1:
+                        continue
+                    switch_jnt = create_joint(name=f'def_{jnt}', transform=jnt, parent=jnt_par, connect=False)
+                    self.bind_joints.append(switch_jnt)
+                    jnt_par = switch_jnt
 
 
 
@@ -346,7 +371,15 @@ class Limb:
                 ik_controls = self.ik_controls,
                 fk_controls = self.fk_controls,
                 ik_len=ik_len,
-                ik_stretch_attr = f'{end_pos}.stretch'
+                ik_stretch_attr = f'{end_pos}.stretch',
+                fk_joints=self.fk_joints,
+                ik_joints=self.fk_joints,
+                switch_joints=self.switch_joints,
+                bind_joints=self.bind_joints,
+                controls = self.controls,
+                ik_main_handle=self.ik_handle,
+                ik_singlechain=self.ik_len_chain if self.ik_length else None,
+                ik_len_joints = self.ik_len_joints if self.ik_length else [],
                 )
         
         return self.info
