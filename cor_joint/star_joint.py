@@ -69,5 +69,6 @@ def build_star_joint(name:str, joint:str, twist_axis:str='X', ignore_axes:list[s
         pop_remap.output_min.set(pop.pop_clampdown * pop.pop_mult)
         pop_remap.output.connect_to(f'{name}_{mod}{pop.axis}_jnt.translate{pop.axis}')
 
+
     
         

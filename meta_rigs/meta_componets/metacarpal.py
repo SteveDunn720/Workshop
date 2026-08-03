@@ -6,7 +6,8 @@ import maya.cmds as cmds
 from Workshop.meta_rigs.meta_componets.ik import create_IK_rotate_plane
 from Workshop.control.core import create_control
 from Workshop.joint import create_joint
-from Workshop.maya_api.node import ReverseNode
+from Workshop.maya_api.node import BlendColorsNode, ReverseNode
+from Workshop.transform.utils import rotation_blend
 from .module_initialize import module_prep, module_space
 from Workshop.control.core import Control
 
@@ -76,6 +77,9 @@ class Metacarpal:
         
         self.controls.append(self.roll_ctrl.ctrl)
 
+        weights = [i / (len(self.joints) - 1) for i in range(len(self.joints))]
+        weights.reverse()
+
 
         for i,jnt in enumerate(self.joints):
             ctrl = create_control(
@@ -88,14 +92,24 @@ class Metacarpal:
                 color_type=self.main_control_color,
                 sdk_offset=True
             )
-            for attr in ['translate', 'rotate']:
+            if i != 0:
+                rotation_blend(name=f'{ctrl.ctrl}_meta', tfrom01=self.roll_ctrl.ctrl, tform02=ctrl.sdk, weight=weights[i], attr=True )
+
+                translate_blend = BlendColorsNode(name=f'{ctrl.ctrl}_meta_BC')
+                translate_blend.color2.connect_from(f'{self.roll_ctrl.ctrl}.translate')
+                translate_blend.blender.set(weights[i])
+                translate_blend.output.connect_to(f'{ctrl.sdk}.translate')
+            
+
+
+            """for attr in ['translate', 'rotate']:
                 for axis in ['X', 'Z', 'Y']:
-                    cmds.connectAttr(f'{self.roll_ctrl.ctrl}.{attr}{axis}', f'{ctrl.sdk}.{attr}{axis}')
+                    cmds.connectAttr(f'{self.roll_ctrl.ctrl}.{attr}{axis}', f'{ctrl.sdk}.{attr}{axis}')"""
 
 
             self.fk_controls.append(ctrl)
             self.controls.append(ctrl.ctrl)
-            ctrl_par = ctrl.ctrl
+            #ctrl_par = ctrl.ctrl
             if self.bind:
                 cmds.parentConstraint(ctrl.ctrl, jnt, maintainOffset=True)
             else:
@@ -103,8 +117,8 @@ class Metacarpal:
             
             
 
-    
-        module_space(space_list=self.fk_control_space, control=self.fk_controls[0])
+        for ctrl in self.fk_controls:
+            module_space(space_list=self.fk_control_space, control=ctrl)
         module_space(space_list=self.fk_control_space, control=self.roll_ctrl)
         self.info = moudle_info(
                 fk_root = self.fk_controls[0],

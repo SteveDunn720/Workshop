@@ -18,7 +18,7 @@ from maya.api.OpenMaya import (
 )
 
 from Workshop.maya_api.attribute import MatrixAttribute, ScalarAttribute
-from Workshop.maya_api.node import ConditionNode, DistanceBetweenNode, SubtractNode
+from Workshop.maya_api.node import ConditionNode, DistanceBetweenNode, EulerToQuatNode, QuatSlerpNode, QuatToEulerNode, SubtractNode
 from Workshop.name import get_short_name
 from Workshop.transform.matrix import (
     get_world_matrix,
@@ -495,3 +495,23 @@ def get_flat_y_aim_rotation(source: str, target: str) -> float:
 
     # Convert to degrees
     return math.degrees(angle)
+
+
+def rotation_blend(name:str, tfrom01:str, tform02:str, attr:bool=False, weight:float=.5,):
+    etq = EulerToQuatNode(name=f'{name}_etq')
+    etq.input_rotate.connect_from(f'{tfrom01}.rotate')
+    etq.input_rotate_order.connect_from(f'{tfrom01}.rotateOrder')
+
+    qslerp = QuatSlerpNode(name=f'{name}_qslerp')
+    qslerp.input1_quat.connect_from(etq.output_quat)
+    
+    if attr:
+        cmds.addAttr(tfrom01, longName=f'{tform02}_blend', dv=weight)
+        qslerp.input_t.connect_from(f'{tfrom01}.{tform02}_blend')
+    else:
+        qslerp.input_t.set(weight)
+
+    qte = QuatToEulerNode(name=f'{name}_etq')
+    qte.input_quat.connect_from(qslerp.output_quat)
+    qte.input_rotate_order.connect_from(f'{tfrom01}.rotateOrder')
+    qte.output_rotate.connect_to(f'{tform02}.rotate')
