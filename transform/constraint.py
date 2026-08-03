@@ -277,12 +277,6 @@ def _validate_transform(node: str) -> None:
     if not cmds.objExists(node):
         raise ValueError(f"Maya node does not exist: {node!r}")
 
-    if cmds.nodeType(node) not in {"transform", "joint"}:
-        raise TypeError(
-            f"{node!r} must be a transform or joint. "
-            f"Received {cmds.nodeType(node)!r}."
-        )
-
 
 def _organize_constraint(
     constraint_node: str,

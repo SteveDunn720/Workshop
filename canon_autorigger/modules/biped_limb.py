@@ -8,9 +8,10 @@ from Workshop.joint import create_joint
 from Workshop.maya_api.node import ConditionNode, MultiplyDivideNode, ReverseNode, DistanceBetweenNode, BlendTwoAttrNode, SumNode
 from Workshop.transform.utils import create_transform
 from Workshop.control.core import Control
+from Workshop.transform.constraint import constraint
 
 from .module_initialize import module_prep, module_space
-
+from .module_shared import fkik_switch
 
 
 
@@ -59,7 +60,7 @@ class Limb:
         self.ik_end_control = ik_end_control
         self.fk_control_space = fk_control_space
         self.ik_control_space = ik_control_space
-        self.main_control_color = 'Left' if self.side == 'l' else 'Right'
+        self.main_control_color = 'Left' if self.side == 'L' else 'Right'
         self.ikfk_blend = ikfk_blend
         self.ik_length = ik_length
         self.joint_parent = joint_parent
@@ -74,14 +75,15 @@ class Limb:
             end_joint: str,
             stretch_attr: str = "stretch",
             drive_length_joint:bool = False,
-            len_joint:str = ''
+            len_joint:str = '',
+            down_axis:str='Y'
         ):
             """Build a basic non-compressing stretchy IK setup.
 
             Assumes the limb joints extend along local translate X.
             """
 
-            if not cmds.attributeQuery(stretch_attr, node=ik_control, exists=True):
+            if not cmds.attributeQuery(stretch_attr, node=ik_control, exists=True,):
                 cmds.addAttr(
                     ik_control,
                     longName=stretch_attr,
@@ -92,8 +94,8 @@ class Limb:
                     keyable=True,
                 )
 
-            upper_length = cmds.getAttr(f"{lower_joint}.translateX")
-            lower_length = cmds.getAttr(f"{end_joint}.translateX")
+            upper_length = cmds.getAttr(f"{lower_joint}.translate{down_axis}")
+            lower_length = cmds.getAttr(f"{end_joint}.translate{down_axis}")
 
             original_length = abs(upper_length) + abs(lower_length)
 
@@ -124,8 +126,8 @@ class Limb:
             length.input1.y.set(lower_length)
             length.input2.x.connect_from(blend.output)
             length.input2.y.connect_from(blend.output)
-            length.output.x.connect_to(f"{lower_joint}.translateX",)
-            length.output.y.connect_to(f"{end_joint}.translateX",)
+            length.output.x.connect_to(f"{lower_joint}.translate{down_axis}",)
+            length.output.y.connect_to(f"{end_joint}.translate{down_axis}",)
 
             if drive_length_joint:
                 len_mult = MultiplyDivideNode(name=f"{name}_ik_len")
@@ -146,39 +148,9 @@ class Limb:
                 len_clamp.color_if_true.r.connect_from(len_sum.output)
                 len_clamp.color_if_false.r.connect_from(len_mult.output.x)
                 len_clamp.operation.set(2)
-                #len_clamp.color_if_true.g.connect_from(len_mult.output.x)
 
-                len_clamp.out_color.r.connect_to(f'{len_joint}.translateX')
+                len_clamp.out_color.r.connect_to(f'{len_joint}.translate{down_axis}')
 
-
-
-
-
-    def fkik_switch(self, controls:list|None):
-        cmds.addAttr(self.main_grp, longName='FK_IK_Switch', attributeType='double', defaultValue=1, maxValue=1, minValue=0, keyable=True)
-        self.FK_IK_Switch = f'{self.main_grp}.FK_IK_Switch'
-        rev = ReverseNode(name=f"{self.part}_FKIK_rev")
-        rev.input.x.connect_from(self.FK_IK_Switch)
-        rev.output.x.connect_to(f'{self.ik_control_grp}.visibility')
-        cmds.connectAttr(self.FK_IK_Switch, f'{self.fk_control_grp}.visibility')
-        for i,jnt in enumerate(self.guides):
-            if not self.ik_end_control and i == len(self.guides) - 1:
-                continue
-            parent_con:str = cmds.parentConstraint(self.fk_joints[i], self.ik_joints[i], self.switch_joints[i], maintainOffset=True)[0] #type:ignore
-            #scale_con:str = cmds.scaleConstraint(self.fk_joints[i], self.ik_joints[i], self.switch_joints[i], maintainOffset=True)[0] #type:ignore
-            parent_weights = cmds.parentConstraint(parent_con, query=True, weightAliasList=True)
-            #scale_weights = cmds.parentConstraint(scale_con, query=True, weightAliasList=True)
-            
-            cmds.connectAttr(self.FK_IK_Switch, f'{parent_con}.{parent_weights[0]}')
-            #cmds.connectAttr(self.FK_IK_Switch, f'{scale_con}.{scale_weights[0]}')
-            cmds.connectAttr(rev.output.x, f'{parent_con}.{parent_weights[1]}')
-            #cmds.connectAttr(rev.output.x, f'{scale_con}.{scale_weights[1]}')
-
-            cmds.parentConstraint(self.switch_joints[i], jnt, maintainOffset=True)
-            #cmds.scaleConstraint(self.switch_joints[i], jnt, maintainOffset=True)
-        if controls:
-            for control in controls:
-                cmds.addAttr(control, longName='FKIK_Switch', proxy=self.FK_IK_Switch)
 
     def limb_build(self):
         prep = module_prep(part=self.part, parent=self.parent, side=self.side, fkik=True)
@@ -261,7 +233,7 @@ class Limb:
         module_space(space_list=self.ik_control_space, control=self.ik_root_ctrl)
         self.controls.append(self.ik_root_ctrl.ctrl)
         self.ik_controls.append(self.ik_root_ctrl.ctrl)
-        cmds.parentConstraint(self.ik_root_ctrl.ctrl, self.ik_handle.start_joint, maintainOffset=True)
+        constraint(drivers=[self.ik_root_ctrl.ctrl], driven=self.ik_handle.start_joint, parent=self.guts, constraint_type="parent")
         self.ik_pv_ctrl = create_control(
                 name=f'{self.part}_IK_PV_{self.side}',
                 parent=self.ik_control_grp,
@@ -275,7 +247,7 @@ class Limb:
         module_space(space_list=self.ik_control_space, control=self.ik_pv_ctrl)
         self.controls.append(self.ik_pv_ctrl.ctrl)
         self.ik_controls.append(self.ik_pv_ctrl.ctrl)
-        cmds.parentConstraint(self.ik_pv_ctrl.ctrl, self.ik_handle.pole_vector, maintainOffset=True)
+        constraint(drivers=[self.ik_pv_ctrl.ctrl], driven=self.ik_handle.pole_vector, parent=self.guts, constraint_type="parent")
 
         if self.ik_end_control:
             self.ik_end_ctrl = create_control(
@@ -287,8 +259,8 @@ class Limb:
                 direction="x",
                 color_type=self.main_control_color
             )
-            cmds.parentConstraint(self.ik_end_ctrl.ctrl, self.ik_handle.handle, maintainOffset=True)
-            cmds.orientConstraint(self.ik_end_ctrl.ctrl, self.ik_joints[2], maintainOffset=True)
+            constraint(drivers=[self.ik_end_ctrl.ctrl], driven=self.ik_handle.handle, parent=self.guts, constraint_type="parent")
+            cmds.orientConstraint(self.ik_end_ctrl.ctrl, self.ik_joints[2], maintainOffset=True) #REPLACE
             module_space(space_list=self.ik_control_space, control=self.ik_end_ctrl)
             self.controls.append(self.ik_end_ctrl.ctrl)
             self.ik_controls.append(self.ik_pv_ctrl.ctrl)
@@ -303,15 +275,16 @@ class Limb:
                 direction="x",
                 color_type=self.main_control_color
             )
-            cmds.parentConstraint(self.ik_end_ctrl.ctrl, self.ik_handle.handle, maintainOffset=True)
-            cmds.orientConstraint(self.ik_end_ctrl.ctrl, self.ik_joints[2], maintainOffset=True)
+            constraint(drivers=[self.ik_end_ctrl.ctrl], driven=self.ik_handle.handle, parent=self.guts, constraint_type="parent")
+            cmds.orientConstraint(self.ik_end_ctrl.ctrl, self.ik_joints[2], maintainOffset=True) #REPLACE
             self.controls.append(self.ik_end_ctrl.ctrl)
             self.ik_controls.append(self.ik_pv_ctrl.ctrl)
             cmds.hide(self.ik_end_ctrl.ctrl)
             self.ik_hook = self.ik_end_ctrl.ctrl
 
 
-        self.fkik_switch(controls=self.controls)
+        #self.fkik_switch(controls=self.controls)
+        self.FK_IK_Switch = fkik_switch(controls=self.controls, node_attr=self.main_grp, descriptor=self.part, fk_grp=self.fk_control_grp, ik_grp=self.ik_control_grp, fk_joints=self.fk_joints, ik_joints=self.ik_joints, switch_joints=self.switch_joints )
         cmds.setAttr(self.FK_IK_Switch, self.ikfk_blend)
 
 
@@ -360,6 +333,7 @@ class Limb:
                     switch_jnt = create_joint(name=f'def_{jnt}', transform=jnt, parent=jnt_par, connect=False)
                     self.bind_joints.append(switch_jnt)
                     jnt_par = switch_jnt
+                    constraint(drivers=[self.switch_joints[i]], driven=switch_jnt, parent=self.guts, constraint_type="parent")
 
 
 
