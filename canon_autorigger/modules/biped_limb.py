@@ -46,7 +46,9 @@ class Limb:
         control_size: float = 1.0,
         guides: list = ['thigh_l', 'calf_l', 'foot_l'],
         fk_control_space:list = [],
-        ik_control_space:list = [],
+        ik_root_control_space:list = [],
+        ik_pv_control_space:list = [],
+        ik_end_control_space:list = [],
         ik_end_control:bool = False,
         ikfk_blend:float = 1,
         ik_length:bool = False,
@@ -59,7 +61,9 @@ class Limb:
         self.guides: list = guides
         self.ik_end_control = ik_end_control
         self.fk_control_space = fk_control_space
-        self.ik_control_space = ik_control_space
+        self.ik_root_control_space = ik_root_control_space
+        self.ik_pv_control_space = ik_pv_control_space
+        self.ik_end_control_space = ik_end_control_space
         self.main_control_color = 'Left' if self.side == 'L' else 'Right'
         self.ikfk_blend = ikfk_blend
         self.ik_length = ik_length
@@ -153,6 +157,9 @@ class Limb:
 
 
     def limb_build(self):
+
+        #module prep
+
         prep = module_prep(part=self.part, parent=self.parent, side=self.side, fkik=True)
         self.main_grp = prep.main_grp
         self.control_grp = prep.control_grp
@@ -209,6 +216,9 @@ class Limb:
         self.ik_controls = []
         module_space(space_list=self.fk_control_space, control=self.fk_controls[0])
         jnt_par = self.guts
+
+
+        
         #IK_build 
 
         for i,jnt in enumerate(self.guides):
@@ -230,7 +240,7 @@ class Limb:
                 direction="x",
                 color_type=self.main_control_color
             )
-        module_space(space_list=self.ik_control_space, control=self.ik_root_ctrl)
+        module_space(space_list=self.ik_root_control_space, control=self.ik_root_ctrl)
         self.controls.append(self.ik_root_ctrl.ctrl)
         self.ik_controls.append(self.ik_root_ctrl.ctrl)
         constraint(drivers=[self.ik_root_ctrl.ctrl], driven=self.ik_handle.start_joint, parent=self.guts, constraint_type="parent")
@@ -244,7 +254,7 @@ class Limb:
                 color_type=self.main_control_color,
                 shape_rotation_offset=(90,-90,0)
             )
-        module_space(space_list=self.ik_control_space, control=self.ik_pv_ctrl)
+        module_space(space_list=self.ik_pv_control_space, control=self.ik_pv_ctrl)
         self.controls.append(self.ik_pv_ctrl.ctrl)
         self.ik_controls.append(self.ik_pv_ctrl.ctrl)
         constraint(drivers=[self.ik_pv_ctrl.ctrl], driven=self.ik_handle.pole_vector, parent=self.guts, constraint_type="parent")
@@ -261,7 +271,7 @@ class Limb:
             )
             constraint(drivers=[self.ik_end_ctrl.ctrl], driven=self.ik_handle.handle, parent=self.guts, constraint_type="parent")
             cmds.orientConstraint(self.ik_end_ctrl.ctrl, self.ik_joints[2], maintainOffset=True) #REPLACE
-            module_space(space_list=self.ik_control_space, control=self.ik_end_ctrl)
+            module_space(space_list=self.ik_end_control_space, control=self.ik_end_ctrl)
             self.controls.append(self.ik_end_ctrl.ctrl)
             self.ik_controls.append(self.ik_pv_ctrl.ctrl)
             self.ik_hook = None

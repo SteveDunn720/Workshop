@@ -33,13 +33,16 @@ def build(rig_name:str, config:rig_config):
 
     #middle modules
 
+    hip = modules.Hip(control_size=canon.scene_size, parent=canon.rig, joint_parent=canon.joints, control_space=[root_info.offset_control.ctrl], guides=['cog_M_guide'])
+    hipinfo = hip.hip_build()
+
 
 
     ##side modules
 
     for side in ["L", "R"]:
 
-        leg = modules.Limb(part='leg', control_size=canon.scene_size, parent=canon.rig, joint_parent=canon.joints, side=side, guides= [f'upperleg_{side}_guide', f'knee_{side}_guide', f'foot_{side}_guide'],ik_end_control = True, fk_control_space=[root_info.root_control.ctrl], ik_control_space=[root_info.root_control.ctrl,], ikfk_blend=0, ik_length=True)
+        leg = modules.Limb(part='leg', control_size=canon.scene_size, parent=canon.rig, joint_parent=hipinfo.hip_joint, side=side, guides= [f'upperleg_{side}_guide', f'knee_{side}_guide', f'foot_{side}_guide'],ik_end_control = True, fk_control_space=[hipinfo.hip_control.ctrl], ik_root_control_space=[ hipinfo.hip_control.ctrl, root_info.root_control.ctrl,], ik_pv_control_space=[root_info.root_control.ctrl, hipinfo.hip_control.ctrl], ik_end_control_space=[root_info.root_control.ctrl, hipinfo.hip_control.ctrl], ikfk_blend=0, ik_length=True)
         leg_info = leg.limb_build()
 
 
