@@ -3,19 +3,19 @@ import maya.cmds as cmds
 
 from Workshop.transform.utils import create_transform, get_distance_between, get_flat_y_aim_rotation
 from Workshop.transform.mesh_info import get_position_from_vertex
-from Workshop.guide.core import create_guide_from_position, guide_info
+from Workshop.guide.core import create_guide_from_position, GuideInfo
 
 
 @dataclass
 class foot_guides:
-    true_heel:guide_info
-    true_foot:guide_info
-    true_groundfoot:guide_info
-    true_toe:guide_info
-    true_inbank:guide_info
-    true_outbank:guide_info
-    true_ball:guide_info
-    og_foot_pos:list[guide_info]
+    true_heel:GuideInfo
+    true_foot:GuideInfo
+    true_groundfoot:GuideInfo
+    true_toe:GuideInfo
+    true_inbank:GuideInfo
+    true_outbank:GuideInfo
+    true_ball:GuideInfo
+    og_foot_pos:list[GuideInfo]
     aim_angle:float
     neg:str
     pos:str

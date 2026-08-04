@@ -6,11 +6,13 @@ from Workshop.control import create_control
 from Workshop.transform.utils import get_position, match_transform, convert_to_matrix
 from Workshop.joint import create_joint
 from Workshop.maya_api.node import ConditionNode, DistanceBetweenNode, MultiplyDivideNode, ReverseNode
-from Workshop.guide.core import guide_info
+from Workshop.guide.core import GuideInfo
+from Workshop.transform.constraint import constraint
 
 from .roll import Roll
 from .ik import create_IK_single_chain
 from .module_initialize import module_prep, module_space
+from .module_shared import fkik_switch
 
 @dataclass
 class module_info:
@@ -22,14 +24,14 @@ class module_info:
 
 @dataclass
 class foot_guides:
-    true_heel:guide_info
-    true_foot:guide_info
-    true_groundfoot:guide_info
-    true_toe:guide_info
-    true_inbank:guide_info
-    true_outbank:guide_info
-    true_ball:guide_info
-    og_foot_pos:list[guide_info]
+    true_heel:GuideInfo
+    true_foot:GuideInfo
+    true_groundfoot:GuideInfo
+    true_toe:GuideInfo
+    true_inbank:GuideInfo
+    true_outbank:GuideInfo
+    true_ball:GuideInfo
+    og_foot_pos:list[GuideInfo]
     aim_angle:float
     neg:str
     pos:str
@@ -143,31 +145,6 @@ class Foot:
             compress_condition.out_color.r.connect_to(translate_attr)
         
 
-
-    def fkik_switch(self, controls:list|None, attr=''):
-        #cmds.addAttr(self.main_grp, longName='FK_IK_Switch', attributeType='double', defaultValue=1, maxValue=1, minValue=0, keyable=True)
-        self.FK_IK_Switch = attr #f'{self.main_grp}.FK_IK_Switch'
-        rev = ReverseNode(name=f"{self.part}_FKIK_rev")
-        rev.input.x.connect_from(self.FK_IK_Switch)
-        rev.output.x.connect_to(f'{self.ik_control_grp}.visibility')
-        cmds.connectAttr(self.FK_IK_Switch, f'{self.fk_control_grp}.visibility')
-        for i,jnt in enumerate(self.guides):
-            parent_con:str = cmds.parentConstraint(self.fk_joints[i], self.ik_joints[i], self.switch_joints[i], maintainOffset=True)[0] #type:ignore
-            #scale_con:str = cmds.scaleConstraint(self.fk_joints[i], self.ik_joints[i], self.switch_joints[i], maintainOffset=True)[0] #type:ignore
-            parent_weights = cmds.parentConstraint(parent_con, query=True, weightAliasList=True)
-            #scale_weights = cmds.parentConstraint(scale_con, query=True, weightAliasList=True)
-            
-            cmds.connectAttr(self.FK_IK_Switch, f'{parent_con}.{parent_weights[0]}')
-            #cmds.connectAttr(self.FK_IK_Switch, f'{scale_con}.{scale_weights[0]}')
-            cmds.connectAttr(rev.output.x, f'{parent_con}.{parent_weights[1]}')
-            #cmds.connectAttr(rev.output.x, f'{scale_con}.{scale_weights[1]}')
-
-            cmds.parentConstraint(self.switch_joints[i], jnt, maintainOffset=True)
-            #cmds.scaleConstraint(self.switch_joints[i], jnt, maintainOffset=True)
-        if controls:
-            for control in controls:
-                cmds.addAttr(control, longName='FKIK_Switch', proxy=self.FK_IK_Switch)
-
     def foot_build(self):
         prep = module_prep(part=self.part, parent=self.parent, side=self.side, fkik=True)
         self.main_grp = prep.main_grp
@@ -262,16 +239,17 @@ class Foot:
                 direction="y",
                 color_type=self.main_control_color,
             )
-        cmds.parentConstraint(self.ik_toes.ctrl, self.ik_joints[1])
+        constraint(drivers=[self.ik_toes.ctrl], driven=self.ik_joints[1], constraint_type='parent', parent=self.guts)
         self.ik_controls.append(self.ik_toes)
         self.controls.append(self.ik_toes)
 
-        self.fkik_switch(controls=self.controls, attr=self.fkik_switch_attr)
+
+        self.FK_IK_Switch = fkik_switch(controls=self.controls, node_attr=self.main_grp, descriptor=self.part, fk_grp=self.fk_control_grp, ik_grp=self.ik_control_grp, fk_joints=self.fk_joints, ik_joints=self.ik_joints, switch_joints=self.switch_joints, connect_switch_attr=self.fkik_switch_attr )
 
         jnt_par = self.guts
         self.ik_roll_joints = []
         
-        #IK_build 
+        #IK_roll_build 
         for i,jnt in enumerate(self.guides):
             ik_jnt = create_joint(name=f'IK_roll_{jnt}', transform=jnt, parent=jnt_par, connect=False)
             self.ik_roll_joints.append(ik_jnt)
@@ -283,29 +261,35 @@ class Foot:
         roll = Roll(part='roll', control_size=self.control_size, side=self.side, joints= [f'foot_{self.side}', f'ball_{self.side}'], guides=self.feet_guides, control_parent=self.ik_foot.ctrl)
         roll_info = roll.roll_build()
 
-        self.build_compressible_ik_length(name=f'{self.part}_{self.side}_roll', root_reference=roll_info.roll_ctrl.top, ik_control=roll_info.down_driver, down_axis='X', length_joint=self.ik_roll_joints[1])
+        #self.build_compressible_ik_length(name=f'{self.part}_{self.side}_roll', root_reference=roll_info.roll_ctrl.top, ik_control=roll_info.down_driver, down_axis='X', length_joint=self.ik_roll_joints[1])
 
         match_transform(transform=roll_info.roll_grp, target_transform=self.feet_guides.og_foot_pos[-2])
 
         cmds.parent(roll_info.roll_grp, self.ik_foot.ctrl)
 
-        cmds.parentConstraint(roll_info.down_driver, roll_ik.handle, maintainOffset=True)
-        cmds.orientConstraint(roll_info.down_driver, self.ik_roll_joints[1], maintainOffset=True)
-
-        cmds.parentConstraint(roll_info.up_driver, self.ik_hook[0], maintainOffset=True)
-        cmds.parentConstraint(self.ik_hook[1], self.ik_roll_joints[0], maintainOffset=True)
-        #cmds.parentConstraint(self.ik_roll_joints[1], self.ik_toes.top, maintainOffset=True)
-        cmds.parentConstraint(self.ik_roll_joints[0], self.ik_joints[0], maintainOffset=True)
-        cmds.parentConstraint(roll_info.down_driver, self.ik_toes.top, maintainOffset=True)
-        #cmds.parentConstraint(roll_info.up_driver, self.ik_hook[0], maintainOffset=True)
-        #cmds.parentConstraint(self.ik_hook[1], self.ik_joints[0])
+        constraint(drivers=[roll_info.down_driver], driven=roll_ik.handle, constraint_type='parent', parent=self.guts)
+        cmds.orientConstraint(roll_info.down_driver, self.ik_roll_joints[1], maintainOffset=True)   #FIX
+        constraint(drivers=[roll_info.up_driver], driven=self.ik_hook[0], constraint_type='parent', parent=self.guts)
+        constraint(drivers=[self.ik_hook[1]], driven=self.ik_roll_joints[0], constraint_type='parent', parent=self.guts)
+        constraint(drivers=[self.ik_roll_joints[0]], driven=self.ik_joints[0], constraint_type='parent', parent=self.guts)
+        constraint(drivers=[roll_info.down_driver], driven=self.ik_toes.top, constraint_type='parent', parent=self.guts)
         cmds.addAttr(self.ik_foot.ctrl, longName='stretch', proxy = self.leg_info.ik_stretch_attr)
-        cmds.parentConstraint(self.ik_foot.ctrl, self.leg_info.ik_len[0].handle, maintainOffset=True)
-        cmds.orientConstraint(self.ik_foot.ctrl, self.leg_info.ik_len[2], maintainOffset=True)
-        cmds.parentConstraint(self.leg_info.ik_len[2], roll_info.roll_grp, maintainOffset=True)
-        cmds.parentConstraint(self.ik_foot.ctrl, self.leg_info.end_ik_hook[2])
+        constraint(drivers=[self.ik_foot.ctrl], driven=self.leg_info.ik_len[0].handle, constraint_type='parent', parent=self.guts)
+        cmds.orientConstraint(self.ik_foot.ctrl, self.leg_info.ik_len[2], maintainOffset=True)  #FIX
+        constraint(drivers=[self.leg_info.ik_len[2]], driven=roll_info.roll_grp, constraint_type='parent', parent=self.guts)
+        constraint(drivers=[self.ik_foot.ctrl], driven=self.leg_info.end_ik_hook[2], constraint_type='parent', parent=self.guts)
 
-        #cmds.orientConstraint(roll_info.up_driver, self.ik_hook[1], maintainOffset=True)
+        self.bind_joints = []
+
+        jnt_par = self.joint_parent
+
+        #bind joints
+        for i,jnt in enumerate(self.guides):
+            switch_jnt = create_joint(name=f'def_{jnt}', transform=jnt, parent=jnt_par, connect=False)
+            self.bind_joints.append(switch_jnt)
+            jnt_par = switch_jnt
+            constraint(drivers=[self.switch_joints[i]], driven=switch_jnt, parent=self.guts, constraint_type="parent")
+
 
         feet_info = module_info(fk_control=self.fk_controls, ik_controls=self.ik_controls, swtich_joints=self.switch_joints, fk_joints=self.fk_joints, ik_joints=self.ik_joints)
         return feet_info

@@ -4,9 +4,12 @@ from Workshop.transform.constraint import constraint
 from Workshop.maya_api.node import ReverseNode
 
 
-def fkik_switch(controls:list|None, node_attr:str, descriptor:str, fk_grp:str, ik_grp:str, fk_joints:list, ik_joints:list, switch_joints:list ):
-    cmds.addAttr(node_attr, longName='FK_IK_Switch', attributeType='double', defaultValue=1, maxValue=1, minValue=0, keyable=True)
-    FK_IK_Switch = f'{node_attr}.FK_IK_Switch'
+def fkik_switch(controls:list|None, node_attr:str, descriptor:str, fk_grp:str, ik_grp:str, fk_joints:list, ik_joints:list, switch_joints:list, connect_switch_attr:str | None = None,):
+    if connect_switch_attr:
+        FK_IK_Switch=connect_switch_attr
+    else:
+        cmds.addAttr(node_attr, longName='FK_IK_Switch', attributeType='double', defaultValue=1, maxValue=1, minValue=0, keyable=True)
+        FK_IK_Switch = f'{node_attr}.FK_IK_Switch'
     rev = ReverseNode(name=f"{descriptor}_FKIK_rev")
     rev.input.x.connect_from(FK_IK_Switch)
     rev.output.x.connect_to(f'{ik_grp}.visibility')

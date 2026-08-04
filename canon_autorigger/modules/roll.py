@@ -42,7 +42,7 @@ class Roll:
         self.control_parent: str | None = control_parent
         self.control_size: float = control_size
         self.joints: list = joints
-        self.main_control_color = 'SubLeft' if self.side == 'l' else 'SubRight' 
+        self.main_control_color = 'SubLeft' if self.side == 'L' else 'SubRight' 
         self.guides = guides
 
     # -------------------

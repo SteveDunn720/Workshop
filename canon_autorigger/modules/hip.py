@@ -70,7 +70,7 @@ class Hip:
 
         #bind joints
 
-        self.joint = create_joint(name=self.guides[0], transform=self.guides[0], connect=True)
+        self.joint = create_joint(name=f'def_{self.guides[0]}', transform=self.guides[0], connect=True, parent=self.joint_parent)
         constraint(drivers=[self.hip_ctrl.ctrl], driven=self.joint, parent=self.guts, constraint_type="parent")
 
     

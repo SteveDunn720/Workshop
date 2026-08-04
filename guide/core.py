@@ -1,4 +1,6 @@
-from attr import dataclass
+from __future__ import annotations
+
+from dataclasses import dataclass, field
 import maya.cmds as cmds
 from maya.api.OpenMaya import MMatrix
 
@@ -7,32 +9,32 @@ from Workshop.transform.matrix import set_local_matrix
 from Workshop.transform.utils import match_location, match_transform
 from Workshop.transform.curve import create_line_curve, style_curve, curve_cvs
 
-@dataclass 
-class guide_info:
-    name:str
-    pos:tuple
-    rot:tuple
-    guide_type:str
-    extra_channels:list
-    descriptor:str
+@dataclass
+class GuideInfo:
+    name: str
+    pos: tuple[float, float, float]
+    rot: tuple[float, float, float]
+    guide_type: str
+    extra_channels: list[str] = field(default_factory=list)
+    descriptor: str = ""
 
 @dataclass
-class spline_guide_info:
-    curve:guide_info
-    lower:guide_info
-    lower_tan:guide_info
-    upper:guide_info
-    upper_tan:guide_info
+class SplineGuideInfo:
+    curve:GuideInfo
+    lower:GuideInfo
+    lower_tan:GuideInfo
+    upper:GuideInfo
+    upper_tan:GuideInfo
 
 @dataclass
-class chain_guide_info:
-    guides:list[guide_info]
+class ChainGuideInfo:
+    guides:list[GuideInfo]
 
 
 
 
 
-def create_guide_from_position(pos, guide_name, parent)->guide_info:
+def create_guide_from_position(pos, guide_name, parent)->GuideInfo:
     guide = create_joint(name=f'{guide_name}_guide', connect=False, parent=parent, suffix=False)
 
     if isinstance(pos, str):
@@ -50,12 +52,102 @@ def create_guide_from_position(pos, guide_name, parent)->guide_info:
     return_pos = cmds.xform(guide, query=True, translation=True, worldSpace=True)
     return_rot = cmds.xform(guide, query=True, rotation=True, worldSpace=True)
     
-    info = guide_info(name=guide, pos=return_pos, rot=return_rot, guide_type='joint', extra_channels=[], descriptor=guide_name) #type:ignore
+    info = GuideInfo(name=guide, pos=return_pos, rot=return_rot, guide_type='joint', extra_channels=[], descriptor=guide_name) #type:ignore
+    add_guide_metadata(
+        guide=guide,
+        descriptor=guide_name,
+        guide_type="joint",
+    )
     return info
 
 
+def read_guide(guide: str) -> GuideInfo:
+    """Create GuideInfo from an existing Maya guide."""
 
+    if not cmds.objExists(guide):
+        raise ValueError(f"Guide does not exist: {guide}")
 
+    pos = cmds.xform(
+        guide,
+        query=True,
+        worldSpace=True,
+        translation=True,
+    )
+
+    rot = cmds.xform(
+        guide,
+        query=True,
+        worldSpace=True,
+        rotation=True,
+    )
+
+    node_type = cmds.nodeType(guide)
+
+    if node_type == "joint":
+        guide_type = "joint"
+    elif node_type == "transform":
+        shapes = cmds.listRelatives(guide, shapes=True) or []
+
+        if shapes and cmds.nodeType(shapes[0]) == "nurbsCurve":
+            guide_type = "curve"
+        else:
+            guide_type = "transform"
+    else:
+        guide_type = node_type
+
+    descriptor = guide
+
+    if cmds.attributeQuery("guideDescriptor", node=guide, exists=True):
+        descriptor = cmds.getAttr(f"{guide}.guideDescriptor")
+
+    extra_channels = []
+
+    if cmds.attributeQuery("guideExtraChannels", node=guide, exists=True):
+        channel_string = cmds.getAttr(f"{guide}.guideExtraChannels") or ""
+        extra_channels = [
+            channel
+            for channel in channel_string.split(",")
+            if channel
+        ]
+
+    return GuideInfo(
+        name=guide,
+        pos=tuple(pos),
+        rot=tuple(rot),
+        guide_type=guide_type,
+        extra_channels=extra_channels,
+        descriptor=descriptor,
+    )
+
+def add_guide_metadata(
+    guide: str,
+    descriptor: str,
+    guide_type: str,
+    extra_channels: list[str] | None = None,
+) -> None:
+    """Store guide identification data directly on a Maya node."""
+
+    extra_channels = extra_channels or []
+
+    attributes = {
+        "guideDescriptor": descriptor,
+        "guideType": guide_type,
+        "guideExtraChannels": ",".join(extra_channels),
+    }
+
+    for attr_name, value in attributes.items():
+        if not cmds.attributeQuery(attr_name, node=guide, exists=True):
+            cmds.addAttr(
+                guide,
+                longName=attr_name,
+                dataType="string",
+            )
+
+        cmds.setAttr(
+            f"{guide}.{attr_name}",
+            value,
+            type="string",
+        )
 
 
 def create_spline_guide(parent:str, lower_name:str='lower', upper_name:str='upper', curve_name:str='spline', side:str='M', position:list=[]):
@@ -79,7 +171,7 @@ def create_spline_guide(parent:str, lower_name:str='lower', upper_name:str='uppe
     )
     cmds.parent(curve, parent)
 
-    curve_guide = guide_info(name=f'{curve_name}_{side}_guide', pos=(0,0,0), rot=(0,0,0), guide_type='curve', extra_channels=[], descriptor=f"{upper_name}_{side}")
+    curve_guide = GuideInfo(name=f'{curve_name}_{side}_guide', pos=(0,0,0), rot=(0,0,0), guide_type='curve', extra_channels=[], descriptor=f"{upper_name}_{side}")
 
     clusters, pos = curve_cvs(curve=curve, clusters=True)
 
@@ -100,7 +192,7 @@ def create_spline_guide(parent:str, lower_name:str='lower', upper_name:str='uppe
             cmds.setAttr(f'{tform}.visibility', False)
             cmds.setAttr(f"{tform}.hiddenInOutliner", True)
 
-    info = spline_guide_info(curve=curve_guide, upper=upper, upper_tan=upper_tan, lower=lower, lower_tan=lower_tan)
+    info = spline_GuideInfo(curve=curve_guide, upper=upper, upper_tan=upper_tan, lower=lower, lower_tan=lower_tan)
     return info
 
 
@@ -113,6 +205,6 @@ def chain_guides(names:list, side:str='M', position:list=[], parent:str=''):
     for i,g in enumerate(names):
         guide = create_guide_from_position(pos=position[i], guide_name=f"{g}_{side}", parent=parent)
         guide_list.append(guide)
-    info = chain_guide_info(guides=guide_list)
+    info = chain_GuideInfo(guides=guide_list)
     return info
 

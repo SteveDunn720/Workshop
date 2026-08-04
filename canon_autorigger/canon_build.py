@@ -19,6 +19,7 @@ def build(rig_name:str, config:rig_config):
 
     #build_prep
 
+    cmds.file(new=True, force=True)
     imported_nodes = load_guides(rig_type='canon', rig=rig_name)
     canon = configure_canon_scene(rig_name=rig_name)
 
@@ -34,7 +35,7 @@ def build(rig_name:str, config:rig_config):
 
     #middle modules
 
-    hip = modules.Hip(control_size=canon.scene_size, parent=canon.rig, joint_parent=canon.joints, control_space=[root_info.offset_control.ctrl], guides=['cog_M_guide'])
+    hip = modules.Hip(control_size=canon.scene_size, parent=canon.rig, joint_parent=root_info.joint, control_space=[root_info.offset_control.ctrl], guides=['cog_M_guide'])
     hipinfo = hip.hip_build()
 
 

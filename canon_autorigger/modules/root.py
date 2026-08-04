@@ -14,12 +14,13 @@ class module_info:
     root_control:Control
     local_control:Control
     offset_control:Control
+    joint:str
 
 class Root:
     def __init__(
         self,
         part: str = "root",
-        side: str = "m",
+        side: str = "M",
         parent: str = "components",
         control_parent: str | None = None,
         control_size: float = 1.0,
@@ -101,7 +102,7 @@ class Root:
 
         #root joint
 
-        self.root_joint = create_joint(name=f'{self.part}_{self.side}', transform=self.root_ctrl.ctrl, connect=True, parent=self.joint_parent)
+        self.root_joint = create_joint(name=f'def_{self.part}_{self.side}', transform=self.root_ctrl.ctrl, connect=True, parent=self.joint_parent)
 
         constraint(drivers=[self.root_ctrl.ctrl], driven=self.root_joint, constraint_type='parent', parent=self.guts)
 
@@ -110,5 +111,5 @@ class Root:
             cmds.addAttr(self.vis_control.ctrl, longName=f'{rig_vis_type}_vis', defaultValue=1, maxValue=1, minValue=0, keyable=True)
 
 
-        root_info = module_info(root_control =self.root_ctrl, local_control=self.local_ctrl, offset_control=self.offset_ctrl)
+        root_info = module_info(root_control =self.root_ctrl, local_control=self.local_ctrl, offset_control=self.offset_ctrl, joint=self.root_joint)
         return root_info

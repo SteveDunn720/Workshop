@@ -3,7 +3,7 @@ import maya.cmds as cmds
 
 from Workshop.transform.utils import create_transform, get_distance_between, get_flat_y_aim_rotation
 from Workshop.transform.mesh_info import get_position_from_vertex
-from Workshop.guide.core import create_guide_from_position, guide_info
+from Workshop.guide.core import create_guide_from_position, GuideInfo
 from .modules.foot import foot_guides
 
 

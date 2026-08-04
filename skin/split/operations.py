@@ -1,7 +1,6 @@
 import logging
 from typing import Iterable
 
-from Workshop.build.progress import progress_step, progress_update
 from Workshop.skin.core import (
     get_shape,
     get_skin_cluster,
