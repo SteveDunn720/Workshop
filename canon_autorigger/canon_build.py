@@ -5,6 +5,7 @@ from Workshop.canon_autorigger.build_management.config_scene import configure_ca
 from Workshop.canon_autorigger.build_management.load_guides import load_guides
 from Workshop.canon_autorigger import modules
 from Workshop.tag.core import get_tags
+from Workshop.canon_autorigger.canon_rig_config import generate_foot_guides
 
 @dataclass
 class rig_config:
@@ -42,8 +43,13 @@ def build(rig_name:str, config:rig_config):
 
     for side in ["L", "R"]:
 
-        leg = modules.Limb(part='leg', control_size=canon.scene_size, parent=canon.rig, joint_parent=hipinfo.hip_joint, side=side, guides= [f'upperleg_{side}_guide', f'knee_{side}_guide', f'foot_{side}_guide'],ik_end_control = True, fk_control_space=[hipinfo.hip_control.ctrl], ik_root_control_space=[ hipinfo.hip_control.ctrl, root_info.root_control.ctrl,], ik_pv_control_space=[root_info.root_control.ctrl, hipinfo.hip_control.ctrl], ik_end_control_space=[root_info.root_control.ctrl, hipinfo.hip_control.ctrl], ikfk_blend=0, ik_length=True)
+        leg = modules.Limb(part='leg', control_size=canon.scene_size, parent=canon.rig, joint_parent=hipinfo.hip_joint, side=side, guides= [f'upperleg_{side}_guide', f'knee_{side}_guide', f'foot_{side}_guide'],ik_end_control = False, fk_control_space=[hipinfo.hip_control.ctrl], ik_root_control_space=[ hipinfo.hip_control.ctrl, root_info.root_control.ctrl,], ik_pv_control_space=[root_info.root_control.ctrl, hipinfo.hip_control.ctrl], ik_end_control_space=[root_info.root_control.ctrl, hipinfo.hip_control.ctrl], ikfk_blend=0, ik_length=True)
         leg_info = leg.limb_build()
+
+        footguide = generate_foot_guides(side=side, parent=None)
+        foot = modules.Foot(part='feet', control_size=canon.scene_size, parent=canon.rig, side=side, joint_parent=leg_info.bind_joints[-1] ,  guides= [f'foot_{side}_guide', f'toe_ball_{side}_guide'], fk_control_space=[leg_info.fk_controls[-1].ctrl], ik_control_space=[root_info.offset_control.ctrl, hipinfo.hip_control.ctrl, ], ik_hook=leg_info.end_ik_hook, feet_guides=footguide, fkik_switch_attr=leg_info.fk_ik_switch, leg_info=leg_info)
+        foot_info = foot.foot_build()
+        
 
 
     #face modules

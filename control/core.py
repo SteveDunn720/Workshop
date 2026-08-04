@@ -243,6 +243,9 @@ def build_control(
     for attr in ['rotateX', 'rotateY', 'rotateZ', 'translateX', 'translateY', 'translateZ']:
         cmds.setAttr(f'{shape_parent}.{attr}', 0)
 
+    for attr in [ 'scaleX', 'scaleY', 'scaleZ']:
+            cmds.setAttr(f'{shape_parent}.{attr}', 1)
+
     return shape_parent
 
 
