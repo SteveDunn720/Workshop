@@ -3,7 +3,7 @@ from Workshop.control.core import Control
 import maya.cmds as cmds
 
 from Workshop.control import create_control
-from Workshop.transform.utils import create_transform, get_position
+from Workshop.transform.utils import create_transform
 from Workshop.tag.core import lock_tag, obj_ref_tag
 from Workshop.maya_api.node import AddDLNode, ConditionNode, MultiplyDivideNode, RemapValueNode
 from Workshop.meta_rigs.metahuman_rig_prep import foot_guides
@@ -83,7 +83,7 @@ class Roll:
         cmds.setAttr(f'{self.smart_roll.ctrl}.DEV_bank_sensitivity', 1)
 
     
-        roll_center = create_transform(name=f'roll_{self.side}_center', transform=self.guides.true_ball.name,)
+        roll_center = create_transform(name=f'roll_{self.side}_center', transform=self.guides.true_ball.name)
         roll_tforms.append(roll_center)
 
         parent = roll_center
@@ -158,24 +158,24 @@ class Roll:
 
 
         #bank_and roll_pivot
-        twist_main = create_transform(name=f"{self.guides.true_ball.name}_twist", transform=self.guides.true_ball.name, parent=roll_group)
+        twist_main = create_transform(name=f"{self.guides.true_ball.name}_twist", transform=self.guides.true_ball.name, parent=roll_group, )
         roll_tforms.append(twist_main)
         #twist_offset = create_transform(name=f"{self.guides.true_ball.name}_twist_offset", transform=self.guides.true_ball.name, parent=twist_main)
 
-        bank_main = create_transform(name=f"{self.guides.true_ball.name}_bank_main", transform=self.guides.true_ball.name, parent=roll_group)
+        bank_main = create_transform(name=f"{self.guides.true_ball.name}_bank_main", transform=self.guides.true_ball.name, parent=roll_group, )
         roll_tforms.append(bank_main)
-        bank_twist_offset = create_transform(name=f"{self.guides.true_ball.name}_bank_twist_offset", transform=self.guides.true_ball.name, parent=bank_main)
+        bank_twist_offset = create_transform(name=f"{self.guides.true_ball.name}_bank_twist_offset", transform=self.guides.true_ball.name, parent=bank_main, )
         roll_tforms.append(bank_twist_offset)
 
         #cmds.parentConstraint(twist_main, bank_main)
 
-        inbank_main = create_transform(name=f"{self.guides.true_inbank.name}_main", transform=self.guides.true_inbank.name, parent=twist_main)
+        inbank_main = create_transform(name=f"{self.guides.true_inbank.name}_main", transform=self.guides.true_inbank.name, parent=twist_main, )
         roll_tforms.append(inbank_main)
-        inbank_offset = create_transform(name=f"{self.guides.true_inbank.name}_offset", transform=self.guides.true_ball.name, parent=inbank_main)
+        inbank_offset = create_transform(name=f"{self.guides.true_inbank.name}_offset", transform=self.guides.true_ball.name, parent=inbank_main, )
         roll_tforms.append(inbank_offset)
-        outbank_main = create_transform(name=f"{self.guides.true_outbank.name}_main", transform=self.guides.true_outbank.name, parent=twist_main)
+        outbank_main = create_transform(name=f"{self.guides.true_outbank.name}_main", transform=self.guides.true_outbank.name, parent=twist_main, )
         roll_tforms.append(outbank_main)
-        outbank_offset = create_transform(name=f"{self.guides.true_outbank.name}_offset", transform=self.guides.true_ball.name, parent=outbank_main)
+        outbank_offset = create_transform(name=f"{self.guides.true_outbank.name}_offset", transform=self.guides.true_ball.name, parent=outbank_main, )
         roll_tforms.append(outbank_offset)
 
         constraint = cmds.parentConstraint(outbank_offset,inbank_offset, bank_main)

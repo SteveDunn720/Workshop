@@ -1,15 +1,15 @@
 
 from attr import dataclass
-from Workshop.control.core import Control
 import maya.cmds as cmds
 
 from Workshop.control import create_control
 from Workshop.transform.utils import get_position, match_transform
 from .module_initialize import module_prep, module_space
 from Workshop.joint import create_joint
-from Workshop.maya_api.node import ReverseNode
+from Workshop.maya_api.node import ConditionNode, DistanceBetweenNode, MultiplyDivideNode, ReverseNode
 from Workshop.meta_rigs.metahuman_rig_prep import foot_guides
 from Workshop.meta_rigs.meta_componets.roll import Roll
+from .ik import create_IK_single_chain, IK_data
 
 @dataclass
 class module_info:
@@ -61,6 +61,70 @@ class Foot:
         pos = get_position(object)
 
         return pos[1]
+
+    def build_compressible_ik_length(
+            self,
+            name: str,
+            root_reference: str,
+            ik_control: str,
+            length_joint: str,
+            down_axis: str = "Y",
+        ) -> None:
+            """Build a single-joint IK length that compresses but does not stretch.
+
+            The length_joint's translate channel is shortened when the IK control
+            moves closer than the original joint length. Moving farther away will
+            not extend the joint beyond its original length.
+
+            Args:
+                name: Base name used for created nodes.
+                root_reference: Transform marking the beginning of the chain.
+                ik_control: Transform marking the desired end of the chain.
+                length_joint: Joint whose translate channel controls the chain length.
+                down_axis: Local joint axis used for its length.
+            """
+            translate_attr = f"{length_joint}.translate{down_axis}"
+            original_length = cmds.getAttr(translate_attr)
+            absolute_original_length = abs(original_length)
+
+            # Preserve whether the joint extends down the positive or negative axis.
+            direction = 1.0 if original_length >= 0.0 else -1.0
+
+            distance = DistanceBetweenNode(name=f"{name}_compress_distance")
+            distance.input_matrix1.connect_from(
+                f"{root_reference}.worldMatrix[0]"
+            )
+            distance.input_matrix2.connect_from(
+                f"{ik_control}.worldMatrix[0]"
+            )
+
+            # Convert the always-positive world-space distance into the joint's
+            # original positive or negative translate direction.
+            signed_distance = MultiplyDivideNode(
+                name=f"{name}_compress_signed_distance"
+            )
+            signed_distance.input1.x.connect_from(distance.distance)
+            signed_distance.input2.x.set(direction)
+
+            compress_condition = ConditionNode(
+                name=f"{name}_compress_condition"
+            )
+
+            # condition operation 4 means "Less Than":
+            # distance < original length
+            compress_condition.operation.set(4)
+            compress_condition.first_term.connect_from(distance.distance)
+            compress_condition.second_term.set(absolute_original_length)
+
+            # Shorter than the original: use the measured distance.
+            compress_condition.color_if_true.r.connect_from(
+                signed_distance.output.x
+            )
+
+            # Longer than the original: remain at the original length.
+            compress_condition.color_if_false.r.set(original_length)
+
+            compress_condition.out_color.r.connect_to(translate_attr)
         
 
 
@@ -178,18 +242,47 @@ class Foot:
         self.fkik_switch(controls=self.controls, attr=self.fkik_switch_attr)
 
 
+        jnt_par = self.guts
+        self.ik_roll_joints = []
+        
+        #IK_build 
+        for i,jnt in enumerate(self.joints):
+            ik_jnt = create_joint(name=f'IK_roll_{jnt}', transform=jnt, parent=jnt_par, connect=False)
+            self.ik_roll_joints.append(ik_jnt)
+            jnt_par = ik_jnt
+
+        roll_ik = create_IK_single_chain(name=f'{self.part}_{self.side}_roll', start_joint=self.ik_roll_joints[0], end_joint=self.ik_roll_joints[1])
+        cmds.parent(roll_ik.handle, self.guts)
+
+        
+
+        
+
+        
+
+
 
 
 
         roll = Roll(part='roll', control_size=self.control_size, side=self.side, joints= [f'foot_{self.side}', f'ball_{self.side}'], guides=self.feet_guides, control_parent=self.ik_foot.ctrl)
         roll_info = roll.roll_build()
 
+        self.build_compressible_ik_length(name=f'{self.part}_{self.side}_roll', root_reference=roll_info.roll_ctrl.top, ik_control=roll_info.down_driver, down_axis='X', length_joint=self.ik_roll_joints[1])
+
         match_transform(transform=roll_info.roll_grp, target_transform=self.feet_guides.og_foot_pos[-2].name)
         cmds.setAttr(f'{roll_info.roll_grp}.rotateY', self.feet_guides.aim_angle)
         cmds.parent(roll_info.roll_grp, self.ik_foot.ctrl)
-        cmds.parentConstraint(roll_info.down_driver, self.ik_toes.top, maintainOffset=True)
+
+        cmds.parentConstraint(roll_info.down_driver, roll_ik.handle, maintainOffset=True)
+        cmds.orientConstraint(roll_info.down_driver, self.ik_roll_joints[1], maintainOffset=True)
+
         cmds.parentConstraint(roll_info.up_driver, self.ik_hook[0], maintainOffset=True)
-        cmds.parentConstraint(self.ik_hook[1], self.ik_joints[0])
+        cmds.parentConstraint(self.ik_hook[1], self.ik_roll_joints[0], maintainOffset=True)
+        #cmds.parentConstraint(self.ik_roll_joints[1], self.ik_toes.top, maintainOffset=True)
+        cmds.parentConstraint(self.ik_roll_joints[0], self.ik_joints[0], maintainOffset=True)
+        cmds.parentConstraint(roll_info.down_driver, self.ik_toes.top, maintainOffset=True)
+        #cmds.parentConstraint(roll_info.up_driver, self.ik_hook[0], maintainOffset=True)
+        #cmds.parentConstraint(self.ik_hook[1], self.ik_joints[0])
         cmds.addAttr(self.ik_foot.ctrl, longName='stretch', proxy = self.leg_info.ik_stretch_attr)
         cmds.parentConstraint(self.ik_foot.ctrl, self.leg_info.ik_len[0].handle, maintainOffset=True)
         cmds.orientConstraint(self.ik_foot.ctrl, self.leg_info.ik_len[2], maintainOffset=True)
