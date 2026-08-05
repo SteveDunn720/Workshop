@@ -17,6 +17,9 @@ class GuideInfo:
     guide_type: str
     extra_channels: list[str] = field(default_factory=list)
     descriptor: str = ""
+    guide_parent:str = ""
+    component:str = ""
+
 
 @dataclass
 class SplineGuideInfo:
@@ -31,10 +34,7 @@ class ChainGuideInfo:
     guides:list[GuideInfo]
 
 
-
-
-
-def create_guide_from_position(pos, guide_name, parent)->GuideInfo:
+def create_guide_from_position(pos, guide_name, parent, component_type:str | None = None)->GuideInfo:
     guide = create_joint(name=f'{guide_name}_guide', connect=False, parent=parent, suffix=False)
 
     if isinstance(pos, str):
@@ -57,12 +57,14 @@ def create_guide_from_position(pos, guide_name, parent)->GuideInfo:
         guide=guide,
         descriptor=guide_name,
         guide_type="joint",
+        guide_parent=parent,
+        component=component_type
     )
     return info
 
 
-def read_guide(guide: str) -> GuideInfo:
-    """Create GuideInfo from an existing Maya guide."""
+"""def read_guide(guide: str) -> GuideInfo:
+    #Create GuideInfo from an existing Maya guide
 
     if not cmds.objExists(guide):
         raise ValueError(f"Guide does not exist: {guide}")
@@ -117,35 +119,33 @@ def read_guide(guide: str) -> GuideInfo:
         guide_type=guide_type,
         extra_channels=extra_channels,
         descriptor=descriptor,
-    )
+    )"""
 
 def add_guide_metadata(
     guide: str,
     descriptor: str,
     guide_type: str,
-    extra_channels: list[str] | None = None,
+    guide_parent: str, 
+    component: str | None
+
 ) -> None:
+    return
     """Store guide identification data directly on a Maya node."""
 
-    extra_channels = extra_channels or []
+    attrs = ['descriptor_TAG', 'guidetype_TAG', 'guideparent_TAG', 'component_TAG']
+    values = [descriptor, guide_type, guide_parent, component]
 
-    attributes = {
-        "guideDescriptor": descriptor,
-        "guideType": guide_type,
-        "guideExtraChannels": ",".join(extra_channels),
-    }
+    for i, attr, in enumerate(attrs):
 
-    for attr_name, value in attributes.items():
-        if not cmds.attributeQuery(attr_name, node=guide, exists=True):
-            cmds.addAttr(
+        cmds.addAttr(
                 guide,
-                longName=attr_name,
+                longName='attr',
                 dataType="string",
             )
 
         cmds.setAttr(
-            f"{guide}.{attr_name}",
-            value,
+            f"{guide}.descriptor_TAG",
+            values[i],
             type="string",
         )
 
