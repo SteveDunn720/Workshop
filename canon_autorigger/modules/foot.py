@@ -226,6 +226,8 @@ class Foot:
 
         cmds.delete(temp_guide)
 
+        module_space(space_list=self.ik_control_space, control=self.ik_foot)
+
     
         
         self.ik_controls.append(self.ik_foot)

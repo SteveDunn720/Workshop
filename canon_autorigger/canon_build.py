@@ -22,6 +22,11 @@ def build(rig_name:str, config:rig_config):
     cmds.file(new=True, force=True)
     imported_nodes = load_guides(rig_type='canon', rig=rig_name)
     canon = configure_canon_scene(rig_name=rig_name)
+    cmds.refresh()
+
+    cmds.select(canon.geo, replace=True)
+    cmds.viewFit()
+    cmds.select(clear=True)
 
 
 

@@ -19,6 +19,7 @@ class GuideInfo:
     descriptor: str = ""
     guide_parent:str = ""
     component:str = ""
+    side:str = ""
 
 
 @dataclass
@@ -63,8 +64,12 @@ def create_guide_from_position(pos, guide_name, parent, component_type:str | Non
     return info
 
 
-"""def read_guide(guide: str) -> GuideInfo:
+def read_guide(guide: str) -> GuideInfo:
     #Create GuideInfo from an existing Maya guide
+
+    attrs = ['descriptor_TAG', 'guidetype_TAG', 'guideparent_TAG', 'component_TAG']
+    
+
 
     if not cmds.objExists(guide):
         raise ValueError(f"Guide does not exist: {guide}")
@@ -85,22 +90,47 @@ def create_guide_from_position(pos, guide_name, parent, component_type:str | Non
 
     node_type = cmds.nodeType(guide)
 
-    if node_type == "joint":
-        guide_type = "joint"
-    elif node_type == "transform":
-        shapes = cmds.listRelatives(guide, shapes=True) or []
-
-        if shapes and cmds.nodeType(shapes[0]) == "nurbsCurve":
-            guide_type = "curve"
-        else:
-            guide_type = "transform"
+    if cmds.attributeQuery(attrs[1], node=guide, exists=True):
+        guide_type = cmds.getAttr(f'{guide}.{attrs[1]}')
     else:
-        guide_type = node_type
+        if node_type == "joint":
+            guide_type = "joint"
+        elif node_type == "transform":
+            shapes = cmds.listRelatives(guide, shapes=True) or []
 
-    descriptor = guide
+            if shapes and cmds.nodeType(shapes[0]) == "nurbsCurve":
+                guide_type = "curve"
+            else:
+                guide_type = "transform"
+        else:
+            guide_type = node_type[0]
+        cmds.addAttr(
+            guide,
+            longName=attrs[1],
+            dataType="string",
+        )
 
-    if cmds.attributeQuery("guideDescriptor", node=guide, exists=True):
-        descriptor = cmds.getAttr(f"{guide}.guideDescriptor")
+        cmds.setAttr(
+            f"{guide}.{attrs[1]}",
+            guide_type,
+            type="string",
+        )
+    
+    if cmds.attributeQuery(attrs[0], node=guide, exists=True):
+        descriptor = cmds.getAttr(f'{guide}.{attrs[0]}')
+    else:
+        descriptor = guide.removesuffix("_guide")
+        cmds.addAttr(
+            guide,
+            longName=attrs[0],
+            dataType="string",
+        )
+
+        cmds.setAttr(
+            f"{guide}.{attrs[0]}",
+            descriptor,
+            type="string",
+        )
 
     extra_channels = []
 
@@ -112,14 +142,54 @@ def create_guide_from_position(pos, guide_name, parent, component_type:str | Non
             if channel
         ]
 
+    if cmds.attributeQuery(attrs[2], node=guide, exists=True):
+        parent = cmds.getAttr(f'{guide}.{attrs[2]}')
+    else:
+        parent = cmds.listRelatives(guide, parent=True)[0]
+        cmds.addAttr(
+            guide,
+            longName=attrs[2],
+            dataType="string",
+        )
+
+        cmds.setAttr(
+            f"{guide}.{attrs[2]}",
+            parent,
+            type="string",
+        )
+
+    if cmds.attributeQuery(attrs[3], node=guide, exists=True):
+        comp = cmds.getAttr(f'{guide}.{attrs[3]}')
+    else:
+        comp = None
+        cmds.addAttr(
+            guide,
+            longName=attrs[3],
+            dataType="string",
+        )
+        
+
+    if "_L_" in guide:
+        side = "L"
+    elif "_R_" in guide:
+        side = "R"
+    elif "_M_" in guide:
+        side = "M"
+    else:
+        side = None
+    
+
     return GuideInfo(
         name=guide,
-        pos=tuple(pos),
-        rot=tuple(rot),
-        guide_type=guide_type,
+        pos=tuple(pos), #type:ignore
+        rot=tuple(rot), #type:ignore
+        guide_type=guide_type, #type:ignore
         extra_channels=extra_channels,
         descriptor=descriptor,
-    )"""
+        guide_parent = parent, 
+        component=comp, #type:ignore
+        side=side #type:ignore
+    )
 
 def add_guide_metadata(
     guide: str,
@@ -129,25 +199,24 @@ def add_guide_metadata(
     component: str | None
 
 ) -> None:
-    return
     """Store guide identification data directly on a Maya node."""
 
     attrs = ['descriptor_TAG', 'guidetype_TAG', 'guideparent_TAG', 'component_TAG']
     values = [descriptor, guide_type, guide_parent, component]
 
     for i, attr, in enumerate(attrs):
-
-        cmds.addAttr(
+        if values[i]:
+            cmds.addAttr(
                 guide,
-                longName='attr',
+                longName=attr,
                 dataType="string",
             )
 
-        cmds.setAttr(
-            f"{guide}.descriptor_TAG",
-            values[i],
-            type="string",
-        )
+            cmds.setAttr(
+                f"{guide}.{attr}",
+                values[i],
+                type="string",
+            )
 
 
 def create_spline_guide(parent:str, lower_name:str='lower', upper_name:str='upper', curve_name:str='spline', side:str='M', position:list=[]):

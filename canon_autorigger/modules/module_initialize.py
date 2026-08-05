@@ -17,6 +17,7 @@ class module:
     ik_grp:str
 
 def module_prep(part: str, side: str, parent: str, fkik:bool=False, gut:bool=True)->module:
+    cmds.refresh()
     main_grp = create_transform(name=f"{part}_{side}", parent=parent)
     control_grp = create_transform(name=f"{part}_CTRLS_{side}", parent=main_grp)
     if gut:
