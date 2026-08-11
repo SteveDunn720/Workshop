@@ -3,8 +3,49 @@ import maya.cmds as cmds
 
 from Workshop.transform.utils import create_transform, get_distance_between, get_flat_y_aim_rotation
 from Workshop.transform.mesh_info import get_position_from_vertex
-from Workshop.guide.core import create_guide_from_position, GuideInfo
+from Workshop.guide.core import create_guide_from_position, GuideInfo, read_guide, SplineGuideInfo
 from .modules.foot import foot_guides
+
+
+@dataclass
+class cannon_guide_config:
+    root:list[GuideInfo]
+    spine:SplineGuideInfo
+    hip:list[GuideInfo]
+    chest:list[GuideInfo]
+    neck:list[GuideInfo]
+    head:list[GuideInfo]
+    l_leg:list[GuideInfo]
+    r_leg:list[GuideInfo]
+    l_arm:list[GuideInfo]
+    r_arm:list[GuideInfo]
+    l_fingers:list[GuideInfo]
+    r_fingers:list[GuideInfo]
+    l_toes:list[GuideInfo]
+    r_toes:list[GuideInfo]
+
+
+
+
+
+
+
+
+def read_guides():
+    #read root
+    root = read_guide('root_M_guide')
+    # Spine
+    chest = read_guide('chest_root_M_guide')
+    cog = read_guide('cog_M_guide')
+    chest_curve = read_guide('chest_M_guide')
+    chest_tan = read_guide('chest_tan_M_guide')
+    hip_curve = read_guide('tan_M_guide')
+    hip_tan = read_guide('tan_tan_M_guide')
+    spine_curve = read_guide('spine_curve_M_guide')
+    spine = SplineGuideInfo(curve=spine_curve, lower=hip_curve, lower_tan=hip_tan, upper=chest_curve, upper_tan=chest_tan)
+    # more
+
+
 
 
 
