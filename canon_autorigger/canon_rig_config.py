@@ -9,20 +9,19 @@ from .modules.foot import foot_guides
 
 @dataclass
 class cannon_guide_config:
-    root:list[GuideInfo]
+    root:GuideInfo
     spine:SplineGuideInfo
-    hip:list[GuideInfo]
-    chest:list[GuideInfo]
-    neck:list[GuideInfo]
-    head:list[GuideInfo]
+    hip:GuideInfo
+    chest:GuideInfo
+    neck:SplineGuideInfo
+    head:GuideInfo
     l_leg:list[GuideInfo]
     r_leg:list[GuideInfo]
     l_arm:list[GuideInfo]
     r_arm:list[GuideInfo]
-    l_fingers:list[GuideInfo]
-    r_fingers:list[GuideInfo]
-    l_toes:list[GuideInfo]
-    r_toes:list[GuideInfo]
+    fingers: dict[str, list[GuideInfo]]
+    #l_toes:list[GuideInfo]
+    #r_toes:list[GuideInfo]
 
 
 
@@ -43,8 +42,42 @@ def read_guides():
     hip_tan = read_guide('tan_tan_M_guide')
     spine_curve = read_guide('spine_curve_M_guide')
     spine = SplineGuideInfo(curve=spine_curve, lower=hip_curve, lower_tan=hip_tan, upper=chest_curve, upper_tan=chest_tan)
-    # more
+    # neck
+    neck_upper = read_guide('upper_neck_M_guide')
+    neck_upper_tan = read_guide('upper_neck_tan_M_guide')
+    neck_lower = read_guide('lower_neck_M_guide')
+    neck_lower_tan = read_guide('lower_neck_tan_M_guide')
+    neck_curve = read_guide('neck_M_guide')
+    neck = SplineGuideInfo(curve=neck_curve, lower=neck_lower, lower_tan=neck_lower_tan, upper=neck_upper, upper_tan=neck_upper_tan)
+    # head
+    head = read_guide('head_root_M_guide')
+    # mirrored body guides
+    fingers = {}
+    for side in ['L', 'R']:
+        if side == 'L':
+            l_leg = [read_guide(f'upperleg_{side}_guide'), read_guide(f'knee_{side}_guide'), read_guide(f'foot_{side}_guide')]
+            l_arm = [read_guide(f'shoulder_{side}_guide'), read_guide(f'elbow_{side}_guide'), read_guide(f'hand_{side}_guide')]
+            l_foot = [read_guide(f'foot_{side}_guide'), read_guide(f'toe_ball_{side}_guide'), read_guide(f'toe_ee_{side}_guide')]
+            l_clav = read_guide(f'clav_{side}_guide')
+            l_metacarpal = [read_guide(f'finger_index_{side}_00_guide'), read_guide(f'finger_middle_{side}_00_guide'), read_guide(f'finger_ring_{side}_00_guide'), read_guide(f'finger_pinky_{side}_00_guide'),]
+        else:
+            r_leg = [read_guide(f'upperleg_{side}_guide'), read_guide(f'knee_{side}_guide'), read_guide(f'foot_{side}_guide')]
+            r_arm = [read_guide(f'shoulder_{side}_guide'), read_guide(f'elbow_{side}_guide'), read_guide(f'hand_{side}_guide')]
+            r_foot = [read_guide(f'foot_{side}_guide'), read_guide(f'toe_ball_{side}_guide'), read_guide(f'toe_ee_{side}_guide')]
+            r_clav = read_guide(f'clav_{side}_guide')
+            r_metacarpal = [read_guide(f'finger_index_{side}_00_guide'), read_guide(f'finger_middle_{side}_00_guide'), read_guide(f'finger_ring_{side}_00_guide'), read_guide(f'finger_pinky_{side}_00_guide'),]
+        
 
+        #fingers = finger_Index_L_01_guide
+        for fing in ['thumb', 'index', 'middle', 'ring', 'pinky' ]:
+            joint_list = []
+            for i in [ '01', '02', '03', '04']:
+                guide = read_guide(f'finger_{fing}_{side}_{i}_guide')
+                joint_list.append(guide)
+            fingers[f'{fing}_{side}'] = joint_list
+
+
+    
 
 
 
