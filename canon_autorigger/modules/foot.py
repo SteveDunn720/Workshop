@@ -46,7 +46,7 @@ class Foot:
         parent: str = "components",
         control_parent: str | None = None,
         control_size: float = 1.0,
-        guides: list = ['foot_l', 'ball_l'],
+        guides: list = [],
         fk_control_space:list = [],
         ik_control_space:list = [],
         ik_hook:list=[],
@@ -153,7 +153,7 @@ class Foot:
         self.ik_control_grp = prep.ik_grp
         self.fk_control_grp = prep.fk_grp
 
-        ground_offset = self.get_ground_distance(object=self.guides[0])
+        ground_offset = self.get_ground_distance(object=self.guides[0].name)
         self.controls = []
 
 
@@ -162,7 +162,7 @@ class Foot:
         jnt_par = self.guts
         #switch_joints
         for i,jnt in enumerate(self.guides):
-            switch_jnt = create_joint(name=f'switch_{jnt}', transform=jnt, parent=jnt_par, connect=False)
+            switch_jnt = create_joint(name=f'switch_{jnt.descriptor}', transform=jnt.name, parent=jnt_par, connect=False)
             self.switch_joints.append(switch_jnt)
             jnt_par = switch_jnt
         
@@ -174,16 +174,16 @@ class Foot:
         ctrl_par = self.fk_control_grp
         for i,jnt in enumerate(self.guides):
             ctrl = create_control(
-                name=f'FK_{jnt}',
+                name=f'FK_{jnt.descriptor}',
                 parent=ctrl_par,
-                transform=jnt,
+                transform=jnt.name,
                 size=self.control_size/(4 * (i + 1)),
                 control_shape="circle",
                 direction="y",
                 color_type=self.main_control_color
             )
 
-            fk_jnt = create_joint(name=f'FK_{jnt}', transform=ctrl.ctrl, parent=jnt_par)
+            fk_jnt = create_joint(name=f'FK_{jnt.descriptor}', transform=ctrl.ctrl, parent=jnt_par)
 
             self.fk_joints.append(fk_jnt)
             self.fk_controls.append(ctrl)
@@ -200,13 +200,13 @@ class Foot:
 
         #IK_build 
         for i,jnt in enumerate(self.guides):
-            ik_jnt = create_joint(name=f'IK_{jnt}', transform=jnt, parent=jnt_par, connect=False)
+            ik_jnt = create_joint(name=f'IK_{jnt.descriptor}', transform=jnt.name, parent=jnt_par, connect=False)
             self.ik_joints.append(ik_jnt)
             jnt_par = ik_jnt
         
         ctrl_par = self.ik_control_grp
 
-        temp_guide = cmds.duplicate(self.guides[0])[0]
+        temp_guide = cmds.duplicate(self.guides[0].name)[0]
 
         for axis in ['X', 'Y', 'Z']:
             num = 180 if axis == 'X' else 0
@@ -214,7 +214,7 @@ class Foot:
             cmds.setAttr(f'{temp_guide}.jointOrient{axis}', num)
 
         self.ik_foot = create_control(
-                name=f'IK_{self.guides[0]}_main',
+                name=f'IK_{self.guides[0].descriptor}_main',
                 parent=ctrl_par,
                 transform=temp_guide,
                 size=self.control_size/4,
@@ -233,9 +233,9 @@ class Foot:
         self.ik_controls.append(self.ik_foot)
         self.controls.append(self.ik_foot)
         self.ik_toes = create_control(
-                name=f'IK_{self.guides[1]}',
+                name=f'IK_{self.guides[1].descriptor}',
                 parent=ctrl_par,
-                transform=f'{self.guides[1]}',
+                transform=f'{self.guides[1].name}',
                 size=self.control_size/8,
                 control_shape="circle",
                 direction="y",
@@ -253,7 +253,7 @@ class Foot:
         
         #IK_roll_build 
         for i,jnt in enumerate(self.guides):
-            ik_jnt = create_joint(name=f'IK_roll_{jnt}', transform=jnt, parent=jnt_par, connect=False)
+            ik_jnt = create_joint(name=f'IK_roll_{jnt.descriptor}', transform=jnt.name, parent=jnt_par, connect=False)
             self.ik_roll_joints.append(ik_jnt)
             jnt_par = ik_jnt
 
@@ -287,7 +287,7 @@ class Foot:
 
         #bind joints
         for i,jnt in enumerate(self.guides):
-            switch_jnt = create_joint(name=f'def_{jnt}', transform=jnt, parent=jnt_par, connect=False)
+            switch_jnt = create_joint(name=f'def_{jnt.descriptor}', transform=jnt.name, parent=jnt_par, connect=False)
             self.bind_joints.append(switch_jnt)
             jnt_par = switch_jnt
             constraint(drivers=[self.switch_joints[i]], driven=switch_jnt, parent=self.guts, constraint_type="parent")

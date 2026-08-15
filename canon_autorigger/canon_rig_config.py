@@ -15,22 +15,12 @@ class cannon_guide_config:
     chest:GuideInfo
     neck:SplineGuideInfo
     head:GuideInfo
-    l_leg:list[GuideInfo]
-    r_leg:list[GuideInfo]
-    l_arm:list[GuideInfo]
-    r_arm:list[GuideInfo]
-    fingers: dict[str, list[GuideInfo]]
-    #l_toes:list[GuideInfo]
-    #r_toes:list[GuideInfo]
+    leg:dict[str, list[GuideInfo]]
+    arm:dict[str, list[GuideInfo]]
+    fingers:dict[str, list[GuideInfo]]
+    foot:dict[str, list[GuideInfo]]
 
-
-
-
-
-
-
-
-def read_guides():
+def read_guides()->cannon_guide_config:
     #read root
     root = read_guide('root_M_guide')
     # Spine
@@ -38,8 +28,8 @@ def read_guides():
     cog = read_guide('cog_M_guide')
     chest_curve = read_guide('chest_M_guide')
     chest_tan = read_guide('chest_tan_M_guide')
-    hip_curve = read_guide('tan_M_guide')
-    hip_tan = read_guide('tan_tan_M_guide')
+    hip_curve = read_guide('hip_M_guide')
+    hip_tan = read_guide('hip_tan_M_guide')
     spine_curve = read_guide('spine_curve_M_guide')
     spine = SplineGuideInfo(curve=spine_curve, lower=hip_curve, lower_tan=hip_tan, upper=chest_curve, upper_tan=chest_tan)
     # neck
@@ -53,20 +43,17 @@ def read_guides():
     head = read_guide('head_root_M_guide')
     # mirrored body guides
     fingers = {}
+    leg = {}
+    foot = {}
+    arm = {}
+    clav = {}
+    metacarpal = {}
     for side in ['L', 'R']:
-        if side == 'L':
-            l_leg = [read_guide(f'upperleg_{side}_guide'), read_guide(f'knee_{side}_guide'), read_guide(f'foot_{side}_guide')]
-            l_arm = [read_guide(f'shoulder_{side}_guide'), read_guide(f'elbow_{side}_guide'), read_guide(f'hand_{side}_guide')]
-            l_foot = [read_guide(f'foot_{side}_guide'), read_guide(f'toe_ball_{side}_guide'), read_guide(f'toe_ee_{side}_guide')]
-            l_clav = read_guide(f'clav_{side}_guide')
-            l_metacarpal = [read_guide(f'finger_index_{side}_00_guide'), read_guide(f'finger_middle_{side}_00_guide'), read_guide(f'finger_ring_{side}_00_guide'), read_guide(f'finger_pinky_{side}_00_guide'),]
-        else:
-            r_leg = [read_guide(f'upperleg_{side}_guide'), read_guide(f'knee_{side}_guide'), read_guide(f'foot_{side}_guide')]
-            r_arm = [read_guide(f'shoulder_{side}_guide'), read_guide(f'elbow_{side}_guide'), read_guide(f'hand_{side}_guide')]
-            r_foot = [read_guide(f'foot_{side}_guide'), read_guide(f'toe_ball_{side}_guide'), read_guide(f'toe_ee_{side}_guide')]
-            r_clav = read_guide(f'clav_{side}_guide')
-            r_metacarpal = [read_guide(f'finger_index_{side}_00_guide'), read_guide(f'finger_middle_{side}_00_guide'), read_guide(f'finger_ring_{side}_00_guide'), read_guide(f'finger_pinky_{side}_00_guide'),]
-        
+        leg[side] = [read_guide(f'upperleg_{side}_guide'), read_guide(f'knee_{side}_guide'), read_guide(f'foot_{side}_guide')]
+        arm[side] = [read_guide(f'shoulder_{side}_guide'), read_guide(f'elbow_{side}_guide'), read_guide(f'hand_{side}_guide')]
+        foot[side] = [read_guide(f'foot_{side}_guide'), read_guide(f'toe_ball_{side}_guide'), read_guide(f'toe_ee_{side}_guide')]
+        clav[side] = read_guide(f'clav_{side}_guide')
+        metacarpal[side] = [read_guide(f'finger_index_{side}_00_guide'), read_guide(f'finger_middle_{side}_00_guide'), read_guide(f'finger_ring_{side}_00_guide'), read_guide(f'finger_pinky_{side}_00_guide'),]
 
         #fingers = finger_Index_L_01_guide
         for fing in ['thumb', 'index', 'middle', 'ring', 'pinky' ]:
@@ -76,7 +63,8 @@ def read_guides():
                 joint_list.append(guide)
             fingers[f'{fing}_{side}'] = joint_list
 
-
+    all_guides = cannon_guide_config(root=root, hip=cog, chest=chest, spine=spine, neck=neck, head=head, leg=leg, arm=arm, fingers=fingers, foot=foot)
+    return all_guides
     
 
 

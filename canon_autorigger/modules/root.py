@@ -24,7 +24,7 @@ class Root:
         parent: str = "components",
         control_parent: str | None = None,
         control_size: float = 1.0,
-        guides: list = ['root_M_guide'],
+        guides: list = [],
         joint_parent:str = 'skel'
 
     ):
@@ -52,7 +52,7 @@ class Root:
         self.root_ctrl = create_control(
             name=f'{self.part}_{self.side}',
             parent=self.control_grp,
-            transform=self.guides[0],
+            transform=self.guides[0].name,
             size=self.control_size,
             control_shape="Character_base",
             direction="y",
@@ -62,7 +62,7 @@ class Root:
         self.local_ctrl = create_control(
             name=f'local_{self.side}',
             parent=self.root_ctrl.ctrl,
-            transform=self.guides[0],
+            transform=self.guides[0].name,
             size=self.control_size * .56,
             control_shape="circle",
             direction="y",
@@ -71,7 +71,7 @@ class Root:
         self.offset_ctrl = create_control(
             name=f'offset_{self.side}',
             parent=self.local_ctrl.ctrl,
-            transform=self.guides[0],
+            transform=self.guides[0].name,
             size=self.control_size * .4,
             control_shape="circle",
             direction="y",
@@ -81,7 +81,7 @@ class Root:
         self.vis_control = create_control(
             name='visibility_options',
             parent=self.root_ctrl.ctrl,
-            transform=self.guides[0],
+            transform=self.guides[0].name,
             size=self.control_size * .05,
             control_shape="gear",
             direction="y",
@@ -91,7 +91,7 @@ class Root:
         self.color_control = create_control(
             name='color_options',
             parent=self.root_ctrl.ctrl,
-            transform=self.guides[0],
+            transform=self.guides[0].name,
             size=self.control_size * .05,
             control_shape="gear",
             direction="y",

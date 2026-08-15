@@ -49,7 +49,7 @@ class Hip:
         self.COG_ctrl = create_control(
             name='COG',
             parent=self.control_grp,
-            transform=self.guides[0],
+            transform=self.guides[0].name,
             size=self.control_size * .45,
             control_shape="COG",
             direction="y",
@@ -60,7 +60,7 @@ class Hip:
         self.hip_ctrl = create_control(
             name='hip',
             parent=self.COG_ctrl.ctrl,
-            transform=self.guides[0],
+            transform=self.guides[0].name,
             size=self.control_size * .35,
             control_shape="circle",
             direction="y",
@@ -70,7 +70,7 @@ class Hip:
 
         #bind joints
 
-        self.joint = create_joint(name=f'def_{self.guides[0]}', transform=self.guides[0], connect=True, parent=self.joint_parent)
+        self.joint = create_joint(name=f'def_{self.guides[0].descriptor}', transform=self.guides[0].name, connect=True, parent=self.joint_parent)
         constraint(drivers=[self.hip_ctrl.ctrl], driven=self.joint, parent=self.guts, constraint_type="parent")
 
     
