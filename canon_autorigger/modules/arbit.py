@@ -13,19 +13,16 @@ class module_info:
     control:Control
     joint:str
 
-
-class Root:
+class Arbit:
     def __init__(
         self,
-        part: str = "root",
-        side: str = "m",
+        part: str = "arbit",
+        side: str = "M",
         parent: str = "components",
         control_parent: str | None = None,
         control_size: float = 1.0,
-        guides: list = ['root_M_guide'],
-        joint_parent:str = 'skel',
-        shape:str = 'circle',
-        rig_color_type = 'MISC',
+        guides: list = [],
+        joint_parent:str = 'skel'
 
     ):
         self.part: str = part
@@ -35,37 +32,35 @@ class Root:
         self.control_size: float = control_size
         self.guides: list = guides
         self.joint_parent = joint_parent
-        self.shape = shape
-        self.rig_color_type = rig_color_type
 
     # -------------------
     # Build steps
     # -------------------
 
-    def root_build(self)->module_info:
+    def arbit_build(self)->module_info:
 
-        #modeule prop work
+        #modeule prep work
         prep = module_prep(part=self.part, parent=self.parent, side=self.side, fkik=False, gut=False)
         self.main_grp = prep.main_grp
         self.control_grp = prep.control_grp
         self.guts = prep.guts
 
         #controls
-        self.ctrl = create_control(
+        self.arbit_ctrl = create_control(
             name=f'{self.part}_{self.side}',
             parent=self.control_grp,
-            transform=self.guides[0],
+            transform=self.guides[0].name,
             size=self.control_size,
-            control_shape=self.shape,
+            control_shape="Character_base",
             direction="y",
-            color_type=self.rig_color_type
+            color_type='arbit'
         )
 
-        #joint
+        #joints
 
-        self.joint = create_joint(name=f'{self.part}_{self.side}', transform=self.ctrl.ctrl, connect=True, parent=self.joint_parent)
+        self.arbit_joint = create_joint(name=f'def_{self.part}_{self.side}', transform=self.arbit_ctrl.ctrl, connect=True, parent=self.joint_parent)
 
-        constraint(drivers=[self.ctrl.ctrl], driven=self.joint, onstraint_type='parent', parent=self.guts)
+        constraint(drivers=[self.arbit_ctrl.ctrl], driven=self.arbit_joint, constraint_type='parent', parent=self.guts)
 
-        info = module_info(control=self.ctrl, joint=self.joint)
-        return info
+        arbit_info = module_info(control =self.arbit_ctrl, joint=self.arbit_joint)
+        return arbit_info
