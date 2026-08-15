@@ -1,22 +1,12 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
+
 from typing import Optional
 
 import maya.cmds as cmds
 import maya.api.OpenMaya as om
 
-
-@dataclass
-class GuideLocator:
-    """
-    Stores information about a generated guide locator.
-    """
-
-    name: str
-    pos: tuple[float, float, float]
-    rot: tuple[float, float, float]
-    matrix: list[float]
+from .core import GuideInfo, create_guide_from_position
 
 
 class GuideCurve:
@@ -57,7 +47,7 @@ class GuideCurve:
         self.ignore_handles = ignore_handles
         self.align_normals = align_normals
 
-        self.locator_list: list[GuideLocator] = []
+        self.locator_list: list[GuideInfo] = []
 
         self.curve: str = ""
         self.group: str = ""
@@ -138,13 +128,7 @@ class GuideCurve:
             else:
                 loc_name = f"{self.input_curve}_cv_{str(i + 1).zfill(padding)}"
 
-            loc: str = cmds.spaceLocator(name=loc_name)[0]  # type:ignore
-
-            cmds.xform(
-                loc,
-                worldSpace=True,
-                translation=pos,  # type:ignore
-            )
+            loc = create_guide_from_position(pos=pos, guide_name=loc_name, parent=self.group)
 
             # -------------------------------------------------
             # Rotation
@@ -156,32 +140,16 @@ class GuideCurve:
                 rot = self._calculate_rotation_from_cvs(cvs, i)
 
                 cmds.xform(
-                    loc,
+                    loc.name,
                     worldSpace=True,
                     rotation=rot,
                 )
-
-            cmds.parent(loc, self.group)
 
             # -------------------------------------------------
             # Store Data
             # -------------------------------------------------
 
-            matrix = cmds.xform(
-                loc,
-                query=True,
-                worldSpace=True,
-                matrix=True,
-            )
-
-            locator_data = GuideLocator(
-                name=loc,
-                pos=tuple(pos),  # type:ignore
-                rot=tuple(rot),
-                matrix=matrix,  # type:ignore
-            )
-
-            self.locator_list.append(locator_data)
+            self.locator_list.append(loc)
 
     # =========================================================
     # NORMAL / ROTATION
