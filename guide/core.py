@@ -43,7 +43,7 @@ def create_guide_from_position(pos, guide_name, parent, component_type:str | Non
             print(f'{pos} does not exist')
             return None
         match_location(transform=guide, target_transform=pos)
-    elif isinstance(pos, tuple):
+    elif isinstance(pos, (list, tuple)):
         cmds.xform(guide, query=False, worldSpace=True, translation=pos)
     elif isinstance(pos, MMatrix):
         set_local_matrix(transform=guide, matrix=pos, use_joint_orient=False, )

@@ -45,6 +45,10 @@ def build(rig_name:str, config:rig_config):
     hip = modules.Hip(control_size=canon.scene_size, parent=canon.rig, joint_parent=root_info.joint, control_space=[root_info.offset_control.ctrl], guides=[guides.hip])
     hipinfo = hip.hip_build()
 
+    spine = modules.Spine(control_size=canon.scene_size, parent=canon.rig, joint_parent=root_info.joint, guides=guides.spine, root_hook=[hipinfo.hip_control, hipinfo.cog_control])
+    spineinfo = spine.spine_build()
+     
+
 
 
     ##side modules

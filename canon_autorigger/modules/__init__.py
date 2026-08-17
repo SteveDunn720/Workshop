@@ -3,12 +3,14 @@ from . import root as root
 from . import biped_limb as biped_limb
 from . import hip as hip
 from . import foot as foot
+from . import spine as spine
 
 
 from .root import Root
 from .biped_limb import Limb
 from .hip import Hip
 from .foot import Foot
+from .spine import Spine
 
 
 
@@ -24,4 +26,6 @@ __all__ = [
 "Hip",
 "foot",
 "Foot",
+"spine",
+"Spine",
 ]
