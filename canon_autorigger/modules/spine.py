@@ -9,6 +9,7 @@ from Workshop.joint import create_joint
 from Workshop.guide.curve import GuideCurve
 from Workshop.guide.core import GuideInfo, SplineGuideInfo, create_guide_from_position
 from Workshop.transform.utils import create_transform, get_distance_between
+from Workshop.maya_api.node import BlendColorsNode
 
 from .module_initialize import module_prep, module_space
 
@@ -135,13 +136,15 @@ class Spine:
 
         else:
 
+            self.hybrid_grp = create_transform(name=f'{self.part}_{self.side}_hyrbid_grp', parent=self.control_grp)
+
             if self.root_hook:
                 self.hip = self.root_hook[1]
                 self.cog = self.root_hook[0]
             else:
                 self.hip = create_control(
                     name='hip',
-                    parent=self.control_grp,
+                    parent=self.hybrid_grp,
                     transform=self.guides.lower.name,
                     size=self.control_size/4,
                     control_shape="circle",
@@ -150,7 +153,7 @@ class Spine:
                 )
                 self.cog = create_control(
                     name='cog',
-                    parent=self.control_grp,
+                    parent=self.hybrid_grp,
                     transform=self.guides.lower.name,
                     size=self.control_size/5,
                     control_shape="circle",
@@ -162,7 +165,7 @@ class Spine:
 
             chest_offset = get_distance_between(self.guides.lower.name, self.guides.upper.name)
 
-            self.mid_hip = create_transform(name='hip_mid_grp', parent=self.control_grp, transform=self.guides.lower.name)
+            self.mid_hip = create_transform(name='hip_mid_grp', parent=self.hybrid_grp, transform=self.hip.ctrl)
             self.mid = create_control(
                 name='spine_mid',
                 parent=self.mid_hip,
@@ -175,17 +178,20 @@ class Spine:
 
             self.chest = create_control(
                 name='chest',
-                parent=self.control_grp ,
+                parent=self.hybrid_grp ,
                 transform=self.guides.lower.name,
-                size=self.control_size/2.5,
+                size=self.control_size/2,
                 control_shape="chest",
                 direction="y",
-                color_type=self.main_control_color,
-                shape_position_offset=(0,chest_offset + (self.control_size / 6),0)
+                color_type=self.sub_control_color,
+                shape_position_offset=(0,chest_offset + (self.control_size / 8),0)
             )
+
 
             for attrs in ['X', 'Y', 'Z']:
                 cmds.setAttr(f'{self.chest.top}.rotate{attrs}', 0)
+
+            module_space(control=self.chest, space_list=self.control_space)
 
             self.chest_off = create_control(
                 name='chest_off',
@@ -196,6 +202,20 @@ class Spine:
                 direction="y",
                 color_type=self.main_control_color
             )
+
+            
+
+            """blend_rotate = BlendColorsNode(name='spine_translate_blend')
+
+            blend_rotate.color1.connect_from(f'{self.cog.ctrl}.rotate')
+            blend_rotate.color2.connect_from(f'{self.chest.ctrl}.rotate')
+            blend_rotate.output.connect_to(f"{self.mid_hip}.rotate")
+
+            blend_rotate.output.r.connect_to(f"{self.mid.ctrl}.rotateX")
+            blend_rotate.output.b.connect_to(f"{self.mid.ctrl}.rotateZ")"""
+
+            cmds.parentConstraint(self.hip.ctrl, self.mid_hip, maintainOffset=True)
+            cmds.parentConstraint(self.chest_off.ctrl, self.mid_hip, maintainOffset=True)
 
 
 
