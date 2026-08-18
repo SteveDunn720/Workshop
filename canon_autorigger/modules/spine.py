@@ -10,14 +10,18 @@ from Workshop.guide.curve import GuideCurve
 from Workshop.guide.core import GuideInfo, SplineGuideInfo, create_guide_from_position
 from Workshop.transform.utils import create_transform, get_distance_between
 from Workshop.maya_api.node import BlendColorsNode
+from Workshop.spline.matrix_spline.build import matrix_spline_from_transforms
+from Workshop.transform.matrix import matrix_constraint
+from Workshop.skin.split.tag import tag_for_weight_split
 
 from .module_initialize import module_prep, module_space
 
 
 @dataclass
 class module_info:
-    control:Control
-    joint:str
+    switch_joints:list
+    bind_joints:list
+    chest_ctrl:Control
 
 class Spine:
     def __init__(
@@ -72,6 +76,26 @@ class Spine:
 
         return mid_guide
 
+    def align_guides(self, guide_01:GuideInfo, guide_02:GuideInfo, flip_y:bool=False):
+        if guide_01.pos[2] > guide_02.pos[2]:
+            mod = -1
+        else:
+            mod = 1
+        ymod = -1 if flip_y else 1
+
+        aim = cmds.aimConstraint(
+                guide_01.name,
+                guide_02.name,
+                aimVector=(0, 1 * ymod, 0),      # Primary / aim axis = +X
+                upVector=(0, 0, 1 * mod),       # Up axis = +Y
+                worldUpType="vector",
+                worldUpVector=(0, 1, 0),
+                maintainOffset=False
+            )
+
+        cmds.delete(aim)
+
+
     def spine_build(self):
 
         #modeule prep work
@@ -96,13 +120,20 @@ class Spine:
                     resample_amount=self.count,
                     output_names=guide_names,
                     ignore_handles=True,
-                    align_normals=True,
+                    align_normals=False,
+                    primary_axis='+y'
         )
+
+        for i, guide in enumerate(self.curve.locator_list):
+            if guide == self.curve.locator_list[-1]:
+                self.align_guides(guide_01=guide, guide_02=self.curve.locator_list[i-1], flip_y=True)
+            else:
+                self.align_guides(guide_01=guide, guide_02=self.curve.locator_list[i+1])
 
         jnt_par = self.guts
 
         for i, guide in enumerate(self.curve.locator_list):
-            jnt = create_joint(name=f'Switch_{guide.descriptor}', transform=guide.name, parent=jnt_par)
+            jnt = create_joint(name=f'Switch_{guide.descriptor}', transform=guide.name, parent=jnt_par, connect=False)
             self.switch_joints.append(jnt)
             jnt_par = jnt
 
@@ -180,7 +211,7 @@ class Spine:
                 name='chest',
                 parent=self.hybrid_grp ,
                 transform=self.guides.lower.name,
-                size=self.control_size/2,
+                size=self.control_size/3,
                 control_shape="chest",
                 direction="y",
                 color_type=self.sub_control_color,
@@ -203,75 +234,53 @@ class Spine:
                 color_type=self.main_control_color
             )
 
+            self.spine_off_ctrls = []
+            spine_driven = []
+
+
+            for i, g in enumerate(self.curve.locator_list): 
+                ctrl = create_control(
+                        name=g.descriptor,
+                        parent=self.hybrid_grp,
+                        transform=g.name,
+                        size=self.control_size/30,
+                        control_shape="circle",
+                        direction="z",
+                        color_type=self.main_control_color,
+                        shape_position_offset=(0,0,(self.control_size/4))
+                    )
+                self.spine_off_ctrls.append(ctrl)
+                spine_driven.append(ctrl.top)
+                matrix_constraint(constrain_transform=self.switch_joints[i], source_transform=ctrl.ctrl)
+
             
-
-            """blend_rotate = BlendColorsNode(name='spine_translate_blend')
-
-            blend_rotate.color1.connect_from(f'{self.cog.ctrl}.rotate')
-            blend_rotate.color2.connect_from(f'{self.chest.ctrl}.rotate')
-            blend_rotate.output.connect_to(f"{self.mid_hip}.rotate")
-
-            blend_rotate.output.r.connect_to(f"{self.mid.ctrl}.rotateX")
-            blend_rotate.output.b.connect_to(f"{self.mid.ctrl}.rotateZ")"""
 
             cmds.parentConstraint(self.hip.ctrl, self.mid_hip, maintainOffset=True)
             cmds.parentConstraint(self.chest_off.ctrl, self.mid_hip, maintainOffset=True)
 
 
-
-            
-
-
-
-
-
-
-
-
-
-
-        """jnt_par = self.guts
-        ctrl_par = self.fk_control_grp
-        for i,jnt in enumerate(self.guides):
-            if not self.ik_end_control and i == len(self.guides) - 1:
-                continue
-            ctrl = create_control(
-                name=f'FK_{jnt.descriptor}',
-                parent=ctrl_par,
-                transform=jnt.name,
-                size=self.control_size/4,
-                control_shape="circle",
-                direction="y",
-                color_type=self.main_control_color
+            matrix_spline_from_transforms(
+                name=f"{self.side}_spine_ms",
+                pinned_transforms=spine_driven,
+                cv_transforms=[self.hip.ctrl, self.mid.ctrl, self.chest_off.ctrl],
+                parent=self.guts,
+                degree=2,
             )
 
-            fk_jnt = create_joint(name=f'FK_{jnt.descriptor}', transform=ctrl.ctrl, parent=jnt_par)
 
-            self.fk_joints.append(fk_jnt)
-            self.fk_controls.append(ctrl)
-            self.controls.append(ctrl.ctrl)
-            jnt_par = fk_jnt
-            ctrl_par = ctrl.ctrl"""
+            jnt_par = self.joint_parent
+            
+            for i, guide in enumerate(self.curve.locator_list):
+                jnt = create_joint(name=f'def_{guide.descriptor}', transform=guide.name, parent=jnt_par, connect=False)
+                self.bind_joints.append(jnt)
+                jnt_par = jnt
+                constraint(drivers=[self.switch_joints[i]], driven=jnt, constraint_type='parent', parent=self.guts)
 
-
-
-
-
-
-
-
+            tag_for_weight_split(
+                influence=self.bind_joints[0],  # <-- your SOURCE joint (must already exist)
+                split_influences=self.bind_joints,  # <-- the ones you just created
+            )
 
 
-
-
-
-
-
-
-        
-        #self.spine_joint = create_joint(name=f'def_{self.part}_{self.side}', transform=self.spine_ctrl.ctrl, connect=True, parent=self.joint_parent)
-
-        #constraint(drivers=[self.spine_ctrl.ctrl], driven=self.spine_joint, constraint_type='parent', parent=self.guts)
-
-        #spine_info = module_info(control =self.spine_ctrl, joint=self.spine_joint)
-        #return spine_info
+        spine_info = module_info(switch_joints=self.switch_joints, bind_joints=self.bind_joints, chest_ctrl=self.chest)
+        return spine_info

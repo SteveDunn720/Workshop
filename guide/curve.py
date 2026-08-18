@@ -39,6 +39,7 @@ class GuideCurve:
         output_names: Optional[list[str]] = None,
         ignore_handles: bool = True,
         align_normals: bool = False,
+        primary_axis: str | None = None,
     ):
 
         self.input_curve = curve
@@ -46,6 +47,7 @@ class GuideCurve:
         self.output_names = output_names or []
         self.ignore_handles = ignore_handles
         self.align_normals = align_normals
+        self.primary_axis = primary_axis
 
         self.locator_list: list[GuideInfo] = []
 
@@ -62,6 +64,7 @@ class GuideCurve:
     def build(self) -> None:
 
         self.duplicate_and_resample_curve()
+        self.ensure_primary_axis()
         self.create_group()
         self.create_locators()
 
@@ -70,6 +73,61 @@ class GuideCurve:
     # =========================================================
     # CURVE SETUP
     # =========================================================
+
+    def ensure_primary_axis(self) -> None:
+        if self.primary_axis is None:
+            return
+
+        axis = self.primary_axis.upper().strip()
+
+        valid_axes = {
+            "+X": ("x", 1),
+            "-X": ("x", -1),
+            "+Y": ("y", 1),
+            "-Y": ("y", -1),
+            "+Z": ("z", 1),
+            "-Z": ("z", -1),
+        }
+
+        if axis not in valid_axes:
+            raise ValueError(
+                f"Invalid primary_axis: {self.primary_axis}. "
+                "Expected +X, -X, +Y, -Y, +Z, or -Z."
+            )
+
+        axis_name, desired_sign = valid_axes[axis]
+
+        cvs = cmds.ls(
+            f"{self.curve}.cv[*]",
+            flatten=True,
+        )
+
+        if len(cvs) < 2:
+            return
+
+        start = cmds.pointPosition(cvs[0], world=True)
+        end = cmds.pointPosition(cvs[-1], world=True)
+
+        axis_index = {
+            "x": 0,
+            "y": 1,
+            "z": 2,
+        }[axis_name]
+
+        delta = end[axis_index] - start[axis_index]
+
+        # Curve is effectively flat on this axis.
+        if abs(delta) < 1e-6:
+            return
+
+        current_sign = 1 if delta > 0 else -1
+
+        if current_sign != desired_sign:
+            cmds.reverseCurve(
+                self.curve,
+                constructionHistory=False,
+                replaceOriginal=True,
+            )
 
     def duplicate_and_resample_curve(self) -> None:
 

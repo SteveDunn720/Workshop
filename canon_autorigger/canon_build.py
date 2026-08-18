@@ -6,12 +6,11 @@ from Workshop.canon_autorigger.build_management.load_guides import load_guides
 from Workshop.canon_autorigger import modules
 from Workshop.tag.core import get_tags
 from Workshop.canon_autorigger.canon_rig_config import generate_foot_guides, read_guides
+from meta_rigs.meta_componets import clavicle
 
 @dataclass
 class rig_config:
     cor_joints:bool = True
-
-
 
 
 
@@ -45,7 +44,7 @@ def build(rig_name:str, config:rig_config):
     hip = modules.Hip(control_size=canon.scene_size, parent=canon.rig, joint_parent=root_info.joint, control_space=[root_info.offset_control.ctrl], guides=[guides.hip])
     hipinfo = hip.hip_build()
 
-    spine = modules.Spine(control_size=canon.scene_size, parent=canon.rig, joint_parent=root_info.joint, guides=guides.spine, root_hook=[hipinfo.cog_control, hipinfo.hip_control], control_space=[hipinfo.cog_control.ctrl])
+    spine = modules.Spine(control_size=canon.scene_size, parent=canon.rig, joint_parent=hipinfo.hip_joint, guides=guides.spine, root_hook=[hipinfo.cog_control, hipinfo.hip_control], control_space=[hipinfo.cog_control.ctrl])
     spineinfo = spine.spine_build()
      
 
@@ -54,14 +53,19 @@ def build(rig_name:str, config:rig_config):
     ##side modules
 
     for side in ["L", "R"]:
-        
-
+    
         leg = modules.Limb(part='leg', control_size=canon.scene_size, parent=canon.rig, joint_parent=hipinfo.hip_joint, side=side, guides=guides.leg[side],ik_end_control = False, fk_control_space=[hipinfo.hip_control.ctrl], ik_root_control_space=[ hipinfo.hip_control.ctrl, root_info.root_control.ctrl,], ik_pv_control_space=[root_info.root_control.ctrl, hipinfo.hip_control.ctrl], ik_end_control_space=[root_info.root_control.ctrl, hipinfo.hip_control.ctrl], ikfk_blend=0, ik_length=True)
         leg_info = leg.limb_build()
 
         footguide = generate_foot_guides(side=side, parent=None)
         foot = modules.Foot(part='feet', control_size=canon.scene_size, parent=canon.rig, side=side, joint_parent=leg_info.bind_joints[-1] ,  guides= guides.foot[side], fk_control_space=[leg_info.fk_controls[-1].ctrl], ik_control_space=[root_info.offset_control.ctrl, hipinfo.hip_control.ctrl, ], ik_hook=leg_info.end_ik_hook, feet_guides=footguide, fkik_switch_attr=leg_info.fk_ik_switch, leg_info=leg_info)
         foot_info = foot.foot_build()
+
+
+        clav = 
+
+
+
         
 
 

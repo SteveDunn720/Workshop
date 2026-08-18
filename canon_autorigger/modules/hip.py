@@ -50,7 +50,7 @@ class Hip:
             name='COG',
             parent=self.control_grp,
             transform=self.guides[0].name,
-            size=self.control_size * .45,
+            size=self.control_size * .4,
             control_shape="COG",
             direction="y",
             shape_rotation_offset=(0,0,0),
