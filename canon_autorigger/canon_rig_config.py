@@ -17,6 +17,7 @@ class cannon_guide_config:
     head:GuideInfo
     leg:dict[str, list[GuideInfo]]
     arm:dict[str, list[GuideInfo]]
+    clav:dict[str, list[GuideInfo]]
     fingers:dict[str, list[GuideInfo]]
     foot:dict[str, list[GuideInfo]]
 
@@ -63,7 +64,7 @@ def read_guides()->cannon_guide_config:
                 joint_list.append(guide)
             fingers[f'{fing}_{side}'] = joint_list
 
-    all_guides = cannon_guide_config(root=root, hip=cog, chest=chest, spine=spine, neck=neck, head=head, leg=leg, arm=arm, fingers=fingers, foot=foot)
+    all_guides = cannon_guide_config(root=root, hip=cog, chest=chest, spine=spine, neck=neck, head=head, leg=leg, arm=arm, fingers=fingers, foot=foot, clav=clav)
     return all_guides
     
 

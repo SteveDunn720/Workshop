@@ -6,7 +6,6 @@ from Workshop.canon_autorigger.build_management.load_guides import load_guides
 from Workshop.canon_autorigger import modules
 from Workshop.tag.core import get_tags
 from Workshop.canon_autorigger.canon_rig_config import generate_foot_guides, read_guides
-from meta_rigs.meta_componets import clavicle
 
 @dataclass
 class rig_config:
@@ -62,7 +61,11 @@ def build(rig_name:str, config:rig_config):
         foot_info = foot.foot_build()
 
 
-        clav = 
+        clav = modules.Clav(part='clav', side=side, control_size=canon.scene_size, parent=canon.rig, joint_parent=spineinfo.bind_joints[-1], guides=guides.clav[side], control_space=[spineinfo.chest_off.ctrl, spineinfo.switch_joints[-1]])
+        clav_info = clav.clav_build()
+
+        arm = modules.Limb(part='arm', control_size=canon.scene_size, parent=canon.rig, joint_parent=clav_info.joint, side=side, guides=guides.arm[side],ik_end_control = False, fk_control_space=[clav_info.control.ctrl], ik_root_control_space=[ hipinfo.hip_control.ctrl, root_info.root_control.ctrl, spineinfo.switch_joints[-1], clav_info.control.ctrl,], ik_pv_control_space=[root_info.root_control.ctrl, hipinfo.hip_control.ctrl], ik_end_control_space=[root_info.root_control.ctrl, hipinfo.hip_control.ctrl], ikfk_blend=1, ik_length=True)
+        arm_info = arm.limb_build()
 
 
 
@@ -85,6 +88,7 @@ def build(rig_name:str, config:rig_config):
 
     #cmds.delete('guides')
     cmds.delete('foot_guides_temp')
+    cmds.hide('guides')
 
 
 

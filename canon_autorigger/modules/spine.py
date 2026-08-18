@@ -22,6 +22,7 @@ class module_info:
     switch_joints:list
     bind_joints:list
     chest_ctrl:Control
+    chest_off:Control
 
 class Spine:
     def __init__(
@@ -281,6 +282,8 @@ class Spine:
                 split_influences=self.bind_joints,  # <-- the ones you just created
             )
 
+        
 
-        spine_info = module_info(switch_joints=self.switch_joints, bind_joints=self.bind_joints, chest_ctrl=self.chest)
+        cmds.delete(self.curve.group)
+        spine_info = module_info(switch_joints=self.switch_joints, bind_joints=self.bind_joints, chest_ctrl=self.chest, chest_off=self.chest_off)
         return spine_info
