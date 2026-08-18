@@ -5,7 +5,7 @@ from Workshop.transform.constraint import constraint
 from Workshop.control import create_control
 from Workshop.joint import create_joint
 
-from .module_initialize import module_prep
+from .module_initialize import module_prep, module_space
 
 
 @dataclass
@@ -22,7 +22,8 @@ class Arbit:
         control_parent: str | None = None,
         control_size: float = 1.0,
         guides: list = [],
-        joint_parent:str = 'skel'
+        joint_parent:str = 'skel',
+        control_space:list = [],
 
     ):
         self.part: str = part
@@ -32,6 +33,7 @@ class Arbit:
         self.control_size: float = control_size
         self.guides: list = guides
         self.joint_parent = joint_parent
+        self.control_space = control_space
 
     # -------------------
     # Build steps
@@ -55,6 +57,8 @@ class Arbit:
             direction="y",
             color_type='arbit'
         )
+
+        module_space(control=self.arbit_ctrl, space_list=self.control_space)
 
         #joints
 

@@ -278,7 +278,7 @@ class Limb:
             self.ik_hook = None
         else:
             self.ik_end_ctrl = create_control(
-                name=f'IK_{self.guides[2].descriptor}',
+                name=f'IK_{self.part}_end_{self.side}',
                 parent=self.ik_control_grp,
                 transform=self.guides[2].name,
                 size=self.control_size/8,

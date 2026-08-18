@@ -1,0 +1,166 @@
+from attr import dataclass
+from Workshop.control.core import Control
+import maya.cmds as cmds
+
+from Workshop.control import create_control
+from Workshop.transform.utils import get_position, match_transform
+from Workshop.transform.constraint import constraint
+from .module_initialize import module_prep, module_space
+from Workshop.joint import create_joint
+from Workshop.maya_api.node import ReverseNode
+from .module_shared import fkik_switch
+from Workshop.guide.core import GuideInfo
+
+@dataclass
+class module_info:
+    fk_control:Control
+    ik_control:Control
+    switch:str
+    joint:str
+
+class Hand:
+    def __init__(
+        self,
+        guides:GuideInfo,
+        joint_parent:str,
+        part: str = "hand",
+        side: str = "L",
+        parent: str = "components",
+        control_parent: str | None = None,
+        control_size: float = 1.0,
+        fk_control_space:list = [],
+        ik_control_space:list = [],
+        ik_hook:list=[],
+        fkik_switch_attr:str = '',
+        
+
+    ):
+        self.part: str = part
+        self.side: str = side
+        self.parent: str = parent
+        self.control_parent: str | None = control_parent
+        self.control_size: float = control_size
+        self.guides = guides
+        self.fk_control_space = fk_control_space
+        self.ik_control_space = ik_control_space
+        self.main_control_color = 'Left' if self.side == 'l' else 'Right' 
+        self.ik_hook = ik_hook
+        self.fkik_switch_attr = fkik_switch_attr
+        self.main_control_color = 'Left' if self.side == 'L' else 'Right'
+        self.sub_control_color = 'SubLeft' if self.side == 'L' else 'SubRight'
+        self.joint_parent = joint_parent
+
+    # -------------------
+    # Build steps
+    # -------------------
+        
+    def hand_build(self):
+        prep = module_prep(part=self.part, parent=self.parent, side=self.side, fkik=True)
+        self.main_grp = prep.main_grp
+        self.control_grp = prep.control_grp
+        self.guts = prep.guts
+        self.ik_control_grp = prep.ik_grp
+        self.fk_control_grp = prep.fk_grp
+
+        self.controls = []
+        self.switch_joints = []
+
+        jnt_par = self.guts
+        #switch_joints
+
+        switch_jnt = create_joint(name=f'switch_{self.part}_{self.side}', transform=self.guides.name, parent=jnt_par, connect=False)
+        self.switch_joints.append(switch_jnt)
+        
+        #Fk_build
+        self.fk_controls = []
+        self.fk_joints = []
+
+        jnt_par = self.guts
+        ctrl_par = self.fk_control_grp
+        ctrl = create_control(
+            name=f'FK_{self.part}_{self.side}',
+            parent=ctrl_par,
+            transform=self.guides.name,
+            size=self.control_size/(4),
+            control_shape="circle",
+            direction="y",
+            color_type=self.main_control_color
+        )
+
+        fk_jnt = create_joint(name=f'FK_{self.part}_{self.side}', transform=ctrl.ctrl, parent=jnt_par)
+        self.fk_joints.append(fk_jnt)
+        self.fk_controls.append(ctrl)
+        self.controls.append(ctrl.ctrl)
+
+        self.ik_joints = []
+        self.ik_controls = []
+        module_space(space_list=self.fk_control_space, control=self.fk_controls[0])
+        jnt_par = self.guts
+
+        #IK_build 
+        ik_jnt = create_joint(name=f'IK_{self.part}_{self.side}', transform=self.guides.name, parent=jnt_par, connect=False)
+        self.ik_joints.append(ik_jnt)
+        
+        ctrl_par = self.ik_control_grp
+
+        self.ik_hand_piv = create_control(
+                name=f'IK_{self.part}_{self.side}_piv',
+                parent=ctrl_par,
+                transform=f'{self.guides.name}',
+                size=self.control_size/16,
+                control_shape="triangle",
+                direction="x",
+                color_type=self.sub_control_color,
+                shape_position_offset=(0,0,-(self.control_size * .4))
+            )
+        self.ik_controls.append(self.ik_hand_piv)
+        self.controls.append(self.ik_hand_piv)
+
+        self.ik_hand = create_control(
+                name=f'IK_{self.part}_{self.side}',
+                parent=self.ik_hand_piv.ctrl,
+                transform=f'{self.guides.name}',
+                size=self.control_size/4,
+                control_shape="circle",
+                direction="y",
+                color_type=self.main_control_color,
+            )
+        self.ik_controls.append(self.ik_hand)
+        self.controls.append(self.ik_hand)
+        module_space(space_list=self.ik_control_space, control=self.ik_hand_piv)
+
+        self.FK_IK_Switch = fkik_switch(controls=self.controls, node_attr=self.main_grp, descriptor=self.part, fk_grp=self.fk_control_grp, ik_grp=self.ik_control_grp, fk_joints=self.fk_joints, ik_joints=self.ik_joints, switch_joints=self.switch_joints, connect_switch_attr=self.fkik_switch_attr )
+
+        self.prop = create_control(
+                name=f'prop_{self.side}',
+                parent=self.control_grp,
+                transform=f'{self.guides.name}',
+                size=self.control_size/32,
+                control_shape="cube",
+                direction="y",
+                color_type=self.main_control_color,
+                shape_position_offset=((self.control_size * .1),0,0)
+            )
+        cmds.parentConstraint(self.switch_joints[0], self.prop.top, maintainOffset=True)
+        self.controls.append(self.prop)
+
+        cmds.parentConstraint(self.ik_hand.ctrl, self.ik_hook[0], maintainOffset=True)
+        cmds.orientConstraint(self.ik_hand.ctrl, self.ik_hook[1], maintainOffset=True)
+        cmds.parentConstraint(self.ik_hook[1], self.ik_joints[0], maintainOffset=True)
+        cmds.parentConstraint(self.ik_hand.ctrl, self.ik_hook[2], maintainOffset=True)
+        cmds.addAttr(self.ik_hand.ctrl, longName='stretch', proxy=f'{self.ik_hook[2]}.stretch')
+
+        #bind joints
+        self.bind_jnt = create_joint(name=f'def_{self.part}_{self.side}', transform=self.guides.name, parent=self.joint_parent, connect=False)
+
+        constraint(driven=self.bind_jnt, drivers=self.switch_joints[0], constraint_type='parent')
+
+
+        info = module_info(fk_control=self.fk_controls[0], ik_control=self.ik_controls[0], switch=self.switch_joints[0], joint=self.bind_jnt)    
+        return info
+
+
+
+
+
+
