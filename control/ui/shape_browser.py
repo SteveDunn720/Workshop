@@ -6,6 +6,8 @@ from typing import Iterator
 import maya.OpenMayaUI as omui
 import maya.cmds as cmds
 
+
+
 try:
     from PySide6 import QtCore, QtGui, QtWidgets
     from shiboken6 import wrapInstance
@@ -16,6 +18,7 @@ except ImportError:
     Signal = QtCore.Signal
 
 from Workshop.control.serialize import SHAPE_LIBRARY_DIR
+from Workshop.control.core import create_control
 
 
 WORKSHOP_ROOT = Path(__file__).resolve().parents[1]  # Adjust if needed
@@ -630,13 +633,32 @@ class ControlShapeBrowser(QtWidgets.QWidget):
         main_layout.setContentsMargins(0, 0, 0, 0)
         main_layout.setSpacing(4)
 
+        search_layout = QtWidgets.QHBoxLayout()
+        search_layout.setContentsMargins(0, 0, 0, 0)
+        search_layout.setSpacing(4)
+
         self.search_field = QtWidgets.QLineEdit()
         self.search_field.setPlaceholderText(
             "Search control shapes..."
         )
         self.search_field.setClearButtonEnabled(True)
 
-        main_layout.addWidget(self.search_field)
+        self.refresh_button = QtWidgets.QPushButton("Refresh")
+        self.refresh_button.setFixedWidth(70)
+        self.refresh_button.setToolTip(
+            "Refresh the control shape library"
+        )
+
+        search_layout.addWidget(
+            self.search_field,
+            stretch=1,
+        )
+
+        search_layout.addWidget(
+            self.refresh_button,
+        )
+
+        main_layout.addLayout(search_layout)
 
         self.scroll_area = QtWidgets.QScrollArea()
         self.scroll_area.setWidgetResizable(True)
@@ -672,6 +694,10 @@ class ControlShapeBrowser(QtWidgets.QWidget):
     def _connect_signals(self) -> None:
         self.search_field.textChanged.connect(
             self._filter_tiles
+        )
+
+        self.refresh_button.clicked.connect(
+            self.refresh
         )
 
     def resizeEvent(
@@ -753,6 +779,7 @@ class ControlShapeBrowser(QtWidgets.QWidget):
                 column,
             )
 
+            tile.show()
         # Keeps incomplete final rows aligned to the left.
         self.grid_layout.setColumnStretch(
             column_count,
@@ -766,15 +793,7 @@ class ControlShapeBrowser(QtWidgets.QWidget):
         """Remove widgets from the grid without deleting them."""
 
         while self.grid_layout.count():
-            item = self.grid_layout.takeAt(0)
-
-            if item is None:
-                continue
-
-            widget = item.widget()
-
-            if widget is not None:
-                widget.setParent(self.scroll_widget)
+            self.grid_layout.takeAt(0)
 
     def refresh(self) -> None:
         """Rebuild the browser from the shape library."""
@@ -988,6 +1007,10 @@ class ControlCreatorWidget(QtWidgets.QWidget):
         self._build_ui()
         self._connect_signals()
 
+    # -------------------------------------------------------------------------
+    # Properties
+    # -------------------------------------------------------------------------
+
     @property
     def control_color(self) -> QtGui.QColor:
         """Return the currently selected control color."""
@@ -1024,10 +1047,129 @@ class ControlCreatorWidget(QtWidgets.QWidget):
 
         return self.control_color.name()
 
+    @property
+    def placement_mode(self) -> str:
+        """Return the selected control placement mode."""
+
+        return self.placement_combo.currentText()
+
+    @property
+    def primary_axis(self) -> str:
+        """Return the selected primary axis."""
+
+        return self.primary_axis_combo.currentText()
+
+    @property
+    def control_size(self) -> float:
+        """Return the selected control size."""
+
+        return self.size_spinbox.value()
+
+    @property
+    def use_sdk(self) -> bool:
+        """Return whether an SDK offset should be created."""
+
+        return self.sdk_checkbox.isChecked()
+
+    # -------------------------------------------------------------------------
+    # UI
+    # -------------------------------------------------------------------------
+
     def _build_ui(self) -> None:
         main_layout = QtWidgets.QVBoxLayout(self)
         main_layout.setContentsMargins(6, 6, 6, 6)
         main_layout.setSpacing(6)
+
+        # ---------------------------------------------------------------------
+        # Placement
+        # ---------------------------------------------------------------------
+
+        placement_layout = QtWidgets.QHBoxLayout()
+        placement_layout.setContentsMargins(0, 0, 0, 0)
+
+        placement_label = QtWidgets.QLabel("Placement")
+
+        self.placement_combo = QtWidgets.QComboBox()
+        self.placement_combo.addItems(
+            [
+                "At_Origin",
+                "Match_Pose",
+                "Constrain",
+            ]
+        )
+
+        placement_layout.addWidget(placement_label)
+        placement_layout.addStretch()
+        placement_layout.addWidget(self.placement_combo)
+
+        main_layout.addLayout(placement_layout)
+
+        # ---------------------------------------------------------------------
+        # Primary Axis
+        # ---------------------------------------------------------------------
+
+        axis_layout = QtWidgets.QHBoxLayout()
+        axis_layout.setContentsMargins(0, 0, 0, 0)
+
+        axis_label = QtWidgets.QLabel("Primary Axis")
+
+        self.primary_axis_combo = QtWidgets.QComboBox()
+        self.primary_axis_combo.addItems(
+            [
+                "X",
+                "Y",
+                "Z",
+            ]
+        )
+
+        axis_layout.addWidget(axis_label)
+        axis_layout.addStretch()
+        axis_layout.addWidget(self.primary_axis_combo)
+
+        main_layout.addLayout(axis_layout)
+
+        # ---------------------------------------------------------------------
+        # Size
+        # ---------------------------------------------------------------------
+
+        size_layout = QtWidgets.QHBoxLayout()
+        size_layout.setContentsMargins(0, 0, 0, 0)
+
+        size_label = QtWidgets.QLabel("Size")
+
+        self.size_spinbox = QtWidgets.QDoubleSpinBox()
+        self.size_spinbox.setRange(0.1, 1000.0)
+        self.size_spinbox.setValue(1.0)
+        self.size_spinbox.setSingleStep(0.1)
+        self.size_spinbox.setDecimals(2)
+
+        size_layout.addWidget(size_label)
+        size_layout.addStretch()
+        size_layout.addWidget(self.size_spinbox)
+
+        main_layout.addLayout(size_layout)
+
+        # ---------------------------------------------------------------------
+        # SDK
+        # ---------------------------------------------------------------------
+
+        sdk_layout = QtWidgets.QHBoxLayout()
+        sdk_layout.setContentsMargins(0, 0, 0, 0)
+
+        sdk_label = QtWidgets.QLabel("SDK")
+
+        self.sdk_checkbox = QtWidgets.QCheckBox()
+        self.sdk_checkbox.setChecked(False)
+
+        sdk_layout.addWidget(sdk_label)
+        sdk_layout.addStretch()
+        sdk_layout.addWidget(self.sdk_checkbox)
+
+        main_layout.addLayout(sdk_layout)
+
+        # ---------------------------------------------------------------------
+        # Color
+        # ---------------------------------------------------------------------
 
         color_layout = QtWidgets.QHBoxLayout()
         color_layout.setContentsMargins(0, 0, 0, 0)
@@ -1044,19 +1186,35 @@ class ControlCreatorWidget(QtWidgets.QWidget):
 
         main_layout.addLayout(color_layout)
 
+        # ---------------------------------------------------------------------
+        # Build
+        # ---------------------------------------------------------------------
+
         self.build_button = QtWidgets.QPushButton(
             "Build Control"
         )
 
+        self.swap_shape_button = QtWidgets.QPushButton(
+            "Swap Shape"
+        )
+
         main_layout.addWidget(self.build_button)
+        main_layout.addWidget(self.swap_shape_button)
 
     def _connect_signals(self) -> None:
         self.build_button.clicked.connect(
             self.build_control
         )
+        self.swap_shape_button.clicked.connect(
+            self.swap_shape
+        )
 
-    def build_control(self) -> None:
-        """Temporary control-building function."""
+    # -------------------------------------------------------------------------
+    # Build
+    # -------------------------------------------------------------------------
+
+    def swap_shape(self) -> None:
+        """Swap the selected control's shape."""
 
         selected_shape = self.shape_browser.selected_shape
 
@@ -1064,10 +1222,45 @@ class ControlCreatorWidget(QtWidgets.QWidget):
             cmds.warning("No control shape is selected.")
             return
 
+        placement_mode = self.placement_mode
+        primary_axis = self.primary_axis
+        size = self.control_size
+        sdk = self.use_sdk
+
         print("=" * 50)
+        print("Swapping control shape")
+        print(f"Shape: {selected_shape}")
+        print(f"Placement: {placement_mode}")
+        print(f"Primary Axis: {primary_axis}")
+        print(f"Size: {size}")
+        print(f"SDK: {sdk}")
+        print(f"Color: {self.control_color_rgb}")
+        print("=" * 50)
+
+    def build_control(self) -> None:
+        """Build a control using the current UI settings."""
+
+        selected_shape = self.shape_browser.selected_shape
+
+        if selected_shape is None:
+            cmds.warning("No control shape is selected.")
+            return
+
+        placement_mode = self.placement_mode
+        primary_axis = self.primary_axis
+        size = self.control_size
+        sdk = self.use_sdk
+
+        """print("=" * 50)
         print("Building control")
         print(f"Shape: {selected_shape}")
+        print(f"Placement: {placement_mode}")
+        print(f"Primary Axis: {primary_axis}")
+        print(f"Size: {size}")
+        print(f"SDK: {sdk}")
         print(f"Color hex: {self.control_color_hex}")
         print(f"Color RGB 255: {self.control_color_rgb_255}")
         print(f"Color RGB normalized: {self.control_color_rgb}")
-        print("=" * 50)
+        print("=" * 50)"""
+
+        #create_control()
