@@ -2,9 +2,25 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from pathlib import Path
+from turtle import shape
 from typing import Iterator
 import maya.OpenMayaUI as omui
 import maya.cmds as cmds
+
+from Workshop.transform.constraint import constraint
+from Workshop.transform.utils import create_transform
+
+from Workshop.snapshots.image_planes import create_control_helper_plane
+from Workshop.control.core import  _create_control_curve
+from Workshop.control.serialize import write_curve_to_library
+from Workshop.snapshots.camera_core import delete_snapshot_camera, place_snapshot_camera, take_snapshot
+from Workshop.control.serialize import SHAPE_LIBRARY_DIR
+from Workshop.control.core import create_control
+
+
+WORKSHOP_ROOT = Path(__file__).resolve().parents[1]  # Adjust if needed
+IMAGE_PATH = WORKSHOP_ROOT / "AA_control_sizer.png"
+ICON_PATH = WORKSHOP_ROOT / "shape_icons"
 
 
 
@@ -17,8 +33,7 @@ except ImportError:
     from shiboken2 import wrapInstance
     Signal = QtCore.Signal
 
-from Workshop.control.serialize import SHAPE_LIBRARY_DIR
-from Workshop.control.core import create_control
+
 
 
 WORKSHOP_ROOT = Path(__file__).resolve().parents[1]  # Adjust if needed
@@ -31,6 +46,264 @@ SUPPORTED_IMAGE_EXTENSIONS = (
     ".jpeg",
     ".bmp",
 )
+
+class ControlAuthoringWidget(QtWidgets.QWidget):
+    """Tools for creating and saving control shapes."""
+
+    def __init__(
+        self,
+        shape_browser: ControlShapeBrowser,
+        parent: QtWidgets.QWidget | None = None,
+    ) -> None:
+        super().__init__(parent)
+
+        self._build_ui()
+        self._connect_signals()
+        self.shape_browser = shape_browser
+
+    # -------------------------------------------------------------------------
+    # Properties
+    # -------------------------------------------------------------------------
+
+    @property
+    def control_name(self) -> str:
+        """Return the control shape name."""
+
+        return self.name_field.text().strip()
+
+    @property
+    def use_selected(self) -> bool:
+        """Return whether the selected Maya object should be used."""
+
+        return self.use_selected_checkbox.isChecked()
+
+    # -------------------------------------------------------------------------
+    # UI
+    # -------------------------------------------------------------------------
+
+    def _build_ui(self) -> None:
+        main_layout = QtWidgets.QVBoxLayout(self)
+        main_layout.setContentsMargins(6, 6, 6, 6)
+        main_layout.setSpacing(6)
+
+        # ---------------------------------------------------------------------
+        # Name
+        # ---------------------------------------------------------------------
+
+        name_layout = QtWidgets.QHBoxLayout()
+        name_layout.setContentsMargins(0, 0, 0, 0)
+
+        name_label = QtWidgets.QLabel("Name")
+
+        self.name_field = QtWidgets.QLineEdit()
+        self.name_field.setPlaceholderText(
+            "Control Shape Name"
+        )
+
+        name_layout.addWidget(name_label)
+        name_layout.addWidget(
+            self.name_field,
+            stretch=1,
+        )
+
+        main_layout.addLayout(name_layout)
+
+        # ---------------------------------------------------------------------
+        # Scene Setup
+        # ---------------------------------------------------------------------
+
+        scene_layout = QtWidgets.QHBoxLayout()
+        scene_layout.setContentsMargins(0, 0, 0, 0)
+
+        self.setup_button = QtWidgets.QPushButton(
+            "Setup Scene"
+        )
+
+        self.clean_button = QtWidgets.QPushButton(
+            "Clean Scene"
+        )
+
+        scene_layout.addWidget(self.setup_button)
+        scene_layout.addWidget(self.clean_button)
+
+        main_layout.addLayout(scene_layout)
+
+        # ---------------------------------------------------------------------
+        # Use Selected
+        # ---------------------------------------------------------------------
+
+        self.use_selected_checkbox = QtWidgets.QCheckBox(
+            "Use Selected"
+        )
+
+        main_layout.addWidget(
+            self.use_selected_checkbox
+        )
+
+        # ---------------------------------------------------------------------
+        # Save / Load
+        # ---------------------------------------------------------------------
+
+        button_layout = QtWidgets.QHBoxLayout()
+        button_layout.setContentsMargins(0, 0, 0, 0)
+
+        self.save_button = QtWidgets.QPushButton(
+            "Save Shape"
+        )
+
+        self.load_button = QtWidgets.QPushButton(
+            "Load Shape"
+        )
+
+        button_layout.addWidget(self.save_button)
+        button_layout.addWidget(self.load_button)
+
+        main_layout.addLayout(button_layout)
+
+    def _connect_signals(self) -> None:
+        self.setup_button.clicked.connect(
+            self.setup_scene
+        )
+
+        self.clean_button.clicked.connect(
+            self.clean_scene
+        )
+
+        self.save_button.clicked.connect(
+            self.save_control
+        )
+
+        self.load_button.clicked.connect(
+            self.load_shape
+        )
+
+    # -------------------------------------------------------------------------
+    # Functions
+    # -------------------------------------------------------------------------
+
+    def clean_scene(self) -> None:
+        """Remove the control-authoring helper scene."""
+
+        helper_group = "control_creater_helper_grp"
+
+        if cmds.objExists(helper_group):
+            cmds.delete(helper_group)
+
+    def setup_scene(self) -> None:
+        """Create the helper scene used for drawing controls."""
+
+        helper_group = "control_creater_helper_grp"
+
+        if cmds.objExists(helper_group):
+            cmds.delete(helper_group)
+
+        parent_transform = create_transform(
+            name=helper_group
+        )
+
+        transform, shape = create_control_helper_plane(
+            image_path=str(IMAGE_PATH),
+            name="reference_image",
+        )
+
+        cmds.parent(
+            transform,
+            parent_transform,
+        )
+
+        cmds.setAttr(
+            f"{shape}.alphaGain",
+            0.5,
+        )
+
+    def save_control(self) -> None:
+        """Save the current curve to the control library."""
+
+        control_name = self.control_name
+
+        if not control_name:
+            QtWidgets.QMessageBox.warning(
+                self,
+                "Missing Control Name",
+                "Enter a control name before saving.",
+            )
+            return
+
+        if self.use_selected:
+            selected = cmds.ls(
+                selection=True,
+                type="transform",
+            ) or []
+
+            if not selected:
+                QtWidgets.QMessageBox.warning(
+                    self,
+                    "Nothing Selected",
+                    "Select a control curve before saving.",
+                )
+                return
+
+            control = selected[0]
+
+        else:
+            control = control_name
+
+        if not cmds.objExists(control):
+            QtWidgets.QMessageBox.warning(
+                self,
+                "Control Not Found",
+                f"Could not find '{control}'.",
+            )
+            return
+
+        write_curve_to_library(
+            curve=control,
+            name=control_name,
+            force=True,
+        )
+
+        helper_group = "control_creater_helper_grp"
+
+        if cmds.objExists(helper_group):
+            cmds.setAttr(
+                f"{helper_group}.visibility",
+                False,
+            )
+
+        camera = place_snapshot_camera(
+            obj=control,
+            swivel=45.0,
+            tilt=45.0,
+            orthographic=True,
+        )
+
+        take_snapshot(
+            camera=camera,
+            path=ICON_PATH,
+            name=control_name,
+        )
+
+        delete_snapshot_camera()
+        self.shape_browser.refresh()
+
+    def load_shape(self) -> None:
+        """Create a curve from the specified library shape."""
+
+        control_name = self.control_name
+
+        if not control_name:
+            QtWidgets.QMessageBox.warning(
+                self,
+                "Missing Control Name",
+                "Enter a control name before loading.",
+            )
+            return
+
+        _create_control_curve(
+            name=control_name,
+            control_shape=control_name,
+        )
+
 
 
 class CollapsibleSection(QtWidgets.QWidget):
@@ -131,6 +404,26 @@ class ControlShapeBrowserWindow(QtWidgets.QDialog):
 
         main_layout.addWidget(
             self.control_creator_section
+        )
+
+        self.control_authoring = ControlAuthoringWidget(
+            shape_browser=self.shape_browser,
+        )
+
+        self.control_authoring_section = CollapsibleSection(
+            title="Shape Authoring",
+        )
+
+        control_authoring_layout = QtWidgets.QVBoxLayout(
+            self.control_authoring_section.content
+        )
+
+        control_authoring_layout.addWidget(
+            self.control_authoring
+        )
+
+        main_layout.addWidget(
+            self.control_authoring_section
         )
 
 
@@ -918,6 +1211,8 @@ class ColorButton(QtWidgets.QPushButton):
         """Return a copy of the currently selected color."""
 
         return QtGui.QColor(self._color)
+    
+    
 
     @color.setter
     def color(self, color: QtGui.QColor) -> None:
@@ -1071,6 +1366,34 @@ class ControlCreatorWidget(QtWidgets.QWidget):
 
         return self.sdk_checkbox.isChecked()
 
+    @property
+    def control_name(self) -> str:
+        """Return the requested control name."""
+
+        return self.name_field.text().strip()
+
+
+    @property
+    def position_offset(self) -> tuple[float, float, float]:
+        """Return the control position offset."""
+
+        return (
+            self.position_x.value(),
+            self.position_y.value(),
+            self.position_z.value(),
+        )
+
+
+    @property
+    def rotation_offset(self) -> tuple[float, float, float]:
+        """Return the control rotation offset."""
+
+        return (
+            self.rotation_x.value(),
+            self.rotation_y.value(),
+            self.rotation_z.value(),
+        )
+
     # -------------------------------------------------------------------------
     # UI
     # -------------------------------------------------------------------------
@@ -1094,7 +1417,8 @@ class ControlCreatorWidget(QtWidgets.QWidget):
             [
                 "At_Origin",
                 "Match_Pose",
-                "Constrain",
+                "Parent",
+                "Parent_and_Scale"
             ]
         )
 
@@ -1103,6 +1427,97 @@ class ControlCreatorWidget(QtWidgets.QWidget):
         placement_layout.addWidget(self.placement_combo)
 
         main_layout.addLayout(placement_layout)
+
+        name_layout = QtWidgets.QHBoxLayout()
+        name_layout.setContentsMargins(0, 0, 0, 0)
+
+        name_label = QtWidgets.QLabel("Name")
+
+        self.name_field = QtWidgets.QLineEdit()
+        self.name_field.setPlaceholderText(
+            "control_name"
+        )
+
+        name_layout.addWidget(name_label)
+        name_layout.addStretch()
+        name_layout.addWidget(self.name_field)
+
+        main_layout.addLayout(name_layout)
+
+        # ---------------------------------------------------------------------
+        # Position Offset
+        # ---------------------------------------------------------------------
+
+        position_layout = QtWidgets.QHBoxLayout()
+        position_layout.setContentsMargins(0, 0, 0, 0)
+
+        position_label = QtWidgets.QLabel("Position Offset")
+
+        self.position_x = QtWidgets.QDoubleSpinBox()
+        self.position_y = QtWidgets.QDoubleSpinBox()
+        self.position_z = QtWidgets.QDoubleSpinBox()
+
+        for spinbox in (
+            self.position_x,
+            self.position_y,
+            self.position_z,
+        ):
+            spinbox.setRange(-10000.0, 10000.0)
+            spinbox.setDecimals(3)
+            spinbox.setSingleStep(0.1)
+            spinbox.setValue(0.0)
+
+        position_layout.addWidget(position_label)
+        position_layout.addStretch()
+
+        position_layout.addWidget(QtWidgets.QLabel("X"))
+        position_layout.addWidget(self.position_x)
+
+        position_layout.addWidget(QtWidgets.QLabel("Y"))
+        position_layout.addWidget(self.position_y)
+
+        position_layout.addWidget(QtWidgets.QLabel("Z"))
+        position_layout.addWidget(self.position_z)
+
+        main_layout.addLayout(position_layout)
+
+
+        # ---------------------------------------------------------------------
+        # Rotation Offset
+        # ---------------------------------------------------------------------
+
+        rotation_layout = QtWidgets.QHBoxLayout()
+        rotation_layout.setContentsMargins(0, 0, 0, 0)
+
+        rotation_label = QtWidgets.QLabel("Rotation Offset")
+
+        self.rotation_x = QtWidgets.QDoubleSpinBox()
+        self.rotation_y = QtWidgets.QDoubleSpinBox()
+        self.rotation_z = QtWidgets.QDoubleSpinBox()
+
+        for spinbox in (
+            self.rotation_x,
+            self.rotation_y,
+            self.rotation_z,
+        ):
+            spinbox.setRange(-360.0, 360.0)
+            spinbox.setDecimals(3)
+            spinbox.setSingleStep(1.0)
+            spinbox.setValue(0.0)
+
+        rotation_layout.addWidget(rotation_label)
+        rotation_layout.addStretch()
+
+        rotation_layout.addWidget(QtWidgets.QLabel("X"))
+        rotation_layout.addWidget(self.rotation_x)
+
+        rotation_layout.addWidget(QtWidgets.QLabel("Y"))
+        rotation_layout.addWidget(self.rotation_y)
+
+        rotation_layout.addWidget(QtWidgets.QLabel("Z"))
+        rotation_layout.addWidget(self.rotation_z)
+
+        main_layout.addLayout(rotation_layout)
 
         # ---------------------------------------------------------------------
         # Primary Axis
@@ -1116,9 +1531,12 @@ class ControlCreatorWidget(QtWidgets.QWidget):
         self.primary_axis_combo = QtWidgets.QComboBox()
         self.primary_axis_combo.addItems(
             [
-                "X",
-                "Y",
-                "Z",
+                "x",
+                "y",
+                "z",
+                "-x",
+                "-y",
+                "-z",
             ]
         )
 
@@ -1214,53 +1632,218 @@ class ControlCreatorWidget(QtWidgets.QWidget):
     # -------------------------------------------------------------------------
 
     def swap_shape(self) -> None:
-        """Swap the selected control's shape."""
+        """Replace the NURBS curve shapes of selected controls."""
 
         selected_shape = self.shape_browser.selected_shape
-
-        if selected_shape is None:
-            cmds.warning("No control shape is selected.")
-            return
-
-        placement_mode = self.placement_mode
         primary_axis = self.primary_axis
         size = self.control_size
-        sdk = self.use_sdk
 
-        print("=" * 50)
-        print("Swapping control shape")
-        print(f"Shape: {selected_shape}")
-        print(f"Placement: {placement_mode}")
-        print(f"Primary Axis: {primary_axis}")
-        print(f"Size: {size}")
-        print(f"SDK: {sdk}")
-        print(f"Color: {self.control_color_rgb}")
-        print("=" * 50)
+        position_offset = self.position_offset
+        rotation_offset = self.rotation_offset
+
+        selected = cmds.ls(
+            selection=True,
+            type="transform",
+        ) or []
+
+        if not selected:
+            cmds.warning("No controls selected.")
+            return
+
+        for control in selected:
+
+            old_shapes = cmds.listRelatives(
+                control,
+                shapes=True,
+                fullPath=True,
+                type="nurbsCurve",
+            ) or []
+
+            if not old_shapes:
+                cmds.warning(
+                    f"{control} has no NURBS curve shapes. Skipping."
+                )
+                continue
+
+            # Create our replacement shape.
+            temp_ctrl = create_control(
+                transform=None,
+                name="TEMP_shape_swap",
+                parent=None,
+                sdk_offset=False,
+                control_shape=selected_shape,
+                direction=primary_axis,
+                size=size,
+                shape_position_offset=position_offset,
+                shape_rotation_offset=rotation_offset,
+            )
+
+            new_shapes = cmds.listRelatives(
+                temp_ctrl.ctrl,
+                shapes=True,
+                fullPath=True,
+                type="nurbsCurve",
+            ) or []
+
+            if not new_shapes:
+                cmds.warning(
+                    f"Could not create replacement shape for {control}."
+                )
+                continue
+
+            # Delete the existing shapes.
+            cmds.delete(old_shapes)
+
+            # Move the newly generated shapes underneath
+            # the existing control transform.
+            for new_shape in new_shapes:
+                cmds.parent(
+                    new_shape,
+                    control,
+                    shape=True,
+                    relative=True,
+                )
+
+            # Rename shapes cleanly.
+            new_shapes = cmds.listRelatives(
+                control,
+                shapes=True,
+                fullPath=False,
+                type="nurbsCurve",
+            ) or []
+
+            for index, shape in enumerate(new_shapes):
+                if index == 0:
+                    new_name = f"{control}Shape"
+                else:
+                    new_name = f"{control}Shape{index + 1}"
+
+                cmds.rename(
+                    shape,
+                    new_name,
+                )
+
+            # Remove leftover temporary hierarchy.
+            if cmds.objExists(temp_ctrl.top):
+                cmds.delete(temp_ctrl.top)
+
+        # Restore the original selection.
+        cmds.select(
+            selected,
+            replace=True,
+        )
+
 
     def build_control(self) -> None:
-        """Build a control using the current UI settings."""
-
         selected_shape = self.shape_browser.selected_shape
-
-        if selected_shape is None:
-            cmds.warning("No control shape is selected.")
-            return
-
+        name = self.control_name
         placement_mode = self.placement_mode
         primary_axis = self.primary_axis
         size = self.control_size
         sdk = self.use_sdk
 
-        """print("=" * 50)
-        print("Building control")
-        print(f"Shape: {selected_shape}")
-        print(f"Placement: {placement_mode}")
-        print(f"Primary Axis: {primary_axis}")
-        print(f"Size: {size}")
-        print(f"SDK: {sdk}")
-        print(f"Color hex: {self.control_color_hex}")
-        print(f"Color RGB 255: {self.control_color_rgb_255}")
-        print(f"Color RGB normalized: {self.control_color_rgb}")
-        print("=" * 50)"""
+        position_offset = self.position_offset
+        rotation_offset = self.rotation_offset
 
-        #create_control()
+        def get_available_name(base_name: str) -> str:
+            """Return an available control base name."""
+
+            if not cmds.objExists(f"{base_name}_ctrl"):
+                return base_name
+
+            index = 1
+
+            while cmds.objExists(f"{base_name}{index}_ctrl"):
+                index += 1
+
+            return f"{base_name}{index}"
+
+        if placement_mode == "At_Origin":
+            if name == "":
+                name = "new_control"
+
+            name = get_available_name(name)
+
+            transform = None
+
+            ctrl = create_control(
+                transform=transform,
+                name=name,
+                parent=None,
+                sdk_offset=sdk,
+                control_shape=selected_shape,
+                direction=primary_axis,
+                size=size,
+                shape_position_offset=position_offset,
+                shape_rotation_offset=rotation_offset,
+            )
+
+            cmds.setAttr(
+                ctrl.ctrl + ".overrideEnabled",
+                1,
+            )
+            cmds.setAttr(
+                ctrl.ctrl + ".overrideRGBColors",
+                1,
+            )
+            cmds.setAttr(
+                ctrl.ctrl + ".overrideColorRGB",
+                *self.control_color_rgb,
+            )
+
+        else:
+            selected = cmds.ls(selection=True) or []
+
+            for transform in selected:
+                if name == "":
+                    ctrl_name = transform
+
+                    suffixes = (
+                        "_jnt",
+                        "_guide",
+                        "_ctrl",
+                        "_grp",
+                    )
+
+                    for suffix in suffixes:
+                        if ctrl_name.endswith(suffix):
+                            ctrl_name = ctrl_name.removesuffix(suffix)
+                            break
+
+                else:
+                    ctrl_name = name
+
+                ctrl_name = get_available_name(ctrl_name)
+
+                ctrl = create_control(
+                    transform=transform,
+                    name=ctrl_name,
+                    parent=None,
+                    sdk_offset=sdk,
+                    control_shape=selected_shape,
+                    direction=primary_axis,
+                    size=size,
+                    shape_position_offset=position_offset,
+                    shape_rotation_offset=rotation_offset,
+                )
+
+                cmds.setAttr(
+                    ctrl.ctrl + ".overrideEnabled",
+                    1,
+                )
+                cmds.setAttr(
+                    ctrl.ctrl + ".overrideRGBColors",
+                    1,
+                )
+                cmds.setAttr(
+                    ctrl.ctrl + ".overrideColorRGB",
+                    *self.control_color_rgb,
+                )
+
+                if placement_mode == "Parent":
+                    constraint(
+                        drivers=[ctrl.ctrl],
+                        driven=transform,
+                        parent=None,
+                        constraint_type="parent",
+                    )
