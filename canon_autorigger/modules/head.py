@@ -4,6 +4,7 @@ from Workshop.control.core import Control
 from Workshop.transform.constraint import constraint
 from Workshop.control import create_control
 from Workshop.joint import create_joint
+from Workshop.guide.core import GuideInfo
 
 from .module_initialize import module_prep, module_space
 
@@ -13,19 +14,18 @@ class module_info:
     control:Control
     joint:str
 
-class Arbit:
+class Head:
     def __init__(
         self,
-        part: str = "arbit",
+        guides:GuideInfo,
+        part: str = "head",
         side: str = "M",
         parent: str = "components",
         control_parent: str | None = None,
         control_size: float = 1.0,
-        guides: list = [],
         joint_parent:str = 'skel',
         control_space:list = [],
-        control_color:str = 'MISC',
-        control_shape:str = 'circle'
+        control_shape:str = 'head'
 
     ):
         self.part: str = part
@@ -33,17 +33,25 @@ class Arbit:
         self.parent: str = parent
         self.control_parent: str | None = control_parent
         self.control_size: float = control_size
-        self.guides: list = guides
+        self.guides= guides
         self.joint_parent = joint_parent
         self.control_space = control_space
-        self.control_color = control_color
+        if self.side == "M":
+            self.main_control_color = 'Middle'
+            self.sub_control_color = 'SubMiddle'
+        elif self.side == "L":
+            self.main_control_color = 'Left'
+            self.sub_control_color = 'SubLeft'
+        else:
+            self.main_control_color = 'Right'
+            self.sub_control_color = 'SubRight'
         self.control_shape = control_shape
 
     # -------------------
     # Build steps
     # -------------------
 
-    def arbit_build(self)->module_info:
+    def head_build(self)->module_info:
 
         #modeule prep work
         prep = module_prep(part=self.part, parent=self.parent, side=self.side, fkik=False, gut=False)
@@ -52,23 +60,24 @@ class Arbit:
         self.guts = prep.guts
 
         #controls
-        self.arbit_ctrl = create_control(
-            name=f'{self.part}_{self.side}',
+        self.head_ctrl = create_control(
+            name=f'skull_{self.side}',
             parent=self.control_grp,
-            transform=self.guides[0].name,
-            size=self.control_size,
+            transform=self.guides.name,
+            size=self.control_size/5,
             control_shape=self.control_shape,
             direction="y",
-            color_type=self.control_color
+            color_type=self.main_control_color,
+            shape_position_offset=(0,self.control_size/4,0),
         )
 
-        module_space(control=self.arbit_ctrl, space_list=self.control_space)
+        module_space(control=self.head_ctrl, space_list=self.control_space)
 
         #joints
 
-        self.arbit_joint = create_joint(name=f'def_{self.part}_{self.side}', transform=self.arbit_ctrl.ctrl, connect=True, parent=self.joint_parent)
+        self.head_joint = create_joint(name=f'def_{self.part}_{self.side}', transform=self.head_ctrl.ctrl, connect=True, parent=self.joint_parent)
 
-        constraint(drivers=[self.arbit_ctrl.ctrl], driven=self.arbit_joint, constraint_type='parent', parent=self.guts)
+        constraint(drivers=[self.head_ctrl.ctrl], driven=self.head_joint, constraint_type='parent', parent=self.guts)
 
-        arbit_info = module_info(control =self.arbit_ctrl, joint=self.arbit_joint)
-        return arbit_info
+        head_info = module_info(control =self.head_ctrl, joint=self.head_joint)
+        return head_info

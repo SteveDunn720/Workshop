@@ -45,6 +45,12 @@ def build(rig_name:str, config:rig_config):
 
     spine = modules.Spine(control_size=canon.scene_size, parent=canon.rig, joint_parent=hipinfo.hip_joint, guides=guides.spine, root_hook=[hipinfo.cog_control, hipinfo.hip_control], control_space=[hipinfo.cog_control.ctrl])
     spineinfo = spine.spine_build()
+
+    neck = modules.Neck(control_size=canon.scene_size, parent=canon.rig, joint_parent=spineinfo.bind_joints[-1], guides=guides.neck, control_space=[spineinfo.chest_off.ctrl])
+    neckinfo = neck.neck_build()
+
+    head = modules.Head(control_size=canon.scene_size, parent=canon.rig, joint_parent=neckinfo.joint[-1], guides=guides.head, control_space=[neckinfo.control[-1].ctrl])
+    headinfo = head.head_build()
      
 
 

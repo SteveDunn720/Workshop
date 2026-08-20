@@ -8,6 +8,8 @@ from maya.api.OpenMaya import MMatrix
 from Workshop.control.core import Control
 from Workshop.transform import match_transform, matrix_constraint, set_world_matrix
 from Workshop.tag.core import sets_tag
+from Workshop.transform.utils import get_distance_between
+from Workshop.skin.split.tag import tag_for_weight_split
 
 JOINT_SUFFIX: str = "_jnt"
 
@@ -95,3 +97,50 @@ def create_joint(
     # This is mGear specific and may need changed if you stop using mGear.
     """    add_to_joint_set(joint) """
     return joint
+
+
+def twist_split(joint:str, child_joint:str | None = None, primary_axis='Y'):
+    if child_joint:
+        end = child_joint
+    else:
+        children = cmds.listRelatives(
+            joint,
+            children=True,
+            type="joint",
+            fullPath=False
+        ) or []
+        if not children:
+            raise ValueError(f"{joint} has no child joint.")
+        end = children[0]
+
+
+    bone_len = cmds.getAttr(f"{end}.translate{primary_axis}")
+
+    descriptor = joint.removesuffix(JOINT_SUFFIX)
+
+    twist_jnt = create_joint(name=f'{descriptor}_twist', transform=joint, connect=False, bind_set=True, ue_set=True, parent=joint)
+
+    cmds.setAttr(f"{twist_jnt}.translate{primary_axis}", bone_len * .666) #type:ignore
+
+    old_twist = f"{joint}.rotate{primary_axis}"
+    new_twist = f"{twist_jnt}.rotate{primary_axis}"
+
+    tag_for_weight_split(
+        influence=joint,  # <-- your SOURCE joint (must already exist)
+        split_influences=[joint, twist_jnt, twist_jnt],  # <-- the ones you just created
+    )
+
+    source = cmds.listConnections(
+        old_twist,
+        source=True,
+        destination=False,
+        plugs=True,
+    ) or []
+
+    if source:
+        source_twist = source[0]
+
+        cmds.disconnectAttr(source_twist, old_twist)
+        cmds.connectAttr(source_twist, new_twist, force=True)
+
+    return twist_jnt

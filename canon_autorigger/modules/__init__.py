@@ -8,6 +8,8 @@ from . import clav as clav
 from . import hand as hand
 from . import chain as chain
 from . import metacarpal as metacarpal
+from . import neck as neck
+from . import head as head
 
 
 from .root import Root
@@ -19,6 +21,8 @@ from .clav import Clav
 from .hand import Hand
 from .chain import Chain
 from .metacarpal import Metacarpal
+from .neck import Neck
+from .head import Head
 
 
 
@@ -44,4 +48,8 @@ __all__ = [
 "Chain",
 "metacarpale",
 "Metacarpal",
+"neck",
+"Neck",
+"head",
+"Head",
 ]
