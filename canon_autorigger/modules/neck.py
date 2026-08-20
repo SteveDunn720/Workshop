@@ -9,6 +9,7 @@ from Workshop.joint import create_joint
 from Workshop.guide.core import GuideInfo, SplineGuideInfo
 from Workshop.guide.curve import GuideCurve
 from Workshop.transform.utils import get_distance_between
+from Workshop.maya_api.node import MultiplyDivideNode
 
 from .module_initialize import module_prep, module_space
 
@@ -111,6 +112,13 @@ class Neck:
         for attrs in ['X', 'Y', 'Z']:
             cmds.setAttr(f'{self.roll_ctrl.top}.rotate{attrs}', 0)
         module_space(control=self.roll_ctrl, space_list=[self.control_space])
+        self.rot_mult = MultiplyDivideNode(name='neck_rot_mult')
+        self.trans_mult = MultiplyDivideNode(name='neck_trans_mult')
+        self.rot_mult.input2.set((self.count/10,self.count/10,self.count/10))
+        self.trans_mult.input2.set((self.count/10,self.count/10,self.count/10))
+        self.rot_mult.input1.connect_from(f'{self.roll_ctrl.ctrl}.rotate')
+        self.trans_mult.input1.connect_from(f'{self.roll_ctrl.ctrl}.translate')
+
 
         for i in range(self.count):
             guide_names.append(f'{self.part}_{self.side}_{i + 1:02d}')
@@ -152,9 +160,9 @@ class Neck:
             self.controls.append(ctrl)
             control_par=ctrl.ctrl
 
-            cmds.connectAttr(f'{self.roll_ctrl.ctrl}.rotateZ', f'{ctrl.sdk}.rotateZ')
-            cmds.connectAttr(f'{self.roll_ctrl.ctrl}.rotateX', f'{ctrl.sdk}.rotateX')
-            cmds.connectAttr(f'{self.roll_ctrl.ctrl}.rotateY', f'{ctrl.sdk}.rotateY')
+
+            self.rot_mult.output.connect_to(f'{ctrl.sdk}.rotate')
+            self.trans_mult.output.connect_to(f'{ctrl.sdk}.translate')
 
             defjnt = create_joint(name=f'def_{guide.descriptor}', transform=guide.name, parent=defjnt_par, connect=False)
             self.bind_joints.append(defjnt)
