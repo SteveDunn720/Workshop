@@ -145,7 +145,7 @@ class Hand:
         self.controls.append(self.prop)
 
         cmds.parentConstraint(self.ik_hand.ctrl, self.ik_hook[0], maintainOffset=True)
-        cmds.orientConstraint(self.ik_hand.ctrl, self.ik_hook[1], maintainOffset=True)
+        #cmds.orientConstraint(self.ik_hand.ctrl, self.ik_hook[1], maintainOffset=True)
         cmds.parentConstraint(self.ik_hook[1], self.ik_joints[0], maintainOffset=True)
         cmds.parentConstraint(self.ik_hand.ctrl, self.ik_hook[2], maintainOffset=True)
         cmds.addAttr(self.ik_hand.ctrl, longName='stretch', proxy=f'{self.ik_hook[2]}.stretch')
@@ -156,7 +156,7 @@ class Hand:
         constraint(driven=self.bind_jnt, drivers=self.switch_joints[0], constraint_type='parent')
 
 
-        info = module_info(fk_control=self.fk_controls[0], ik_control=self.ik_controls[0], switch=self.switch_joints[0], joint=self.bind_jnt)    
+        info = module_info(fk_control=self.fk_controls[0], ik_control=self.ik_controls[1], switch=self.switch_joints[0], joint=self.bind_jnt)    
         return info
 
 
