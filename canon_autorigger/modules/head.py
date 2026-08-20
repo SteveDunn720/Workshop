@@ -64,7 +64,7 @@ class Head:
             name=f'skull_{self.side}',
             parent=self.control_grp,
             transform=self.guides.name,
-            size=self.control_size/4,
+            size=self.control_size/5,
             control_shape=self.control_shape,
             direction="y",
             color_type=self.main_control_color,

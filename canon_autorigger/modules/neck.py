@@ -10,6 +10,7 @@ from Workshop.guide.core import GuideInfo, SplineGuideInfo
 from Workshop.guide.curve import GuideCurve
 from Workshop.transform.utils import get_distance_between
 from Workshop.maya_api.node import MultiplyDivideNode
+from Workshop.skin.split.tag import tag_for_weight_split
 
 from .module_initialize import module_prep, module_space
 
@@ -172,6 +173,10 @@ class Neck:
             constraint(drivers=[jnt], driven=defjnt, constraint_type='parent', parent=self.guts)
 
         module_space(control=self.controls[0], space_list=self.control_space)
+        tag_for_weight_split(
+            influence=self.bind_joints[0],  # <-- your SOURCE joint (must already exist)
+            split_influences=self.bind_joints,  # <-- the ones you just created
+        )
 
         #joints
         cmds.delete(self.curve.group)

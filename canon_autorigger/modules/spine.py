@@ -109,6 +109,7 @@ class Spine:
 
         self.controls = []
         self.bind_joints = []
+        split_joints = []
         self.switch_joints = []
 
         guide_names = []
@@ -281,12 +282,13 @@ class Spine:
                                 break
                 jnt = create_joint(name=f'def_{guide.descriptor}', transform=guide.name, parent=jnt_par, connect=False)
                 self.bind_joints.append(jnt)
+                split_joints.append(jnt)
                 jnt_par = jnt
                 constraint(drivers=[self.switch_joints[i]], driven=jnt, constraint_type='parent', parent=self.guts)
 
             tag_for_weight_split(
                 influence=self.bind_joints[0],  # <-- your SOURCE joint (must already exist)
-                split_influences=self.bind_joints,  # <-- the ones you just created
+                split_influences=split_joints,  # <-- the ones you just created
             )
 
             self.chest_joint = create_joint(name='def_chest', transform=self.curve.locator_list[-1].name, parent=jnt_par, connect=False)
