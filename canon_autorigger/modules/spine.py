@@ -47,7 +47,7 @@ class Spine:
         self.guides = guides
         self.joint_parent = joint_parent
         self.simple_fk = simple_fk
-        self.count = count
+        self.count = count + 1
         self.root_hook = root_hook
         if self.side == "M":
             self.main_control_color = 'Middle'
@@ -85,10 +85,10 @@ class Spine:
         ymod = -1 if flip_y else 1
 
         aim = cmds.aimConstraint(
-                guide_01.name,
                 guide_02.name,
+                guide_01.name,
                 aimVector=(0, 1 * ymod, 0),      # Primary / aim axis = +X
-                upVector=(0, 0, 1 * mod),       # Up axis = +Y
+                upVector=(0, 0, -1 * mod),       # Up axis = +Y
                 worldUpType="vector",
                 worldUpVector=(0, 1, 0),
                 maintainOffset=False
@@ -134,9 +134,14 @@ class Spine:
         jnt_par = self.guts
 
         for i, guide in enumerate(self.curve.locator_list):
-            jnt = create_joint(name=f'Switch_{guide.descriptor}', transform=guide.name, parent=jnt_par, connect=False)
+            if guide == self.curve.locator_list[-1]:
+                break
+            jnt = create_joint(name=f'switch_{guide.descriptor}', transform=guide.name, parent=jnt_par, connect=False)
             self.switch_joints.append(jnt)
             jnt_par = jnt
+
+        self.chestswitch_joint = create_joint(name='switch_chest', transform=self.curve.locator_list[-1].name, parent=jnt_par, connect=False)
+        self.switch_joints.append(self.chestswitch_joint)
 
 
         #fk/hybrid
@@ -272,6 +277,8 @@ class Spine:
             jnt_par = self.joint_parent
             
             for i, guide in enumerate(self.curve.locator_list):
+                if guide == self.curve.locator_list[-1]:
+                                break
                 jnt = create_joint(name=f'def_{guide.descriptor}', transform=guide.name, parent=jnt_par, connect=False)
                 self.bind_joints.append(jnt)
                 jnt_par = jnt
@@ -281,6 +288,12 @@ class Spine:
                 influence=self.bind_joints[0],  # <-- your SOURCE joint (must already exist)
                 split_influences=self.bind_joints,  # <-- the ones you just created
             )
+
+            self.chest_joint = create_joint(name='def_chest', transform=self.curve.locator_list[-1].name, parent=jnt_par, connect=False)
+            self.bind_joints.append(self.chest_joint)
+
+            constraint(drivers=[self.chest_off.ctrl], driven=self.chestswitch_joint, constraint_type="parent")
+            constraint(drivers=[self.chestswitch_joint], driven=self.chest_joint, constraint_type="parent")
 
         
 
