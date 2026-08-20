@@ -9,6 +9,7 @@ from Workshop.maya_api.node import ConditionNode, MultiplyDivideNode, ReverseNod
 from Workshop.transform.utils import create_transform
 from Workshop.control.core import Control
 from Workshop.transform.constraint import constraint
+from Workshop.joint import twist_split
 
 from .module_initialize import module_prep, module_space
 from .module_shared import fkik_switch
@@ -33,6 +34,8 @@ class moudle_info:
     ik_main_handle: IK_data
     ik_singlechain: IK_data | None
     ik_len_joints:list
+    upper_split:list
+    lower_split:list
 
 
 
@@ -52,6 +55,7 @@ class Limb:
         ik_end_control:bool = False,
         ikfk_blend:float = 1,
         ik_length:bool = False,
+        split:str | None = 'single_twist'
 
     ):
         self.part: str = part
@@ -68,6 +72,7 @@ class Limb:
         self.ikfk_blend = ikfk_blend
         self.ik_length = ik_length
         self.joint_parent = joint_parent
+        self.split = split
 
 
     def build_stretchy_ik(self,
@@ -339,12 +344,27 @@ class Limb:
 
         #bind chain
         for i,jnt in enumerate(self.guides):
-                    if not self.ik_end_control and i == len(self.guides) - 1:
-                        continue
-                    switch_jnt = create_joint(name=f'def_{jnt.descriptor}', transform=jnt.name, parent=jnt_par, connect=False)
-                    self.bind_joints.append(switch_jnt)
-                    jnt_par = switch_jnt
-                    constraint(drivers=[self.switch_joints[i]], driven=switch_jnt, parent=self.guts, constraint_type="parent")
+            bind_jnt = create_joint(name=f'def_{jnt.descriptor}', transform=jnt.name, parent=jnt_par, connect=False)
+            if not self.ik_end_control and i == len(self.guides) - 1:
+                if self.split == 'single_twist':
+                    break
+                else:
+                    cmds.delete(bind_jnt)
+                    break
+            self.bind_joints.append(bind_jnt)
+            jnt_par = bind_jnt
+            constraint(drivers=[self.switch_joints[i]], driven=bind_jnt, parent=self.guts, constraint_type="parent")
+
+
+        if self.split == 'single_twist':
+            upper_twist = [twist_split(self.bind_joints[0])]
+            lower_twist = [twist_split(self.bind_joints[1])]
+            if not self.ik_end_control:
+                cmds.delete(bind_jnt)
+        else:
+            upper_twist=[]
+            lower_twist=[]
+        
 
 
 
@@ -365,6 +385,8 @@ class Limb:
                 ik_main_handle=self.ik_handle,
                 ik_singlechain=self.ik_len_chain if self.ik_length else None,
                 ik_len_joints = self.ik_len_joints if self.ik_length else [],
+                upper_split=upper_twist,
+                lower_split=lower_twist
                 )
         
         return self.info
