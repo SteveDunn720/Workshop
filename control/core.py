@@ -139,7 +139,7 @@ def create_control(
     shape_rotation_offset: tuple[float, float, float] = (0, 0, 0),
     size: float = 1,
     dimensions: tuple[float, float, float] = (1, 1, 1),
-    rotation_order: RotateOrder = RotateOrder.XYZ,
+    rotation_order: RotateOrder = RotateOrder.YXZ,
     limit_min_scale: bool = True,
     color_type:str = 'MISC',
     ignore_rotations:bool = False,

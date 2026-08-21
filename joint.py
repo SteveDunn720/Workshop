@@ -10,6 +10,7 @@ from Workshop.transform import match_transform, matrix_constraint, set_world_mat
 from Workshop.tag.core import sets_tag
 from Workshop.transform.utils import get_distance_between
 from Workshop.skin.split.tag import tag_for_weight_split
+from Workshop.maya_api.enum import RotateOrder
 
 JOINT_SUFFIX: str = "_jnt"
 
@@ -57,12 +58,14 @@ def create_joint(
     radius: float = 1,
     suffix:bool = True,
     bind_set:bool = True,
-    ue_set:bool = True
+    ue_set:bool = True,
+    rotate_order: RotateOrder = RotateOrder.YXZ
 ) -> str:
     if suffix:
         joint = cmds.createNode("joint", name=f"{name}{JOINT_SUFFIX}")
     else:
         joint = cmds.createNode("joint", name=f"{name}")
+    cmds.setAttr(f'{joint}.rotateOrder', int(rotate_order)) #type:ignore
     if parent is not None:
         cmds.parent(joint, parent, relative=True)
     source_transform: str | None = None
