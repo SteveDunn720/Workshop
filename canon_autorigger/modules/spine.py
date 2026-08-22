@@ -137,11 +137,11 @@ class Spine:
         for i, guide in enumerate(self.curve.locator_list):
             if guide == self.curve.locator_list[-1]:
                 break
-            jnt = create_joint(name=f'switch_{guide.descriptor}', transform=guide.name, parent=jnt_par, connect=False)
+            jnt = create_joint(name=f'switch_{guide.descriptor}', transform=guide.name, parent=jnt_par, connect=False, bind_set= False, ue_set=False,)
             self.switch_joints.append(jnt)
             jnt_par = jnt
 
-        self.chestswitch_joint = create_joint(name='switch_chest', transform=self.curve.locator_list[-1].name, parent=jnt_par, connect=False)
+        self.chestswitch_joint = create_joint(name='switch_chest', transform=self.curve.locator_list[-1].name, parent=jnt_par, connect=False, bind_set= False, ue_set=False,)
         self.switch_joints.append(self.chestswitch_joint)
 
 
@@ -164,7 +164,7 @@ class Spine:
                     color_type=self.main_control_color
                 )
 
-                fk_jnt = create_joint(name=f'FK_{jnt.descriptor}', transform=ctrl.ctrl, parent=jnt_par)
+                fk_jnt = create_joint(name=f'FK_{jnt.descriptor}', transform=ctrl.ctrl, parent=jnt_par, bind_set= False, ue_set=False,)
 
                 self.fk_joints.append(fk_jnt)
                 self.fk_controls.append(ctrl)

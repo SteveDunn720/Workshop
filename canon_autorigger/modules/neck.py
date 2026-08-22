@@ -143,7 +143,7 @@ class Neck:
             else:
                 self.align_guides(guide_01=guide, guide_02=self.curve.locator_list[i+1])
 
-            jnt = create_joint(name=f'switch_{guide.descriptor}', transform=guide.name, parent=jnt_par, connect=False)
+            jnt = create_joint(name=f'switch_{guide.descriptor}', transform=guide.name, parent=jnt_par, connect=False, bind_set= False, ue_set=False,)
             self.switch_joints.append(jnt)
             jnt_par = jnt
 

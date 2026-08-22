@@ -68,7 +68,7 @@ class Hand:
         jnt_par = self.guts
         #switch_joints
 
-        switch_jnt = create_joint(name=f'switch_{self.part}_{self.side}', transform=self.guides.name, parent=jnt_par, connect=False)
+        switch_jnt = create_joint(name=f'switch_{self.part}_{self.side}', transform=self.guides.name, parent=jnt_par, connect=False, bind_set= False, ue_set=False,)
         self.switch_joints.append(switch_jnt)
         
         #Fk_build
@@ -87,7 +87,7 @@ class Hand:
             color_type=self.main_control_color
         )
 
-        fk_jnt = create_joint(name=f'FK_{self.part}_{self.side}', transform=ctrl.ctrl, parent=jnt_par)
+        fk_jnt = create_joint(name=f'FK_{self.part}_{self.side}', transform=ctrl.ctrl, parent=jnt_par, bind_set= False, ue_set=False,)
         self.fk_joints.append(fk_jnt)
         self.fk_controls.append(ctrl)
         self.controls.append(ctrl.ctrl)
@@ -98,7 +98,7 @@ class Hand:
         jnt_par = self.guts
 
         #IK_build 
-        ik_jnt = create_joint(name=f'IK_{self.part}_{self.side}', transform=self.guides.name, parent=jnt_par, connect=False)
+        ik_jnt = create_joint(name=f'IK_{self.part}_{self.side}', transform=self.guides.name, parent=jnt_par, connect=False, bind_set= False, ue_set=False,)
         self.ik_joints.append(ik_jnt)
         
         ctrl_par = self.ik_control_grp

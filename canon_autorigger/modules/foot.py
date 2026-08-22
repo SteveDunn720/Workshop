@@ -162,7 +162,7 @@ class Foot:
         jnt_par = self.guts
         #switch_joints
         for i,jnt in enumerate(self.guides):
-            switch_jnt = create_joint(name=f'switch_{jnt.descriptor}', transform=jnt.name, parent=jnt_par, connect=False)
+            switch_jnt = create_joint(name=f'switch_{jnt.descriptor}', transform=jnt.name, parent=jnt_par, connect=False, bind_set= False, ue_set=False,)
             self.switch_joints.append(switch_jnt)
             jnt_par = switch_jnt
         
@@ -183,7 +183,7 @@ class Foot:
                 color_type=self.main_control_color
             )
 
-            fk_jnt = create_joint(name=f'FK_{jnt.descriptor}', transform=ctrl.ctrl, parent=jnt_par)
+            fk_jnt = create_joint(name=f'FK_{jnt.descriptor}', transform=ctrl.ctrl, parent=jnt_par, bind_set= False, ue_set=False,)
 
             self.fk_joints.append(fk_jnt)
             self.fk_controls.append(ctrl)
@@ -200,7 +200,7 @@ class Foot:
 
         #IK_build 
         for i,jnt in enumerate(self.guides):
-            ik_jnt = create_joint(name=f'IK_{jnt.descriptor}', transform=jnt.name, parent=jnt_par, connect=False)
+            ik_jnt = create_joint(name=f'IK_{jnt.descriptor}', transform=jnt.name, parent=jnt_par, connect=False, bind_set= False, ue_set=False,)
             self.ik_joints.append(ik_jnt)
             jnt_par = ik_jnt
         
@@ -253,7 +253,7 @@ class Foot:
         
         #IK_roll_build 
         for i,jnt in enumerate(self.guides):
-            ik_jnt = create_joint(name=f'IK_roll_{jnt.descriptor}', transform=jnt.name, parent=jnt_par, connect=False)
+            ik_jnt = create_joint(name=f'IK_roll_{jnt.descriptor}', transform=jnt.name, parent=jnt_par, connect=False, bind_set= False, ue_set=False,)
             self.ik_roll_joints.append(ik_jnt)
             jnt_par = ik_jnt
 

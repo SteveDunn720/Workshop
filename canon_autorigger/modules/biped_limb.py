@@ -184,7 +184,7 @@ class Limb:
         for i,jnt in enumerate(self.guides):
             if not self.ik_end_control and i == len(self.guides) - 1:
                 continue
-            switch_jnt = create_joint(name=f'switch_{jnt.descriptor}', transform=jnt.name, parent=jnt_par, connect=False)
+            switch_jnt = create_joint(name=f'switch_{jnt.descriptor}', transform=jnt.name, parent=jnt_par, connect=False, bind_set= False, ue_set=False,)
             self.switch_joints.append(switch_jnt)
             jnt_par = switch_jnt
 
@@ -208,7 +208,7 @@ class Limb:
                 color_type=self.main_control_color
             )
 
-            fk_jnt = create_joint(name=f'FK_{jnt.descriptor}', transform=ctrl.ctrl, parent=jnt_par)
+            fk_jnt = create_joint(name=f'FK_{jnt.descriptor}', transform=ctrl.ctrl, parent=jnt_par, bind_set= False, ue_set=False,)
 
             self.fk_joints.append(fk_jnt)
             self.fk_controls.append(ctrl)
@@ -231,7 +231,7 @@ class Limb:
             jnt_name = jnt.descriptor
             if not self.ik_end_control and i == len(self.guides) - 1:
                 jnt_name = f'{jnt.descriptor}_hook'
-            ik_jnt = create_joint(name=f'IK_{jnt_name}', transform=jnt.name, parent=jnt_par, connect=False)
+            ik_jnt = create_joint(name=f'IK_{jnt_name}', transform=jnt.name, parent=jnt_par, connect=False, bind_set= False, ue_set=False,)
             self.ik_joints.append(ik_jnt)
             jnt_par = ik_jnt
 
@@ -312,7 +312,7 @@ class Limb:
                     pass
                 else:
                     jnt_name = jnt.descriptor
-                    ik_jnt = create_joint(name=f'IK_len_{jnt_name}', transform=jnt.name, parent=jnt_par, connect=False)
+                    ik_jnt = create_joint(name=f'IK_len_{jnt_name}', transform=jnt.name, parent=jnt_par, connect=False, bind_set= False, ue_set=False,)
                     self.ik_len_joints.append(ik_jnt)
                     jnt_par = ik_jnt
             self.ik_len_chain = create_IK_single_chain(name=f'{self.part}_len_{self.side}', start_joint=self.ik_len_joints[0], end_joint=self.ik_len_joints[1],)
