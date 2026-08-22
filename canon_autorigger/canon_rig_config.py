@@ -4,6 +4,7 @@ import maya.cmds as cmds
 from Workshop.transform.utils import create_transform, get_distance_between, get_flat_y_aim_rotation
 from Workshop.transform.mesh_info import get_position_from_vertex
 from Workshop.guide.core import create_guide_from_position, GuideInfo, read_guide, SplineGuideInfo
+from Workshop.tag.core import sets_tag
 from .modules.foot import foot_guides
 
 
@@ -64,6 +65,12 @@ def read_guides()->cannon_guide_config:
                 guide = read_guide(f'finger_{fing}_{side}_{i}_guide')
                 joint_list.append(guide)
             fingers[f'{fing}_{side}'] = joint_list
+
+
+
+
+    #tag geo
+    sets_tag('geo', ['bind_joints_set'])
 
     all_guides = cannon_guide_config(root=root, hip=cog, chest=chest, spine=spine, neck=neck, head=head, leg=leg, arm=arm, fingers=fingers, foot=foot, clav=clav, metacarpal=metacarpal)
     return all_guides

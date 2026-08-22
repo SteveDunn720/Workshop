@@ -30,9 +30,9 @@ def object_visibility(object):
         pass
     else:
         try:
-            cmds.connectAttr(tag, f'{object}.visibilty')
+            cmds.connectAttr(tag, f'{object}.visibility', force=True)
         except RuntimeError as e:
-            print(f'failed to connect object:{object} visibilty to {tag} : error {e}')
+            print(f'failed to connect object:{object} visibility to {tag} : error {e}')
 
 
 def object_reference(object):

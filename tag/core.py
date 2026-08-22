@@ -175,8 +175,6 @@ def get_tags(object):
     for tag_type in tag_lib:
         if not cmds.attributeQuery(tag_type, node=object, exists=True):
             continue
-        elif tag_type == 'LOCK_TAG':
-            lock_channels(object=object)
         elif tag_type == 'HIDE_TAG':
             hide_channels(object=object)
         elif tag_type == 'NOT_KEYABLE_TAG':
@@ -189,6 +187,8 @@ def get_tags(object):
             add_to_set(object=object)
         elif tag_type == 'OBJECT_REF_TAG':
             object_reference(object=object)
+        elif tag_type == 'LOCK_TAG':
+            lock_channels(object=object)
 
 
 
