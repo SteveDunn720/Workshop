@@ -116,22 +116,7 @@ def read_guide(guide: str) -> GuideInfo:
             type="string",
         )
     
-    if cmds.attributeQuery(attrs[0], node=guide, exists=True):
-        descriptor = cmds.getAttr(f'{guide}.{attrs[0]}')
-    else:
-        descriptor = guide.removesuffix("_guide")
-        cmds.addAttr(
-            guide,
-            longName=attrs[0],
-            dataType="string",
-        )
-
-        cmds.setAttr(
-            f"{guide}.{attrs[0]}",
-            descriptor,
-            type="string",
-        )
-
+    descriptor = guide.removesuffix("_guide")
     extra_channels = []
 
     if cmds.attributeQuery("guideExtraChannels", node=guide, exists=True):

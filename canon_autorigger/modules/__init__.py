@@ -10,6 +10,7 @@ from . import chain as chain
 from . import metacarpal as metacarpal
 from . import neck as neck
 from . import head as head
+from . import ik_correctives
 
 
 from .root import Root
@@ -23,6 +24,7 @@ from .chain import Chain
 from .metacarpal import Metacarpal
 from .neck import Neck
 from .head import Head
+from .ik_correctives import Ik_correctives
 
 
 
@@ -52,4 +54,6 @@ __all__ = [
 "Neck",
 "head",
 "Head",
+"ik_correctives",
+"Ik_correctives",
 ]

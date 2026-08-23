@@ -93,6 +93,12 @@ def build(rig_name:str, config:rig_config):
 
 
 
+        if guides.full_joint_correctives:
+            ik_correctives = modules.Ik_correctives(part="pec", control_size=canon.scene_size, joint_parent=spineinfo.bind_joints[0], parent=canon.rig, side=side, guides=guides.pec_correctives[side], end_ik_space=[arm_info.switch_joints[0]], root_ik_space=[spineinfo.chest_off.ctrl]) #type:ignore
+            ik_correctives.ik_correctives_build()
+
+
+
         
 
 

@@ -71,6 +71,38 @@ def create_transform(
     return created_transform
 
 
+def create_locator(
+    name: str,
+    parent: str | None = None,
+    transform: str | MMatrix | None = None,
+) -> str:
+    """Create an transform node with optional parent and initial transform.
+
+    Args:
+        name: Name of the new node.
+        parent: Optional parent transform.
+        transform: ``None``, a transform name to match, or a world space ``MMatrix`` to apply.
+
+    Returns:
+        The created transform name.
+    """
+    created_transform: str
+    if parent:
+        created_transform = cmds.spaceLocator(name=name) #type:ignore
+        cmds.parent(created_transform, parent)
+    else:
+        created_transform = cmds.spaceLocator(name=name) #type:ignore
+    if transform is None:
+        pass
+    elif isinstance(transform, str):
+        match_transform(created_transform, transform)
+    elif isinstance(transform, MMatrix):
+        set_world_matrix(created_transform, transform, use_joint_orient=True)
+    else:
+        raise RuntimeError(f"{transform} is not a valid transform name or MMatrix")
+    return created_transform
+
+
 def get_shapes(transform: str) -> list[str]:
     """Return the non-intermediate shape nodes parented under a transform.
 
