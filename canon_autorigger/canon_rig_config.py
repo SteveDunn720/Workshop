@@ -24,6 +24,8 @@ class cannon_guide_config:
     metacarpal:dict[str, list[GuideInfo]]
 
     pec_correctives:dict[str,list[GuideInfo]] | None
+    trap_correctives:dict[str,list[GuideInfo]] | None
+    necktrap_correctives:dict[str,list[GuideInfo]] | None
 
     full_joint_correctives:bool = True
 
@@ -58,6 +60,8 @@ def read_guides()->cannon_guide_config:
     clav = {}
     metacarpal = {}
     pec_cor = {}
+    trap_cor = {}
+    necktrap_cor = {}
     for side in ['L', 'R']:
         leg[side] = [read_guide(f'upperleg_{side}_guide'), read_guide(f'knee_{side}_guide'), read_guide(f'foot_{side}_guide')]
         arm[side] = [read_guide(f'shoulder_{side}_guide'), read_guide(f'elbow_{side}_guide'), read_guide(f'hand_{side}_guide')]
@@ -74,6 +78,8 @@ def read_guides()->cannon_guide_config:
             fingers[f'{fing}_{side}'] = joint_list
 
         pec_cor[side] = [read_guide(f'pec_insert_{side}_guide'), read_guide(f'pec_01_{side}_guide'), read_guide(f'pec_02_{side}_guide')]
+        trap_cor[side] = [read_guide(f'trap_insert_{side}_guide'), read_guide(f'trap_01_{side}_guide'), read_guide(f'trap_02_{side}_guide')]
+        necktrap_cor[side] = [read_guide(f'necktrap_insert_{side}_guide'), read_guide(f'necktrap_01_{side}_guide')]
 
 
 
@@ -81,7 +87,23 @@ def read_guides()->cannon_guide_config:
     #tag geo
     sets_tag('geo', ['bind_joints_set'])
 
-    all_guides = cannon_guide_config(root=root, hip=cog, chest=chest, spine=spine, neck=neck, head=head, leg=leg, arm=arm, fingers=fingers, foot=foot, clav=clav, metacarpal=metacarpal, pec_correctives=pec_cor)
+    all_guides = cannon_guide_config(
+        root=root, 
+        hip=cog, 
+        chest=chest, 
+        spine=spine, 
+        neck=neck, 
+        head=head, 
+        leg=leg, 
+        arm=arm, 
+        fingers=fingers, 
+        foot=foot, 
+        clav=clav, 
+        metacarpal=metacarpal, 
+        pec_correctives=pec_cor, 
+        trap_correctives=trap_cor,
+        necktrap_correctives=necktrap_cor,
+    )
     return all_guides
     
 

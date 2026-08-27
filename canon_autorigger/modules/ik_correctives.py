@@ -5,9 +5,8 @@ from Workshop.transform.constraint import constraint
 from Workshop.control import create_control
 from Workshop.joint import create_joint
 from Workshop.guide.core import GuideInfo
-from Workshop.maya_api.node import DistanceBetweenNode
+from Workshop.maya_api.node import DistanceBetweenNode, MultiplyDivideNode
 from Workshop.transform.utils import create_transform, create_locator
-from concurrent.interpreters import create
 
 from .module_initialize import module_prep, module_space
 from .ik import create_IK_single_chain
@@ -34,7 +33,8 @@ class Ik_correctives:
         root_ik_space:list = [],
         control_color:str = 'MISC',
         control_shape:str = 'circle',
-        divisions:int = 1
+        divisions:int = 1,
+        mid_control:bool = False,
 
     ):
         self.part: str = part
@@ -50,6 +50,7 @@ class Ik_correctives:
         self.control_shape = control_shape
         self.primary_axis = "Y"
         self.divisions = divisions
+        self.mid_control = mid_control
 
     # -------------------
     # Build steps
@@ -90,15 +91,62 @@ class Ik_correctives:
                 constraint(drivers=[self.ik_end_loc], driven=ik.handle, constraint_type='parent', parent=self.guts)
                 constraint(drivers=self.root_ik_space, driven=root_ik, constraint_type='parent', parent=self.guts)
 
-                if guide == self.guides[1]:
-                    ik_joints.append(end_ik)
                 ik_joints.append(root_ik)
-
 
                 mult = 1 / (self.divisions + 1)
 
-                for jnt in range(self.divisions):
-                    joint =  create_joint(name=f'def_{guide.descriptor}', transform=guide.name, connect=False, bind_set=False, ue_set=False, parent=self.joint_parent)
+
+                for i in range(self.divisions):
+                    if i % 3 == 0:
+                        mult_node = MultiplyDivideNode(
+                            name=f'ik_{guide.descriptor}_{i + 1:02d}'
+                        )
+
+                    channel_index = i % 3
+
+                    if channel_index == 0:
+                        channel = "X"
+                    elif channel_index == 1:
+                        channel = "Y"
+                    else:
+                        channel = "Z"
+
+                    joint = create_joint(
+                        name=f'ik_{guide.descriptor}_{i + 1:02d}',
+                        transform=guide.name,
+                        connect=False,
+                        bind_set=False,
+                        ue_set=False,
+                        parent=root_ik,
+                    )
+                    ik_joints.append(joint)
+
+                    cmds.connectAttr(f'{end_ik}.translate{self.primary_axis}',f'{mult_node}.input1{channel}') #type:ignore
+                    cmds.setAttr(f'{mult_node}.input2{channel}', mult * (i+1)) #type:ignore
+                    cmds.connectAttr(f'{mult_node}.output{channel}',f'{joint}.translate{self.primary_axis}') #type:ignore
+
+        for ik in ik_joints:
+
+            jnt_name = ik.removeprefix("ik_").removesuffix("_jnt")
+            joint = create_joint(
+                name=jnt_name,
+                transform=ik,
+                connect=False,
+                parent=self.joint_parent,
+            )
+            bind_joints.append(joint)
+            constraint(drivers=[ik], driven=joint, constraint_type='parent', parent=self.guts)
+
+
+
+
+
+
+
+            # for adding an mid control, we need to take the input of hte middle joints, sub them in for an add node that takes in the local control primary axis // and the end joints's y axis, to decide where the joints need to be  
+
+
+                    
 
 
 
