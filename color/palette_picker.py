@@ -25,6 +25,8 @@ Signal = QtCore.Signal
 
 MAKE_NEW_PALETTE = "(Make New Palette)"
 
+LAST_PALETTE: str | None = None
+
 SWATCH_SIZE = 34
 SWATCH_SPACING = 4
 SWATCH_COLUMNS = 8
@@ -302,13 +304,9 @@ class PalettePickerPopup(QtWidgets.QDialog):
     def refresh_palettes(self) -> None:
         """Refresh the palette dropdown."""
 
-        previous_palette = (
-            self.palette_combo.currentText()
-        )
+        global LAST_PALETTE
 
-        palette_names = (
-            self.get_palette_names()
-        )
+        palette_names = self.get_palette_names()
 
         self.palette_combo.blockSignals(
             True
@@ -324,19 +322,24 @@ class PalettePickerPopup(QtWidgets.QDialog):
             MAKE_NEW_PALETTE
         )
 
-        # Try to preserve previous selection.
-        previous_index = (
-            self.palette_combo.findText(
-                previous_palette
-            )
-        )
+        # --------------------------------------------------------------
+        # Restore last-used palette
+        # --------------------------------------------------------------
 
-        if previous_index >= 0:
+        if (
+            LAST_PALETTE
+            and LAST_PALETTE in palette_names
+        ):
+            index = self.palette_combo.findText(
+                LAST_PALETTE
+            )
+
             self.palette_combo.setCurrentIndex(
-                previous_index
+                index
             )
 
         elif palette_names:
+            # Default to the first palette for a new Maya session.
             self.palette_combo.setCurrentIndex(
                 0
             )
@@ -345,11 +348,9 @@ class PalettePickerPopup(QtWidgets.QDialog):
             False
         )
 
-        # Manually update because signals were blocked.
         self._palette_changed(
             self.palette_combo.currentText()
         )
-
     # ------------------------------------------------------------------
     # Palette Selection
     # ------------------------------------------------------------------
@@ -358,7 +359,7 @@ class PalettePickerPopup(QtWidgets.QDialog):
         self,
         palette_name: str,
     ) -> None:
-        """Respond to palette selection."""
+        global LAST_PALETTE
 
         if not palette_name:
             self.current_palette = None
@@ -367,7 +368,6 @@ class PalettePickerPopup(QtWidgets.QDialog):
             self.status_label.setText(
                 "No palettes available."
             )
-
             return
 
         if palette_name == MAKE_NEW_PALETTE:
@@ -391,8 +391,10 @@ class PalettePickerPopup(QtWidgets.QDialog):
             self.status_label.setText(
                 f"Could not load palette: {error}"
             )
-
             return
+
+        # Remember this palette for the current Maya session.
+        LAST_PALETTE = palette_name
 
         self._rebuild_swatches()
 
