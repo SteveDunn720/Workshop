@@ -1,3 +1,7 @@
+from __future__ import annotations
+
+import builtins
+
 from pathlib import Path
 
 import maya.cmds as cmds
@@ -14,6 +18,9 @@ from Workshop.color.palette import (
 
 
 COLOR_CONTROL = "color_options_ctrl"
+
+_RANDOM_COLOR_TIME_JOB: int | None = None
+_RANDOM_COLOR_IDLE_JOB: int | None = None
 
 
 def write_rig_color_palette(
@@ -338,3 +345,164 @@ def randomize_rig_colors() -> None:
             *color,
             type="double3",
         )
+
+
+
+#####################################
+
+
+# ----------------------------------------------------------------------
+# Session state
+# ----------------------------------------------------------------------
+
+_STATE_NAME = "_WORKSHOP_RANDOM_RIG_COLOR_STATE"
+
+
+def _get_random_color_state() -> dict:
+    """Get persistent state for the current Maya session."""
+
+    if not hasattr(builtins, _STATE_NAME):
+        setattr(
+            builtins,
+            _STATE_NAME,
+            {
+                "mode": "off",
+                "time_job": None,
+                "idle_job": None,
+            },
+        )
+
+    return getattr(
+        builtins,
+        _STATE_NAME
+    )
+
+
+# ----------------------------------------------------------------------
+# Callbacks
+# ----------------------------------------------------------------------
+
+def _randomize_on_time_change() -> None:
+    """Randomize only if time mode is still active."""
+
+    state = _get_random_color_state()
+
+    if state["mode"] != "time":
+        return
+
+    randomize_rig_colors()
+
+
+def _randomize_on_idle() -> None:
+    """Randomize only if idle mode is still active."""
+
+    state = _get_random_color_state()
+
+    if state["mode"] != "idle":
+        return
+
+    randomize_rig_colors()
+
+
+# ----------------------------------------------------------------------
+# Job cleanup
+# ----------------------------------------------------------------------
+
+def disable_random_rig_color_jobs() -> None:
+    """Kill all Workshop random-color jobs."""
+
+    state = _get_random_color_state()
+
+    # Set this FIRST so any callback already executing
+    # immediately becomes harmless.
+    state["mode"] = "off"
+
+    for key in (
+        "time_job",
+        "idle_job",
+    ):
+        job_id = state[key]
+
+        if (
+            job_id is not None
+            and cmds.scriptJob(
+                exists=job_id
+            )
+        ):
+            cmds.scriptJob(
+                kill=job_id,
+                force=True,
+            )
+
+        state[key] = None
+
+
+# ----------------------------------------------------------------------
+# Modes
+# ----------------------------------------------------------------------
+
+def enable_random_rig_colors_on_time_change() -> None:
+    """Randomize whenever Maya's current time changes."""
+
+    disable_random_rig_color_jobs()
+
+    state = _get_random_color_state()
+
+    state["mode"] = "time"
+
+    state["time_job"] = cmds.scriptJob(
+        event=[
+            "timeChanged",
+            _randomize_on_time_change,
+        ],
+        protected=True,
+    )
+
+
+def enable_random_rig_colors_on_idle() -> None:
+    """Randomize continuously while Maya is idle."""
+
+    disable_random_rig_color_jobs()
+
+    state = _get_random_color_state()
+
+    state["mode"] = "idle"
+
+    state["idle_job"] = cmds.scriptJob(
+        idleEvent=_randomize_on_idle,
+        protected=True,
+    )
+
+
+def set_random_rig_color_mode(
+    mode: str,
+) -> None:
+    """Set random rig color behavior.
+
+    Modes:
+        off
+        time
+        idle
+    """
+
+    mode = mode.lower().strip()
+
+    if mode == "off":
+        disable_random_rig_color_jobs()
+
+    elif mode == "time":
+        enable_random_rig_colors_on_time_change()
+
+    elif mode == "idle":
+        enable_random_rig_colors_on_idle()
+
+    else:
+        raise ValueError(
+            f"Unknown random color mode: {mode}"
+        )
+
+
+def get_random_rig_color_mode() -> str:
+    """Return the currently active mode."""
+
+    return _get_random_color_state()["mode"]
