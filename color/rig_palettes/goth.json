@@ -1,0 +1,143 @@
+{
+    "name": "Goth",
+    "is_rig_palette": true,
+    "color_count": 8,
+    "colors": [
+        {
+            "name": "MISC",
+            "rgb": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "hsv": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "hex": "#000000",
+            "rig_type": "MISC",
+            "draw_on_top": false,
+            "thickness": -1.0
+        },
+        {
+            "name": "Root",
+            "rgb": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "hsv": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "hex": "#000000",
+            "rig_type": "Root",
+            "draw_on_top": false,
+            "thickness": -1.0
+        },
+        {
+            "name": "Middle",
+            "rgb": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "hsv": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "hex": "#000000",
+            "rig_type": "Middle",
+            "draw_on_top": false,
+            "thickness": -1.0
+        },
+        {
+            "name": "SubMiddle",
+            "rgb": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "hsv": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "hex": "#000000",
+            "rig_type": "SubMiddle",
+            "draw_on_top": false,
+            "thickness": -1.0
+        },
+        {
+            "name": "Left",
+            "rgb": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "hsv": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "hex": "#000000",
+            "rig_type": "Left",
+            "draw_on_top": false,
+            "thickness": -1.0
+        },
+        {
+            "name": "SubLeft",
+            "rgb": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "hsv": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "hex": "#000000",
+            "rig_type": "SubLeft",
+            "draw_on_top": false,
+            "thickness": -1.0
+        },
+        {
+            "name": "Right",
+            "rgb": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "hsv": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "hex": "#000000",
+            "rig_type": "Right",
+            "draw_on_top": false,
+            "thickness": -1.0
+        },
+        {
+            "name": "SubRight",
+            "rgb": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "hsv": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "hex": "#000000",
+            "rig_type": "SubRight",
+            "draw_on_top": false,
+            "thickness": -1.0
+        }
+    ]
+}

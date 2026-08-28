@@ -16,6 +16,8 @@ from Workshop.control.serialize import write_curve_to_library
 from Workshop.snapshots.camera_core import delete_snapshot_camera, place_snapshot_camera, take_snapshot
 from Workshop.control.serialize import SHAPE_LIBRARY_DIR
 from Workshop.control.core import create_control
+from Workshop.color.palette import PaletteColor
+from Workshop.color.palette_picker import PalettePickerPopup
 
 
 WORKSHOP_ROOT = Path(__file__).resolve().parents[1]  # Adjust if needed
@@ -46,6 +48,17 @@ SUPPORTED_IMAGE_EXTENSIONS = (
     ".jpeg",
     ".bmp",
 )
+
+
+@dataclass
+class ShapeDisplayAttribute:
+    value: float | bool
+    connection: str | None = None
+
+@dataclass
+class ShapeDisplaySettings:
+    line_width: ShapeDisplayAttribute
+    draw_on_top: ShapeDisplayAttribute
 
 class ControlAuthoringWidget(QtWidgets.QWidget):
     """Tools for creating and saving control shapes."""
@@ -1224,27 +1237,38 @@ class ColorButton(QtWidgets.QPushButton):
         self.color_changed.emit(self.color)
 
     def _choose_color(self) -> None:
-        """Open Maya's native color editor."""
+        """Open the Workshop palette picker."""
 
-        current_color = (
-            self._color.redF(),
-            self._color.greenF(),
-            self._color.blueF(),
+        picker = PalettePickerPopup(
+            parent=self,
         )
 
-        result = cmds.colorEditor(
-            rgbValue=current_color,
+        picker.color_selected.connect(
+            self._palette_color_selected
         )
 
-        if not result:
-            return
+        # Position the popup underneath the color button.
+        popup_position = self.mapToGlobal(
+            QtCore.QPoint(
+                0,
+                self.height(),
+            )
+        )
 
-        if not cmds.colorEditor(query=True, result=True):
-            return
+        picker.move(
+            popup_position
+        )
 
-        red, green, blue = cmds.colorEditor(
-            query=True,
-            rgbValue=True,
+        picker.exec()
+
+    def _palette_color_selected(
+        self,
+        palette_color: PaletteColor,
+    ) -> None:
+        """Set the button color from a palette color."""
+
+        red, green, blue = (
+            palette_color.rgb
         )
 
         self.color = QtGui.QColor.fromRgbF(
@@ -1616,12 +1640,46 @@ class ControlCreatorWidget(QtWidgets.QWidget):
             "Swap Shape"
         )
 
-        main_layout.addWidget(self.build_button)
-        main_layout.addWidget(self.swap_shape_button)
+        self.swap_color_checkbox = QtWidgets.QCheckBox(
+            "Swap Color"
+        )
+
+        swap_shape_layout = QtWidgets.QHBoxLayout()
+        swap_shape_layout.setContentsMargins(0, 0, 0, 0)
+
+        swap_shape_layout.addWidget(
+            self.swap_shape_button,
+            stretch=1,
+        )
+
+        swap_shape_layout.addWidget(
+            self.swap_color_checkbox,
+        )
+
+
+        self.swap_color_button = QtWidgets.QPushButton(
+            "Swap Color"
+        )
+
+
+        main_layout.addWidget(
+            self.build_button
+        )
+
+        main_layout.addLayout(
+            swap_shape_layout
+        )
+
+        main_layout.addWidget(
+            self.swap_color_button
+        )
 
     def _connect_signals(self) -> None:
         self.build_button.clicked.connect(
             self.build_control
+        )
+        self.swap_color_button.clicked.connect(
+            self.swap_color
         )
         self.swap_shape_button.clicked.connect(
             self.swap_shape
@@ -1665,7 +1723,18 @@ class ControlCreatorWidget(QtWidgets.QWidget):
                 )
                 continue
 
-            # Create our replacement shape.
+            # --------------------------------------------------------------
+            # Store existing shape display settings
+            # --------------------------------------------------------------
+
+            display_settings = self._get_shape_display_settings(
+                old_shapes[0]
+            )
+
+            # --------------------------------------------------------------
+            # Create replacement shape
+            # --------------------------------------------------------------
+
             temp_ctrl = create_control(
                 transform=None,
                 name="TEMP_shape_swap",
@@ -1689,13 +1758,24 @@ class ControlCreatorWidget(QtWidgets.QWidget):
                 cmds.warning(
                     f"Could not create replacement shape for {control}."
                 )
+
+                if cmds.objExists(temp_ctrl.top):
+                    cmds.delete(temp_ctrl.top)
+
                 continue
 
-            # Delete the existing shapes.
-            cmds.delete(old_shapes)
+            # --------------------------------------------------------------
+            # Remove old shapes
+            # --------------------------------------------------------------
 
-            # Move the newly generated shapes underneath
-            # the existing control transform.
+            cmds.delete(
+                old_shapes
+            )
+
+            # --------------------------------------------------------------
+            # Parent new shapes under existing control
+            # --------------------------------------------------------------
+
             for new_shape in new_shapes:
                 cmds.parent(
                     new_shape,
@@ -1704,7 +1784,10 @@ class ControlCreatorWidget(QtWidgets.QWidget):
                     relative=True,
                 )
 
-            # Rename shapes cleanly.
+            # --------------------------------------------------------------
+            # Get newly parented shapes
+            # --------------------------------------------------------------
+
             new_shapes = cmds.listRelatives(
                 control,
                 shapes=True,
@@ -1712,26 +1795,238 @@ class ControlCreatorWidget(QtWidgets.QWidget):
                 type="nurbsCurve",
             ) or []
 
-            for index, shape in enumerate(new_shapes):
+            # --------------------------------------------------------------
+            # Restore old line width / draw-on-top setup
+            # --------------------------------------------------------------
+
+            for new_shape in new_shapes:
+                self._apply_shape_display_settings(
+                    shape=new_shape,
+                    settings=display_settings,
+                )
+
+            # --------------------------------------------------------------
+            # Rename shapes
+            # --------------------------------------------------------------
+
+            renamed_shapes: list[str] = []
+
+            for index, shape in enumerate(
+                new_shapes
+            ):
                 if index == 0:
                     new_name = f"{control}Shape"
                 else:
-                    new_name = f"{control}Shape{index + 1}"
+                    new_name = (
+                        f"{control}Shape{index + 1}"
+                    )
 
-                cmds.rename(
+                renamed_shape = cmds.rename(
                     shape,
                     new_name,
                 )
 
-            # Remove leftover temporary hierarchy.
-            if cmds.objExists(temp_ctrl.top):
-                cmds.delete(temp_ctrl.top)
+                renamed_shapes.append(
+                    renamed_shape
+                )
 
-        # Restore the original selection.
+            # --------------------------------------------------------------
+            # Optionally replace color
+            # --------------------------------------------------------------
+
+            if self.swap_color_checkbox.isChecked():
+                self._apply_control_color(
+                    control
+                )
+
+            # --------------------------------------------------------------
+            # Remove leftover temporary hierarchy
+            # --------------------------------------------------------------
+
+            if cmds.objExists(
+                temp_ctrl.top
+            ):
+                cmds.delete(
+                    temp_ctrl.top
+                )
+
+        # --------------------------------------------------------------
+        # Restore original selection
+        # --------------------------------------------------------------
+
         cmds.select(
             selected,
             replace=True,
         )
+    def swap_color(self) -> None:
+        """Apply the selected palette color to selected controls."""
+
+        selected = cmds.ls(
+            selection=True,
+            type="transform",
+        ) or []
+
+        if not selected:
+            cmds.warning(
+                "No controls selected."
+            )
+            return
+
+        for control in selected:
+            self._apply_control_color(
+                control
+            )
+    
+    def _apply_control_color(
+        self,
+        control: str,
+    ) -> None:
+        """
+        Apply the currently selected color to a control's shapes.
+
+        Shapes with an incoming color connection are left alone.
+        """
+
+        shapes = cmds.listRelatives(
+            control,
+            shapes=True,
+            fullPath=True,
+            type="nurbsCurve",
+        ) or []
+
+        for shape in shapes:
+            if self._has_color_connection(
+                shape
+            ):
+                continue
+
+            cmds.setAttr(
+                f"{shape}.overrideEnabled",
+                1,
+            )
+
+            cmds.setAttr(
+                f"{shape}.overrideRGBColors",
+                1,
+            )
+
+            cmds.setAttr(   #type:ignore
+                f"{shape}.overrideColorRGB",
+                *self.control_color_rgb,
+            )
+    def _has_color_connection(
+        self,
+        shape: str,
+    ) -> bool:
+        """Return whether the shape's override color is driven."""
+
+        color_attributes = (
+            "overrideColorRGB",
+            "overrideColorR",
+            "overrideColorG",
+            "overrideColorB",
+        )
+
+        for attribute in color_attributes:
+            plug = f"{shape}.{attribute}"
+
+            if not cmds.objExists(plug):
+                continue
+
+            connections = cmds.listConnections(
+                plug,
+                source=True,
+                destination=False,
+                plugs=True,
+            ) or []
+
+            if connections:
+                return True
+
+        return False
+
+    def _get_display_attribute(
+        self,
+        plug: str,
+    ) -> ShapeDisplayAttribute:
+        """Capture either the incoming connection or current value."""
+
+        connections = cmds.listConnections(
+            plug,
+            source=True,
+            destination=False,
+            plugs=True,
+        ) or []
+
+        connection = (
+            connections[0]
+            if connections
+            else None
+        )
+
+        value = cmds.getAttr(
+            plug
+        )
+
+        return ShapeDisplayAttribute(
+            value=value,
+            connection=connection,
+        )
+
+    def _get_shape_display_settings(
+        self,
+        shape: str,
+    ) -> ShapeDisplaySettings:
+        """Store display settings from an existing control shape."""
+
+        return ShapeDisplaySettings(
+            line_width=self._get_display_attribute(
+                f"{shape}.lineWidth"
+            ),
+            draw_on_top=self._get_display_attribute(
+                f"{shape}.alwaysDrawOnTop"
+            ),
+        )
+
+    def _apply_shape_display_settings(
+        self,
+        shape: str,
+        settings: ShapeDisplaySettings,
+    ) -> None:
+        """Apply stored display settings to a new curve shape."""
+
+        self._apply_display_attribute(
+            target=f"{shape}.lineWidth",
+            settings=settings.line_width,
+        )
+
+        self._apply_display_attribute(
+            target=f"{shape}.alwaysDrawOnTop",
+            settings=settings.draw_on_top,
+        )
+
+    def _apply_display_attribute(
+        self,
+        target: str,
+        settings: ShapeDisplayAttribute,
+    ) -> None:
+        """Restore a connection if one existed, otherwise restore the value."""
+
+        if settings.connection:
+            cmds.connectAttr(
+                settings.connection,
+                target,
+                force=True,
+            )
+
+            return
+
+        cmds.setAttr(
+            target,
+            settings.value,
+        )
+    
+    
 
 
     def build_control(self) -> None:
@@ -1845,5 +2140,7 @@ class ControlCreatorWidget(QtWidgets.QWidget):
                         drivers=[ctrl.ctrl],
                         driven=transform,
                         parent=None,
+
+
                         constraint_type="parent",
                     )
