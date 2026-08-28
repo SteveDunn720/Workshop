@@ -27,7 +27,10 @@ class cannon_guide_config:
     trap_correctives:dict[str,list[GuideInfo]] | None
     necktrap_correctives:dict[str,list[GuideInfo]] | None
 
-    full_joint_correctives:bool = True
+    full_joint_correctives:bool
+
+    face:list[GuideInfo]
+    jaw:list[GuideInfo]
 
 
 
@@ -81,6 +84,11 @@ def read_guides()->cannon_guide_config:
         trap_cor[side] = [read_guide(f'trap_insert_{side}_guide'), read_guide(f'trap_01_{side}_guide'), read_guide(f'trap_02_{side}_guide')]
         necktrap_cor[side] = [read_guide(f'necktrap_insert_{side}_guide'), read_guide(f'necktrap_01_{side}_guide')]
 
+    #face_guides
+
+    face = [read_guide('upper_head_M_guide'), read_guide('lower_head_M_guide')]
+    jaw = [read_guide('jaw_M_guide'), read_guide('jaw_ee_M_guide'), read_guide('larynx_M_guide')]
+
 
 
 
@@ -103,6 +111,9 @@ def read_guides()->cannon_guide_config:
         pec_correctives=pec_cor, 
         trap_correctives=trap_cor,
         necktrap_correctives=necktrap_cor,
+        full_joint_correctives=True,
+        face=face,
+        jaw=jaw,
     )
     return all_guides
     

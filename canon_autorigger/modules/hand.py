@@ -81,8 +81,8 @@ class Hand:
             name=f'FK_{self.part}_{self.side}',
             parent=ctrl_par,
             transform=self.guides.name,
-            size=self.control_size/(4),
-            control_shape="circle",
+            size=self.control_size/(6),
+            control_shape="fk",
             direction="y",
             color_type=self.main_control_color
         )
@@ -121,7 +121,7 @@ class Hand:
                 parent=self.ik_hand_piv.ctrl,
                 transform=f'{self.guides.name}',
                 size=self.control_size/4,
-                control_shape="circle",
+                control_shape="hand",
                 direction="y",
                 color_type=self.main_control_color,
             )

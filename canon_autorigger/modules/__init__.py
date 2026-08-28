@@ -11,7 +11,8 @@ from . import metacarpal as metacarpal
 from . import neck as neck
 from . import head as head
 from . import ik_correctives
-
+from . import face
+from . import jaw
 
 from .root import Root
 from .biped_limb import Limb
@@ -25,6 +26,8 @@ from .metacarpal import Metacarpal
 from .neck import Neck
 from .head import Head
 from .ik_correctives import Ik_correctives
+from .face import Face
+from .jaw import Jaw
 
 
 
@@ -56,4 +59,8 @@ __all__ = [
 "Head",
 "ik_correctives",
 "Ik_correctives",
+"face",
+"Face",
+"jaw",
+"Jaw",
 ]

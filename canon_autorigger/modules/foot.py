@@ -177,10 +177,11 @@ class Foot:
                 name=f'FK_{jnt.descriptor}',
                 parent=ctrl_par,
                 transform=jnt.name,
-                size=self.control_size/(4 * (i + 1)),
-                control_shape="circle",
+                size=self.control_size/(6 * (i + 1)),
+                control_shape="fk",
                 direction="y",
-                color_type=self.main_control_color
+                color_type=self.main_control_color,
+                shape_rotation_offset=(0,90,0)
             )
 
             fk_jnt = create_joint(name=f'FK_{jnt.descriptor}', transform=ctrl.ctrl, parent=jnt_par, bind_set= False, ue_set=False,)
@@ -218,7 +219,7 @@ class Foot:
                 parent=ctrl_par,
                 transform=temp_guide,
                 size=self.control_size/4,
-                control_shape="circle",
+                control_shape="foot",
                 direction="y",
                 color_type=self.main_control_color,
                 shape_position_offset=(0, -ground_offset, 0)
@@ -237,7 +238,7 @@ class Foot:
                 parent=ctrl_par,
                 transform=f'{self.guides[1].name}',
                 size=self.control_size/8,
-                control_shape="circle",
+                control_shape="ik_toes",
                 direction="y",
                 color_type=self.main_control_color,
             )

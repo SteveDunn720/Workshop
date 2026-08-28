@@ -55,7 +55,8 @@ class Limb:
         ik_end_control:bool = False,
         ikfk_blend:float = 1,
         ik_length:bool = False,
-        split:str | None = 'single_twist'
+        split:str | None = 'single_twist',
+        fk_shape_twist = 0
 
     ):
         self.part: str = part
@@ -73,6 +74,7 @@ class Limb:
         self.ik_length = ik_length
         self.joint_parent = joint_parent
         self.split = split
+        self.fk_shape_twist = fk_shape_twist
 
 
     def build_stretchy_ik(self,
@@ -202,10 +204,11 @@ class Limb:
                 name=f'FK_{jnt.descriptor}',
                 parent=ctrl_par,
                 transform=jnt.name,
-                size=self.control_size/4,
-                control_shape="circle",
+                size=self.control_size/6,
+                control_shape="fk",
                 direction="y",
-                color_type=self.main_control_color
+                color_type=self.main_control_color,
+                shape_rotation_offset=(0,self.fk_shape_twist,0)
             )
 
             fk_jnt = create_joint(name=f'FK_{jnt.descriptor}', transform=ctrl.ctrl, parent=jnt_par, bind_set= False, ue_set=False,)
@@ -255,10 +258,9 @@ class Limb:
                 parent=self.ik_control_grp,
                 transform=self.ik_handle.pole_vector,
                 size=self.control_size/10,
-                control_shape="diamond",
+                control_shape="sphere",
                 direction="y",
                 color_type=self.main_control_color,
-                shape_rotation_offset=(90,-90,0)
             )
         module_space(space_list=self.ik_pv_control_space, control=self.ik_pv_ctrl)
         self.controls.append(self.ik_pv_ctrl.ctrl)

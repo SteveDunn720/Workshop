@@ -28,6 +28,10 @@ def build(rig_name:str, config:rig_config):
 
     guides = read_guides()
 
+    print(canon.scene_size)
+    print(canon.scene_size/5)
+    print(canon.scene_size/7.5)
+
 
 
     #root controls
@@ -59,7 +63,7 @@ def build(rig_name:str, config:rig_config):
 
     for side in ["L", "R"]:
     
-        leg = modules.Limb(part='leg', control_size=canon.scene_size, parent=canon.rig, joint_parent=hipinfo.hip_joint, side=side, guides=guides.leg[side],ik_end_control = False, fk_control_space=[hipinfo.hip_control.ctrl], ik_root_control_space=[ hipinfo.hip_control.ctrl, root_info.root_control.ctrl,], ik_pv_control_space=[root_info.root_control.ctrl, hipinfo.hip_control.ctrl], ik_end_control_space=[root_info.root_control.ctrl, hipinfo.hip_control.ctrl], ikfk_blend=0, ik_length=True)
+        leg = modules.Limb(part='leg', control_size=canon.scene_size, parent=canon.rig, joint_parent=hipinfo.hip_joint, side=side, guides=guides.leg[side],ik_end_control = False, fk_control_space=[hipinfo.hip_control.ctrl], ik_root_control_space=[ hipinfo.hip_control.ctrl, root_info.root_control.ctrl,], ik_pv_control_space=[root_info.root_control.ctrl, hipinfo.hip_control.ctrl], ik_end_control_space=[root_info.root_control.ctrl, hipinfo.hip_control.ctrl], ikfk_blend=0, ik_length=True, fk_shape_twist=90)
         leg_info = leg.limb_build()
 
         footguide = generate_foot_guides(side=side, parent=None)
@@ -101,12 +105,14 @@ def build(rig_name:str, config:rig_config):
             necktrap = modules.Ik_correctives(part="necktrap", control_size=canon.scene_size, joint_parent=spineinfo.bind_joints[-1], parent=canon.rig, side=side, guides=guides.necktrap_correctives[side], end_ik_space=[arm_info.switch_joints[0]], root_ik_space=[spineinfo.chest_off.ctrl], divisions=1) #type:ignore
             necktrap.ik_correctives_build()
 
-
-
-        
-
-
     #face modules
+
+    face = modules.Face(control_size=canon.scene_size, parent=canon.rig, joint_parent=headinfo.joint, guides=guides.face, control_space=[headinfo.joint])
+    faceinfo = face.face_build()
+
+    jaw = modules.Jaw(control_size=canon.scene_size, parent=canon.rig, joint_parent=faceinfo.lower_joint, guides=guides.jaw, control_space=[faceinfo.lower_control])
+    jawinfo = jaw.jaw_build()
+
 
 
 

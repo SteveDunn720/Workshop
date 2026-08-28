@@ -110,13 +110,15 @@ class Neck:
             shape_rotation_offset=(90,0,0)
         )
 
+        mult = (self.count /2)/10
+
         for attrs in ['X', 'Y', 'Z']:
             cmds.setAttr(f'{self.roll_ctrl.top}.rotate{attrs}', 0)
         module_space(control=self.roll_ctrl, space_list=[self.control_space])
         self.rot_mult = MultiplyDivideNode(name='neck_rot_mult')
         self.trans_mult = MultiplyDivideNode(name='neck_trans_mult')
-        self.rot_mult.input2.set((self.count/10,self.count/10,self.count/10))
-        self.trans_mult.input2.set((self.count/10,self.count/10,self.count/10))
+        self.rot_mult.input2.set((mult,mult,mult))
+        self.trans_mult.input2.set((mult,mult,mult))
         self.rot_mult.input1.connect_from(f'{self.roll_ctrl.ctrl}.rotate')
         self.trans_mult.input1.connect_from(f'{self.roll_ctrl.ctrl}.translate')
 
