@@ -2,6 +2,11 @@ from __future__ import annotations
 
 import builtins
 
+try:
+    from PySide6 import QtCore
+except ImportError:
+    from PySide2 import QtCore
+
 from pathlib import Path
 
 import maya.cmds as cmds
@@ -384,19 +389,57 @@ def _get_random_color_state() -> dict:
         setattr(
             builtins,
             _STATE_NAME,
-            {
-                "mode": "off",
-                "time_job": None,
-                "idle_job": None,
-                "last_idle_time": 0.0,
-                "idle_interval": 0.15,
-            },
+            {},
         )
 
-    return getattr(
+    state = getattr(
         builtins,
         _STATE_NAME
     )
+
+    # Make sure all current state values exist.
+    # This also makes module reloads safe when new options are added.
+    state.setdefault(
+        "mode",
+        "off",
+    )
+
+    state.setdefault(
+        "time_job",
+        None,
+    )
+
+    state.setdefault(
+        "idle_job",
+        None,
+    )
+
+    state.setdefault(
+        "last_idle_time",
+        0.0,
+    )
+
+    state.setdefault(
+        "idle_interval",
+        0.15,
+    )
+
+    state.setdefault(
+        "gamble_timer",
+        None,
+    )
+
+    state.setdefault(
+        "gamble_tick",
+        0,
+    )
+
+    state.setdefault(
+        "gamble_total_ticks",
+        26,
+    )
+
+    return state
 
 
 # ----------------------------------------------------------------------
@@ -426,20 +469,25 @@ def _randomize_on_idle() -> None:
 
 
 def _randomize_on_playback() -> None:
-    """Randomize only while Maya is actively playing."""
+    """Randomize colors on time changes, but only during playback."""
 
     state = _get_random_color_state()
 
     if state["mode"] != "playback":
         return
 
-    if not cmds.play(
+    # Maya's built-in playback condition is more reliable here
+    # than querying cmds.play() from inside the timeChanged callback.
+    if not cmds.condition(
+        "playingBack",
         query=True,
         state=True,
     ):
         return
 
-    randomize_rig_colors(undoable=False)
+    randomize_rig_colors(
+        undoable=False
+    )
 
 
 def _randomize_on_slow_idle() -> None:
@@ -466,25 +514,85 @@ def _randomize_on_slow_idle() -> None:
 
     randomize_rig_colors(undoable=False)
 
+def _randomize_gamble_tick() -> None:
+    """Run one tick of the slot-machine color randomizer."""
+
+    state = _get_random_color_state()
+
+    if state["mode"] != "gamble":
+        return
+
+    current_tick = state["gamble_tick"]
+    total_ticks = state["gamble_total_ticks"]
+
+    # --------------------------------------------------------------
+    # Final landing color
+    # --------------------------------------------------------------
+
+    if current_tick >= total_ticks:
+        randomize_rig_colors(
+            undoable=True
+        )
+
+        state["mode"] = "off"
+
+        timer = state["gamble_timer"]
+
+        if timer is not None:
+            timer.stop()
+
+        return
+
+    # --------------------------------------------------------------
+    # Intermediate flashing color
+    # --------------------------------------------------------------
+
+    randomize_rig_colors(
+        undoable=False
+    )
+
+    state["gamble_tick"] += 1
+
+    # --------------------------------------------------------------
+    # Slow down over time
+    # --------------------------------------------------------------
+
+    progress = (
+        state["gamble_tick"]
+        / total_ticks
+    )
+
+    # Starts extremely fast and increasingly slows down.
+    interval = int(
+        35
+        + (progress ** 3)
+        * 700
+    )
+
+    timer = state["gamble_timer"]
+
+    if timer is not None:
+        timer.start(
+            interval
+        )
+
 
 # ----------------------------------------------------------------------
 # Job cleanup
 # ----------------------------------------------------------------------
 
 def disable_random_rig_color_jobs() -> None:
-    """Kill all Workshop random-color jobs."""
+    """Disable all Workshop random-color behavior."""
 
     state = _get_random_color_state()
 
-    # Set this FIRST so any callback already executing
-    # immediately becomes harmless.
     state["mode"] = "off"
 
     for key in (
         "time_job",
         "idle_job",
     ):
-        job_id = state[key]
+        job_id = state.get(key)
 
         if (
             job_id is not None
@@ -498,6 +606,20 @@ def disable_random_rig_color_jobs() -> None:
             )
 
         state[key] = None
+
+    # --------------------------------------------------------------
+    # Gambling timer
+    # --------------------------------------------------------------
+
+    gamble_timer = state.get(
+        "gamble_timer"
+    )
+
+    if gamble_timer is not None:
+        gamble_timer.stop()
+
+    state["gamble_timer"] = None
+    state["gamble_tick"] = 0
 
 
 # ----------------------------------------------------------------------
@@ -521,6 +643,32 @@ def enable_random_rig_colors_on_time_change() -> None:
         protected=True,
     )
 
+def enable_random_rig_colors_gamble() -> None:
+    """Run a slot-machine style rig color randomizer."""
+
+    disable_random_rig_color_jobs()
+
+    state = _get_random_color_state()
+
+    state["mode"] = "gamble"
+    state["gamble_tick"] = 0
+
+    timer = QtCore.QTimer()
+
+    timer.setSingleShot(
+        True
+    )
+
+    timer.timeout.connect(
+        _randomize_gamble_tick
+    )
+
+    state["gamble_timer"] = timer
+
+    # Start immediately.
+    _randomize_gamble_tick()
+    
+
 
 def enable_random_rig_colors_on_idle() -> None:
     """Randomize continuously while Maya is idle."""
@@ -537,7 +685,7 @@ def enable_random_rig_colors_on_idle() -> None:
     )
 
 def enable_random_rig_colors_on_playback() -> None:
-    """Randomize colors only during Maya playback."""
+    """Randomize colors on frame changes during playback only."""
 
     disable_random_rig_color_jobs()
 
@@ -583,6 +731,7 @@ def set_random_rig_color_mode(
         playback
         idle
         slow_idle
+        gamble
     """
 
     mode = mode.lower().strip()
@@ -602,12 +751,10 @@ def set_random_rig_color_mode(
     elif mode == "slow_idle":
         enable_random_rig_colors_on_slow_idle()
 
+    elif mode == "gamble":
+        enable_random_rig_colors_gamble()
+
     else:
         raise ValueError(
             f"Unknown random color mode: {mode}"
         )
-
-def get_random_rig_color_mode() -> str:
-    """Return the currently active mode."""
-
-    return _get_random_color_state()["mode"]
