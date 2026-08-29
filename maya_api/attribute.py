@@ -524,6 +524,12 @@ class ClosestPointOnSurfaceResultAttribute(Attribute):
         self.parameter_u = ScalarAttribute(f"{attr_path}.parameterU")
         self.parameter_v = ScalarAttribute(f"{attr_path}.parameterV")
 
+class NearestPointOnCurveResultAttribute(Attribute):
+    def __init__(self, attr_path: str) -> None:
+        super().__init__(attr_path)
+
+        self.position = Vector3Attribute(f"{attr_path}.position")
+        self.parameter = ScalarAttribute(f"{attr_path}.parameterU")
 
 class MessageAttribute(Attribute):
     """A Maya message attribute."""

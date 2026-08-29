@@ -21,6 +21,7 @@ from Workshop.maya_api.attribute import (
     MessageAttribute,
     MotionPathWorldUpTypeAttribute,
     MultiplyDivideOperationAttribute,
+    NearestPointOnCurveResultAttribute,
     NurbsCurveAttribute,
     NurbsSurfaceAttribute,
     PlusMinusAverageOperationAttribute,
@@ -262,6 +263,16 @@ class ClosestPointOnSurfaceNode(Node):
         self.in_position = Vector3Attribute(f"{self.name}.inPosition")
         self.result = ClosestPointOnSurfaceResultAttribute(f"{self.name}.result")
 
+class NearestPointOnCurveNode(Node):
+    """Maya nearestPointOnCurve node with enhanced interface."""
+
+    def __init__(self, name: str = "nearestPointOnCurve") -> None:
+        super().__init__("nearestPointOnCurve", name)
+
+    def _setup_attributes(self) -> None:
+        self.input_curve = NurbsCurveAttribute(f"{self.name}.inputCurve")
+        self.in_position = Vector3Attribute(f"{self.name}.inPosition")
+        self.result = NearestPointOnCurveResultAttribute(f"{self.name}.result")
 
 class ComposeMatrixNode(Node):
     """Maya composeMatrix node with enhanced interface."""

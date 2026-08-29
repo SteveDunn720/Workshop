@@ -31,6 +31,7 @@ class cannon_guide_config:
 
     face:list[GuideInfo]
     jaw:list[GuideInfo]
+    mouth:dict[str,GuideInfo]
 
 
 
@@ -65,6 +66,8 @@ def read_guides()->cannon_guide_config:
     pec_cor = {}
     trap_cor = {}
     necktrap_cor = {}
+
+    mouth = {}
     for side in ['L', 'R']:
         leg[side] = [read_guide(f'upperleg_{side}_guide'), read_guide(f'knee_{side}_guide'), read_guide(f'foot_{side}_guide')]
         arm[side] = [read_guide(f'shoulder_{side}_guide'), read_guide(f'elbow_{side}_guide'), read_guide(f'hand_{side}_guide')]
@@ -83,6 +86,9 @@ def read_guides()->cannon_guide_config:
         pec_cor[side] = [read_guide(f'pec_insert_{side}_guide'), read_guide(f'pec_01_{side}_guide'), read_guide(f'pec_02_{side}_guide')]
         trap_cor[side] = [read_guide(f'trap_insert_{side}_guide'), read_guide(f'trap_01_{side}_guide'), read_guide(f'trap_02_{side}_guide')]
         necktrap_cor[side] = [read_guide(f'necktrap_insert_{side}_guide'), read_guide(f'necktrap_01_{side}_guide')]
+
+        mouth[f'{side}_mouth'] = read_guide(f'lip_{side}_guide')
+        mouth[f'{side}_path'] = read_guide(f'mouth_path_{side}_guide')
 
     #face_guides
 
@@ -114,6 +120,7 @@ def read_guides()->cannon_guide_config:
         full_joint_correctives=True,
         face=face,
         jaw=jaw,
+        mouth=mouth
     )
     return all_guides
     
