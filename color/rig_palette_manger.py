@@ -7,6 +7,7 @@ from pathlib import Path
 import maya.cmds as cmds
 
 import random
+import time
 
 from Workshop.color.palette import (
     Palette,
@@ -299,10 +300,17 @@ def apply_rig_color_palette(
             )
 
 
-def randomize_rig_colors() -> None:
+def randomize_rig_colors(
+    undoable: bool = True,
+) -> None:
     """Randomize all rig colors on color_options_ctrl.
 
     Draw-on-top and thickness values are left unchanged.
+
+    Args:
+        undoable:
+            If True, color changes are added to Maya's undo history.
+            If False, the changes are excluded from the undo queue.
     """
 
     if not cmds.objExists(COLOR_CONTROL):
@@ -316,35 +324,46 @@ def randomize_rig_colors() -> None:
         userDefined=True,
     ) or []
 
-    for attribute in user_attributes:
+    undo_was_enabled = cmds.undoInfo(
+        query=True,
+        state=True,
+    )
 
-        if not attribute.endswith(
-            "_color"
-        ):
-            continue
+    try:
+        if not undoable:
+            cmds.undoInfo(
+                stateWithoutFlush=False
+            )
 
-        plug = (
-            f"{COLOR_CONTROL}.{attribute}"
-        )
+        for attribute in user_attributes:
+            if not attribute.endswith("_color"):
+                continue
 
-        # Make sure this really is one of our RGB double3 attrs.
-        if cmds.getAttr(
-            plug,
-            type=True,
-        ) != "double3":
-            continue
+            plug = f"{COLOR_CONTROL}.{attribute}"
 
-        color = (
-            random.uniform(0.0, 1.0),
-            random.uniform(0.0, 1.0),
-            random.uniform(0.0, 1.0),
-        )
+            if cmds.getAttr(
+                plug,
+                type=True,
+            ) != "double3":
+                continue
 
-        cmds.setAttr(
-            plug,
-            *color,
-            type="double3",
-        )
+            color = (
+                random.uniform(0.0, 1.0),
+                random.uniform(0.0, 1.0),
+                random.uniform(0.0, 1.0),
+            )
+
+            cmds.setAttr(
+                plug,
+                *color,
+                type="double3",
+            )
+
+    finally:
+        if not undoable:
+            cmds.undoInfo(
+                stateWithoutFlush=undo_was_enabled
+            )
 
 
 
@@ -369,6 +388,8 @@ def _get_random_color_state() -> dict:
                 "mode": "off",
                 "time_job": None,
                 "idle_job": None,
+                "last_idle_time": 0.0,
+                "idle_interval": 0.15,
             },
         )
 
@@ -390,7 +411,7 @@ def _randomize_on_time_change() -> None:
     if state["mode"] != "time":
         return
 
-    randomize_rig_colors()
+    randomize_rig_colors(undoable=False)
 
 
 def _randomize_on_idle() -> None:
@@ -401,7 +422,49 @@ def _randomize_on_idle() -> None:
     if state["mode"] != "idle":
         return
 
-    randomize_rig_colors()
+    randomize_rig_colors(undoable=False)
+
+
+def _randomize_on_playback() -> None:
+    """Randomize only while Maya is actively playing."""
+
+    state = _get_random_color_state()
+
+    if state["mode"] != "playback":
+        return
+
+    if not cmds.play(
+        query=True,
+        state=True,
+    ):
+        return
+
+    randomize_rig_colors(undoable=False)
+
+
+def _randomize_on_slow_idle() -> None:
+    """Randomize periodically while Maya is idle."""
+
+    state = _get_random_color_state()
+
+    if state["mode"] != "slow_idle":
+        return
+
+    current_time = time.monotonic()
+
+    elapsed = (
+        current_time
+        - state["last_idle_time"]
+    )
+
+    if elapsed < state["idle_interval"]:
+        return
+
+    state["last_idle_time"] = (
+        current_time
+    )
+
+    randomize_rig_colors(undoable=False)
 
 
 # ----------------------------------------------------------------------
@@ -473,6 +536,41 @@ def enable_random_rig_colors_on_idle() -> None:
         protected=True,
     )
 
+def enable_random_rig_colors_on_playback() -> None:
+    """Randomize colors only during Maya playback."""
+
+    disable_random_rig_color_jobs()
+
+    state = _get_random_color_state()
+
+    state["mode"] = "playback"
+
+    state["time_job"] = cmds.scriptJob(
+        event=[
+            "timeChanged",
+            _randomize_on_playback,
+        ],
+        protected=True,
+    )
+
+def enable_random_rig_colors_on_slow_idle(
+    interval: float = 0.15,
+) -> None:
+    """Randomize colors periodically while Maya is idle."""
+
+    disable_random_rig_color_jobs()
+
+    state = _get_random_color_state()
+
+    state["mode"] = "slow_idle"
+    state["idle_interval"] = interval
+    state["last_idle_time"] = 0.0
+
+    state["idle_job"] = cmds.scriptJob(
+        idleEvent=_randomize_on_slow_idle,
+        protected=True,
+    )
+
 
 def set_random_rig_color_mode(
     mode: str,
@@ -482,7 +580,9 @@ def set_random_rig_color_mode(
     Modes:
         off
         time
+        playback
         idle
+        slow_idle
     """
 
     mode = mode.lower().strip()
@@ -493,14 +593,19 @@ def set_random_rig_color_mode(
     elif mode == "time":
         enable_random_rig_colors_on_time_change()
 
+    elif mode == "playback":
+        enable_random_rig_colors_on_playback()
+
     elif mode == "idle":
         enable_random_rig_colors_on_idle()
+
+    elif mode == "slow_idle":
+        enable_random_rig_colors_on_slow_idle()
 
     else:
         raise ValueError(
             f"Unknown random color mode: {mode}"
         )
-
 
 def get_random_rig_color_mode() -> str:
     """Return the currently active mode."""
