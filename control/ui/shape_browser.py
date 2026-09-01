@@ -11,9 +11,13 @@ from Workshop.transform.constraint import constraint
 from Workshop.transform.utils import create_transform
 
 from Workshop.snapshots.image_planes import create_control_helper_plane
-from Workshop.control.core import  _create_control_curve
+from Workshop.control.core import _create_control_curve
 from Workshop.control.serialize import write_curve_to_library
-from Workshop.snapshots.camera_core import delete_snapshot_camera, place_snapshot_camera, take_snapshot
+from Workshop.snapshots.camera_core import (
+    delete_snapshot_camera,
+    place_snapshot_camera,
+    take_snapshot,
+)
 from Workshop.control.serialize import SHAPE_LIBRARY_DIR
 from Workshop.control.core import create_control
 from Workshop.color.palette import PaletteColor
@@ -25,17 +29,16 @@ IMAGE_PATH = WORKSHOP_ROOT / "AA_control_sizer.png"
 ICON_PATH = WORKSHOP_ROOT / "shape_icons"
 
 
-
 try:
     from PySide6 import QtCore, QtGui, QtWidgets
     from shiboken6 import wrapInstance
+
     Signal = QtCore.Signal
 except ImportError:
     from PySide2 import QtCore, QtGui, QtWidgets
     from shiboken2 import wrapInstance
+
     Signal = QtCore.Signal
-
-
 
 
 WORKSHOP_ROOT = Path(__file__).resolve().parents[1]  # Adjust if needed
@@ -55,10 +58,12 @@ class ShapeDisplayAttribute:
     value: float | bool
     connection: str | None = None
 
+
 @dataclass
 class ShapeDisplaySettings:
     line_width: ShapeDisplayAttribute
     draw_on_top: ShapeDisplayAttribute
+
 
 class ControlAuthoringWidget(QtWidgets.QWidget):
     """Tools for creating and saving control shapes."""
@@ -109,9 +114,7 @@ class ControlAuthoringWidget(QtWidgets.QWidget):
         name_label = QtWidgets.QLabel("Name")
 
         self.name_field = QtWidgets.QLineEdit()
-        self.name_field.setPlaceholderText(
-            "Control Shape Name"
-        )
+        self.name_field.setPlaceholderText("Control Shape Name")
 
         name_layout.addWidget(name_label)
         name_layout.addWidget(
@@ -128,13 +131,9 @@ class ControlAuthoringWidget(QtWidgets.QWidget):
         scene_layout = QtWidgets.QHBoxLayout()
         scene_layout.setContentsMargins(0, 0, 0, 0)
 
-        self.setup_button = QtWidgets.QPushButton(
-            "Setup Scene"
-        )
+        self.setup_button = QtWidgets.QPushButton("Setup Scene")
 
-        self.clean_button = QtWidgets.QPushButton(
-            "Clean Scene"
-        )
+        self.clean_button = QtWidgets.QPushButton("Clean Scene")
 
         scene_layout.addWidget(self.setup_button)
         scene_layout.addWidget(self.clean_button)
@@ -145,13 +144,9 @@ class ControlAuthoringWidget(QtWidgets.QWidget):
         # Use Selected
         # ---------------------------------------------------------------------
 
-        self.use_selected_checkbox = QtWidgets.QCheckBox(
-            "Use Selected"
-        )
+        self.use_selected_checkbox = QtWidgets.QCheckBox("Use Selected")
 
-        main_layout.addWidget(
-            self.use_selected_checkbox
-        )
+        main_layout.addWidget(self.use_selected_checkbox)
 
         # ---------------------------------------------------------------------
         # Save / Load
@@ -160,13 +155,9 @@ class ControlAuthoringWidget(QtWidgets.QWidget):
         button_layout = QtWidgets.QHBoxLayout()
         button_layout.setContentsMargins(0, 0, 0, 0)
 
-        self.save_button = QtWidgets.QPushButton(
-            "Save Shape"
-        )
+        self.save_button = QtWidgets.QPushButton("Save Shape")
 
-        self.load_button = QtWidgets.QPushButton(
-            "Load Shape"
-        )
+        self.load_button = QtWidgets.QPushButton("Load Shape")
 
         button_layout.addWidget(self.save_button)
         button_layout.addWidget(self.load_button)
@@ -174,21 +165,13 @@ class ControlAuthoringWidget(QtWidgets.QWidget):
         main_layout.addLayout(button_layout)
 
     def _connect_signals(self) -> None:
-        self.setup_button.clicked.connect(
-            self.setup_scene
-        )
+        self.setup_button.clicked.connect(self.setup_scene)
 
-        self.clean_button.clicked.connect(
-            self.clean_scene
-        )
+        self.clean_button.clicked.connect(self.clean_scene)
 
-        self.save_button.clicked.connect(
-            self.save_control
-        )
+        self.save_button.clicked.connect(self.save_control)
 
-        self.load_button.clicked.connect(
-            self.load_shape
-        )
+        self.load_button.clicked.connect(self.load_shape)
 
     # -------------------------------------------------------------------------
     # Functions
@@ -210,9 +193,7 @@ class ControlAuthoringWidget(QtWidgets.QWidget):
         if cmds.objExists(helper_group):
             cmds.delete(helper_group)
 
-        parent_transform = create_transform(
-            name=helper_group
-        )
+        parent_transform = create_transform(name=helper_group)
 
         transform, shape = create_control_helper_plane(
             image_path=str(IMAGE_PATH),
@@ -243,10 +224,13 @@ class ControlAuthoringWidget(QtWidgets.QWidget):
             return
 
         if self.use_selected:
-            selected = cmds.ls(
-                selection=True,
-                type="transform",
-            ) or []
+            selected = (
+                cmds.ls(
+                    selection=True,
+                    type="transform",
+                )
+                or []
+            )
 
             if not selected:
                 QtWidgets.QMessageBox.warning(
@@ -318,7 +302,6 @@ class ControlAuthoringWidget(QtWidgets.QWidget):
         )
 
 
-
 class CollapsibleSection(QtWidgets.QWidget):
     """Simple collapsible UI section."""
 
@@ -334,17 +317,11 @@ class CollapsibleSection(QtWidgets.QWidget):
         self.toggle_btn.setCheckable(True)
         self.toggle_btn.setChecked(True)
 
-        self.toggle_btn.setToolButtonStyle(
-            QtCore.Qt.ToolButtonTextBesideIcon
-        )
+        self.toggle_btn.setToolButtonStyle(QtCore.Qt.ToolButtonTextBesideIcon)
 
-        self.toggle_btn.setArrowType(
-            QtCore.Qt.DownArrow
-        )
+        self.toggle_btn.setArrowType(QtCore.Qt.DownArrow)
 
-        self.toggle_btn.clicked.connect(
-            self.toggle
-        )
+        self.toggle_btn.clicked.connect(self.toggle)
 
         self.content = QtWidgets.QWidget()
 
@@ -363,13 +340,8 @@ class CollapsibleSection(QtWidgets.QWidget):
         self.content.setVisible(visible)
 
         self.toggle_btn.setArrowType(
-            QtCore.Qt.DownArrow
-            if visible
-            else QtCore.Qt.RightArrow
+            QtCore.Qt.DownArrow if visible else QtCore.Qt.RightArrow
         )
-
-
-
 
 
 class ControlShapeBrowserWindow(QtWidgets.QDialog):
@@ -411,13 +383,9 @@ class ControlShapeBrowserWindow(QtWidgets.QDialog):
             self.control_creator_section.content
         )
 
-        control_creator_layout.addWidget(
-            self.control_creator
-        )
+        control_creator_layout.addWidget(self.control_creator)
 
-        main_layout.addWidget(
-            self.control_creator_section
-        )
+        main_layout.addWidget(self.control_creator_section)
 
         self.control_authoring = ControlAuthoringWidget(
             shape_browser=self.shape_browser,
@@ -431,15 +399,9 @@ class ControlShapeBrowserWindow(QtWidgets.QDialog):
             self.control_authoring_section.content
         )
 
-        control_authoring_layout.addWidget(
-            self.control_authoring
-        )
+        control_authoring_layout.addWidget(self.control_authoring)
 
-        main_layout.addWidget(
-            self.control_authoring_section
-        )
-
-
+        main_layout.addWidget(self.control_authoring_section)
 
 
 def maya_main_window() -> QtWidgets.QWidget:
@@ -456,10 +418,8 @@ def maya_main_window() -> QtWidgets.QWidget:
     )
 
 
-
 @dataclass(frozen=True)
 class ControlShapeInfo:
-
     """Information about one available control shape."""
 
     name: str
@@ -515,6 +475,7 @@ def get_control_shape_library(
         )
 
     return shape_info
+
 
 class FlowLayout(QtWidgets.QLayout):
     """A layout that wraps widgets onto new rows."""
@@ -616,24 +577,15 @@ class FlowLayout(QtWidgets.QLayout):
 
             item_size = item.sizeHint()
 
-            next_x = (
-                x
-                + item_size.width()
-                + self._horizontal_spacing
-            )
+            next_x = x + item_size.width() + self._horizontal_spacing
 
             if (
-                next_x - self._horizontal_spacing
-                > effective_rect.right()
+                next_x - self._horizontal_spacing > effective_rect.right()
                 and line_height > 0
             ):
                 x = effective_rect.x()
                 y += line_height + self._vertical_spacing
-                next_x = (
-                    x
-                    + item_size.width()
-                    + self._horizontal_spacing
-                )
+                next_x = x + item_size.width() + self._horizontal_spacing
                 line_height = 0
 
             if not test_only:
@@ -650,13 +602,8 @@ class FlowLayout(QtWidgets.QLayout):
                 item_size.height(),
             )
 
-        return (
-            y
-            + line_height
-            - rect.y()
-            + margins.bottom()
-        )
-    
+        return y + line_height - rect.y() + margins.bottom()
+
 
 class ControlShapeTile(QtWidgets.QAbstractButton):
     """Clickable tile representing one control shape."""
@@ -683,14 +630,12 @@ class ControlShapeTile(QtWidgets.QAbstractButton):
         self.set_tile_size(self.MIN_TILE_SIZE)
 
         if shape_info.icon_path is not None:
-            self._pixmap = QtGui.QPixmap(
-                str(shape_info.icon_path)
-            )
+            self._pixmap = QtGui.QPixmap(str(shape_info.icon_path))
 
     @property
     def shape_name(self) -> str:
         return self.shape_info.name
-    
+
     def set_tile_size(self, size: int) -> None:
         """Resize the tile while keeping it square."""
 
@@ -727,9 +672,7 @@ class ControlShapeTile(QtWidgets.QAbstractButton):
 
         palette = self.palette()
 
-        background_color = palette.color(
-            QtGui.QPalette.Button
-        )
+        background_color = palette.color(QtGui.QPalette.Button)
 
         if self.isDown():
             background_color = background_color.darker(115)
@@ -774,15 +717,9 @@ class ControlShapeTile(QtWidgets.QAbstractButton):
             QtCore.Qt.SmoothTransformation,
         )
 
-        pixmap_x = (
-            rect.x()
-            + (rect.width() - scaled_pixmap.width()) // 2
-        )
+        pixmap_x = rect.x() + (rect.width() - scaled_pixmap.width()) // 2
 
-        pixmap_y = (
-            rect.y()
-            + (rect.height() - scaled_pixmap.height()) // 2
-        )
+        pixmap_y = rect.y() + (rect.height() - scaled_pixmap.height()) // 2
 
         painter.drawPixmap(
             pixmap_x,
@@ -845,9 +782,7 @@ class ControlShapeTile(QtWidgets.QAbstractButton):
 
         painter.save()
 
-        painter.setPen(
-            QtGui.QColor(235, 235, 235)
-        )
+        painter.setPen(QtGui.QColor(235, 235, 235))
 
         font = painter.font()
         font.setPointSize(8)
@@ -861,8 +796,7 @@ class ControlShapeTile(QtWidgets.QAbstractButton):
 
         painter.drawText(
             label_rect.adjusted(5, 0, -5, 0),
-            QtCore.Qt.AlignVCenter
-            | QtCore.Qt.AlignLeft,
+            QtCore.Qt.AlignVCenter | QtCore.Qt.AlignLeft,
             text,
         )
 
@@ -874,19 +808,13 @@ class ControlShapeTile(QtWidgets.QAbstractButton):
         rect: QtCore.QRect,
     ) -> None:
         if self.isChecked():
-            border_color = self.palette().color(
-                QtGui.QPalette.Highlight
-            )
+            border_color = self.palette().color(QtGui.QPalette.Highlight)
             border_width = self.BORDER_WIDTH
         elif self.underMouse():
-            border_color = self.palette().color(
-                QtGui.QPalette.Midlight
-            )
+            border_color = self.palette().color(QtGui.QPalette.Midlight)
             border_width = 1
         else:
-            border_color = self.palette().color(
-                QtGui.QPalette.Mid
-            )
+            border_color = self.palette().color(QtGui.QPalette.Mid)
             border_width = 1
 
         painter.setPen(
@@ -904,6 +832,7 @@ class ControlShapeTile(QtWidgets.QAbstractButton):
                 -(border_width // 2) - 1,
             )
         )
+
 
 class ControlShapeBrowser(QtWidgets.QWidget):
     """Scrollable browser for control shapes."""
@@ -944,16 +873,12 @@ class ControlShapeBrowser(QtWidgets.QWidget):
         search_layout.setSpacing(4)
 
         self.search_field = QtWidgets.QLineEdit()
-        self.search_field.setPlaceholderText(
-            "Search control shapes..."
-        )
+        self.search_field.setPlaceholderText("Search control shapes...")
         self.search_field.setClearButtonEnabled(True)
 
         self.refresh_button = QtWidgets.QPushButton("Refresh")
         self.refresh_button.setFixedWidth(70)
-        self.refresh_button.setToolTip(
-            "Refresh the control shape library"
-        )
+        self.refresh_button.setToolTip("Refresh the control shape library")
 
         search_layout.addWidget(
             self.search_field,
@@ -968,29 +893,19 @@ class ControlShapeBrowser(QtWidgets.QWidget):
 
         self.scroll_area = QtWidgets.QScrollArea()
         self.scroll_area.setWidgetResizable(True)
-        self.scroll_area.setFrameShape(
-            QtWidgets.QFrame.NoFrame
-        )
-        self.scroll_area.setHorizontalScrollBarPolicy(
-            QtCore.Qt.ScrollBarAlwaysOff
-        )
+        self.scroll_area.setFrameShape(QtWidgets.QFrame.NoFrame)
+        self.scroll_area.setHorizontalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOff)
 
         self.scroll_widget = QtWidgets.QWidget()
 
-        self.grid_layout = QtWidgets.QGridLayout(
-            self.scroll_widget
-        )
+        self.grid_layout = QtWidgets.QGridLayout(self.scroll_widget)
 
         self.grid_layout.setContentsMargins(2, 2, 2, 2)
         self.grid_layout.setHorizontalSpacing(4)
         self.grid_layout.setVerticalSpacing(4)
-        self.grid_layout.setAlignment(
-            QtCore.Qt.AlignTop | QtCore.Qt.AlignLeft
-        )
+        self.grid_layout.setAlignment(QtCore.Qt.AlignTop | QtCore.Qt.AlignLeft)
 
-        self.scroll_area.setWidget(
-            self.scroll_widget
-        )
+        self.scroll_area.setWidget(self.scroll_widget)
 
         main_layout.addWidget(
             self.scroll_area,
@@ -998,13 +913,9 @@ class ControlShapeBrowser(QtWidgets.QWidget):
         )
 
     def _connect_signals(self) -> None:
-        self.search_field.textChanged.connect(
-            self._filter_tiles
-        )
+        self.search_field.textChanged.connect(self._filter_tiles)
 
-        self.refresh_button.clicked.connect(
-            self.refresh
-        )
+        self.refresh_button.clicked.connect(self.refresh)
 
     def resizeEvent(
         self,
@@ -1019,15 +930,10 @@ class ControlShapeBrowser(QtWidgets.QWidget):
             self._rebuild_grid,
         )
 
-
     def _rebuild_grid(self) -> None:
         """Arrange visible tiles and softly resize them to fill the row."""
 
-        visible_tiles = [
-            tile
-            for tile in self._tiles
-            if tile.isVisible()
-        ]
+        visible_tiles = [tile for tile in self._tiles if tile.isVisible()]
 
         self._clear_grid_layout()
 
@@ -1038,9 +944,7 @@ class ControlShapeBrowser(QtWidgets.QWidget):
         spacing = self.grid_layout.horizontalSpacing()
 
         available_width = (
-            self.scroll_area.viewport().width()
-            - margins.left()
-            - margins.right()
+            self.scroll_area.viewport().width() - margins.left() - margins.right()
         )
 
         min_size = ControlShapeTile.MIN_TILE_SIZE
@@ -1049,24 +953,17 @@ class ControlShapeBrowser(QtWidgets.QWidget):
         # Start with the number of columns that fit at minimum tile size.
         column_count = max(
             1,
-            (available_width + spacing)
-            // (min_size + spacing),
+            (available_width + spacing) // (min_size + spacing),
         )
 
         # Calculate the size needed to fully occupy the available width.
-        tile_size = (
-            available_width
-            - spacing * (column_count - 1)
-        ) // column_count
+        tile_size = (available_width - spacing * (column_count - 1)) // column_count
 
         # If the tiles would become too large, add another column.
         while tile_size > max_size:
             column_count += 1
 
-            tile_size = (
-                available_width
-                - spacing * (column_count - 1)
-            ) // column_count
+            tile_size = (available_width - spacing * (column_count - 1)) // column_count
 
         tile_size = max(
             min_size,
@@ -1094,7 +991,6 @@ class ControlShapeBrowser(QtWidgets.QWidget):
 
         self.scroll_widget.updateGeometry()
 
-
     def _clear_grid_layout(self) -> None:
         """Remove widgets from the grid without deleting them."""
 
@@ -1119,9 +1015,7 @@ class ControlShapeBrowser(QtWidgets.QWidget):
             )
 
             tile.clicked.connect(
-                lambda checked=False, current_tile=tile: (
-                    self._select_tile(current_tile)
-                )
+                lambda checked=False, current_tile=tile: self._select_tile(current_tile)
             )
 
             self._tiles.append(tile)
@@ -1131,9 +1025,7 @@ class ControlShapeBrowser(QtWidgets.QWidget):
         elif self._tiles:
             self._select_tile(self._tiles[0])
 
-        self._filter_tiles(
-            self.search_field.text()
-        )
+        self._filter_tiles(self.search_field.text())
 
         self._rebuild_grid()
 
@@ -1155,17 +1047,11 @@ class ControlShapeBrowser(QtWidgets.QWidget):
         selected_tile: ControlShapeTile,
     ) -> None:
         for tile in self._tiles:
-            tile.setChecked(
-                tile is selected_tile
-            )
+            tile.setChecked(tile is selected_tile)
 
-        self._selected_shape = (
-            selected_tile.shape_name
-        )
+        self._selected_shape = selected_tile.shape_name
 
-        self.selection_changed.emit(
-            selected_tile.shape_name
-        )
+        self.selection_changed.emit(selected_tile.shape_name)
 
     def _filter_tiles(
         self,
@@ -1174,10 +1060,7 @@ class ControlShapeBrowser(QtWidgets.QWidget):
         search_text = search_text.strip().lower()
 
         for tile in self._tiles:
-            is_match = (
-                not search_text
-                or search_text in tile.shape_name.lower()
-            )
+            is_match = not search_text or search_text in tile.shape_name.lower()
 
             tile.setVisible(is_match)
 
@@ -1197,6 +1080,7 @@ class ControlShapeBrowser(QtWidgets.QWidget):
         self,
     ) -> Iterator[ControlShapeTile]:
         yield from self._tiles
+
 
 class ColorButton(QtWidgets.QPushButton):
     """Button that displays and edits a color."""
@@ -1224,8 +1108,6 @@ class ColorButton(QtWidgets.QPushButton):
         """Return a copy of the currently selected color."""
 
         return QtGui.QColor(self._color)
-    
-    
 
     @color.setter
     def color(self, color: QtGui.QColor) -> None:
@@ -1243,9 +1125,7 @@ class ColorButton(QtWidgets.QPushButton):
             parent=self,
         )
 
-        picker.color_selected.connect(
-            self._palette_color_selected
-        )
+        picker.color_selected.connect(self._palette_color_selected)
 
         # Position the popup underneath the color button.
         popup_position = self.mapToGlobal(
@@ -1255,9 +1135,7 @@ class ColorButton(QtWidgets.QPushButton):
             )
         )
 
-        picker.move(
-            popup_position
-        )
+        picker.move(popup_position)
 
         picker.exec()
 
@@ -1267,9 +1145,7 @@ class ColorButton(QtWidgets.QPushButton):
     ) -> None:
         """Set the button color from a palette color."""
 
-        red, green, blue = (
-            palette_color.rgb
-        )
+        red, green, blue = palette_color.rgb
 
         self.color = QtGui.QColor.fromRgbF(
             red,
@@ -1285,17 +1161,9 @@ class ColorButton(QtWidgets.QPushButton):
         blue = self._color.blue()
 
         # Choose readable border/text based on brightness.
-        brightness = (
-            red * 0.299
-            + green * 0.587
-            + blue * 0.114
-        )
+        brightness = red * 0.299 + green * 0.587 + blue * 0.114
 
-        border_color = (
-            "rgb(30, 30, 30)"
-            if brightness > 128
-            else "rgb(220, 220, 220)"
-        )
+        border_color = "rgb(30, 30, 30)" if brightness > 128 else "rgb(220, 220, 220)"
 
         self.setStyleSheet(
             f"""
@@ -1310,6 +1178,7 @@ class ColorButton(QtWidgets.QPushButton):
             }}
             """
         )
+
 
 class ControlCreatorWidget(QtWidgets.QWidget):
     """Controls used to create a control from the selected browser shape."""
@@ -1396,7 +1265,6 @@ class ControlCreatorWidget(QtWidgets.QWidget):
 
         return self.name_field.text().strip()
 
-
     @property
     def position_offset(self) -> tuple[float, float, float]:
         """Return the control position offset."""
@@ -1406,7 +1274,6 @@ class ControlCreatorWidget(QtWidgets.QWidget):
             self.position_y.value(),
             self.position_z.value(),
         )
-
 
     @property
     def rotation_offset(self) -> tuple[float, float, float]:
@@ -1438,12 +1305,7 @@ class ControlCreatorWidget(QtWidgets.QWidget):
 
         self.placement_combo = QtWidgets.QComboBox()
         self.placement_combo.addItems(
-            [
-                "At_Origin",
-                "Match_Pose",
-                "Parent",
-                "Parent_and_Scale"
-            ]
+            ["At_Origin", "Match_Pose", "Parent", "Parent_and_Scale"]
         )
 
         placement_layout.addWidget(placement_label)
@@ -1458,9 +1320,7 @@ class ControlCreatorWidget(QtWidgets.QWidget):
         name_label = QtWidgets.QLabel("Name")
 
         self.name_field = QtWidgets.QLineEdit()
-        self.name_field.setPlaceholderText(
-            "control_name"
-        )
+        self.name_field.setPlaceholderText("control_name")
 
         name_layout.addWidget(name_label)
         name_layout.addStretch()
@@ -1504,7 +1364,6 @@ class ControlCreatorWidget(QtWidgets.QWidget):
         position_layout.addWidget(self.position_z)
 
         main_layout.addLayout(position_layout)
-
 
         # ---------------------------------------------------------------------
         # Rotation Offset
@@ -1632,17 +1491,11 @@ class ControlCreatorWidget(QtWidgets.QWidget):
         # Build
         # ---------------------------------------------------------------------
 
-        self.build_button = QtWidgets.QPushButton(
-            "Build Control"
-        )
+        self.build_button = QtWidgets.QPushButton("Build Control")
 
-        self.swap_shape_button = QtWidgets.QPushButton(
-            "Swap Shape"
-        )
+        self.swap_shape_button = QtWidgets.QPushButton("Swap Shape")
 
-        self.swap_color_checkbox = QtWidgets.QCheckBox(
-            "Swap Color"
-        )
+        self.swap_color_checkbox = QtWidgets.QCheckBox("Swap Color")
 
         swap_shape_layout = QtWidgets.QHBoxLayout()
         swap_shape_layout.setContentsMargins(0, 0, 0, 0)
@@ -1656,40 +1509,25 @@ class ControlCreatorWidget(QtWidgets.QWidget):
             self.swap_color_checkbox,
         )
 
+        self.swap_color_button = QtWidgets.QPushButton("Swap Color")
 
-        self.swap_color_button = QtWidgets.QPushButton(
-            "Swap Color"
-        )
+        main_layout.addWidget(self.build_button)
 
+        main_layout.addLayout(swap_shape_layout)
 
-        main_layout.addWidget(
-            self.build_button
-        )
-
-        main_layout.addLayout(
-            swap_shape_layout
-        )
-
-        main_layout.addWidget(
-            self.swap_color_button
-        )
+        main_layout.addWidget(self.swap_color_button)
 
     def _connect_signals(self) -> None:
-        self.build_button.clicked.connect(
-            self.build_control
-        )
-        self.swap_color_button.clicked.connect(
-            self.swap_color
-        )
-        self.swap_shape_button.clicked.connect(
-            self.swap_shape
-        )
+        self.build_button.clicked.connect(self.build_control)
+        self.swap_color_button.clicked.connect(self.swap_color)
+        self.swap_shape_button.clicked.connect(self.swap_shape)
 
     # -------------------------------------------------------------------------
     # Build
     # -------------------------------------------------------------------------
 
     def swap_shape(self) -> None:
+        color_on_shapes = True
         """Replace the NURBS curve shapes of selected controls."""
 
         selected_shape = self.shape_browser.selected_shape
@@ -1699,37 +1537,43 @@ class ControlCreatorWidget(QtWidgets.QWidget):
         position_offset = self.position_offset
         rotation_offset = self.rotation_offset
 
-        selected = cmds.ls(
-            selection=True,
-            type="transform",
-        ) or []
+        selected = (
+            cmds.ls(
+                selection=True,
+                type="transform",
+            )
+            or []
+        )
 
         if not selected:
             cmds.warning("No controls selected.")
             return
 
         for control in selected:
-
-            old_shapes = cmds.listRelatives(
-                control,
-                shapes=True,
-                fullPath=True,
-                type="nurbsCurve",
-            ) or []
+            old_shapes = (
+                cmds.listRelatives(
+                    control,
+                    shapes=True,
+                    fullPath=True,
+                    type="nurbsCurve",
+                )
+                or []
+            )
 
             if not old_shapes:
-                cmds.warning(
-                    f"{control} has no NURBS curve shapes. Skipping."
-                )
+                cmds.warning(f"{control} has no NURBS curve shapes. Skipping.")
                 continue
 
             # --------------------------------------------------------------
             # Store existing shape display settings
             # --------------------------------------------------------------
 
-            display_settings = self._get_shape_display_settings(
-                old_shapes[0]
-            )
+            display_settings = self._get_shape_display_settings(old_shapes[0])
+
+            if color_on_shapes:
+                color = cmds.getAttr(f"{old_shapes[0]}.overrideColorRGB")
+            else:
+                color = None
 
             # --------------------------------------------------------------
             # Create replacement shape
@@ -1747,17 +1591,18 @@ class ControlCreatorWidget(QtWidgets.QWidget):
                 shape_rotation_offset=rotation_offset,
             )
 
-            new_shapes = cmds.listRelatives(
-                temp_ctrl.ctrl,
-                shapes=True,
-                fullPath=True,
-                type="nurbsCurve",
-            ) or []
+            new_shapes = (
+                cmds.listRelatives(
+                    temp_ctrl.ctrl,
+                    shapes=True,
+                    fullPath=True,
+                    type="nurbsCurve",
+                )
+                or []
+            )
 
             if not new_shapes:
-                cmds.warning(
-                    f"Could not create replacement shape for {control}."
-                )
+                cmds.warning(f"Could not create replacement shape for {control}.")
 
                 if cmds.objExists(temp_ctrl.top):
                     cmds.delete(temp_ctrl.top)
@@ -1768,32 +1613,42 @@ class ControlCreatorWidget(QtWidgets.QWidget):
             # Remove old shapes
             # --------------------------------------------------------------
 
-            cmds.delete(
-                old_shapes
-            )
+            cmds.delete(old_shapes)
 
             # --------------------------------------------------------------
             # Parent new shapes under existing control
             # --------------------------------------------------------------
 
             for new_shape in new_shapes:
-                cmds.parent(
+                parented_shape = cmds.parent(
                     new_shape,
                     control,
                     shape=True,
                     relative=True,
                 )
 
+                if color_on_shapes:
+                    cmds.setAttr(f"{parented_shape[0]}.overrideEnabled", 1)
+                    cmds.setAttr(f"{parented_shape[0]}.overrideRGBColors", 1)
+                    cmds.setAttr(
+                        f"{parented_shape[0]}.overrideColorRGB",
+                        *color[0],
+                        type="double3",
+                    )
+
             # --------------------------------------------------------------
             # Get newly parented shapes
             # --------------------------------------------------------------
 
-            new_shapes = cmds.listRelatives(
-                control,
-                shapes=True,
-                fullPath=False,
-                type="nurbsCurve",
-            ) or []
+            new_shapes = (
+                cmds.listRelatives(
+                    control,
+                    shapes=True,
+                    fullPath=False,
+                    type="nurbsCurve",
+                )
+                or []
+            )
 
             # --------------------------------------------------------------
             # Restore old line width / draw-on-top setup
@@ -1811,44 +1666,32 @@ class ControlCreatorWidget(QtWidgets.QWidget):
 
             renamed_shapes: list[str] = []
 
-            for index, shape in enumerate(
-                new_shapes
-            ):
+            for index, shape in enumerate(new_shapes):
                 if index == 0:
                     new_name = f"{control}Shape"
                 else:
-                    new_name = (
-                        f"{control}Shape{index + 1}"
-                    )
+                    new_name = f"{control}Shape{index + 1}"
 
                 renamed_shape = cmds.rename(
                     shape,
                     new_name,
                 )
 
-                renamed_shapes.append(
-                    renamed_shape
-                )
+                renamed_shapes.append(renamed_shape)
 
             # --------------------------------------------------------------
             # Optionally replace color
             # --------------------------------------------------------------
 
             if self.swap_color_checkbox.isChecked():
-                self._apply_control_color(
-                    control
-                )
+                self._apply_control_color(control)
 
             # --------------------------------------------------------------
             # Remove leftover temporary hierarchy
             # --------------------------------------------------------------
 
-            if cmds.objExists(
-                temp_ctrl.top
-            ):
-                cmds.delete(
-                    temp_ctrl.top
-                )
+            if cmds.objExists(temp_ctrl.top):
+                cmds.delete(temp_ctrl.top)
 
         # --------------------------------------------------------------
         # Restore original selection
@@ -1858,25 +1701,25 @@ class ControlCreatorWidget(QtWidgets.QWidget):
             selected,
             replace=True,
         )
+
     def swap_color(self) -> None:
         """Apply the selected palette color to selected controls."""
 
-        selected = cmds.ls(
-            selection=True,
-            type="transform",
-        ) or []
+        selected = (
+            cmds.ls(
+                selection=True,
+                type="transform",
+            )
+            or []
+        )
 
         if not selected:
-            cmds.warning(
-                "No controls selected."
-            )
+            cmds.warning("No controls selected.")
             return
 
         for control in selected:
-            self._apply_control_color(
-                control
-            )
-    
+            self._apply_control_color(control)
+
     def _apply_control_color(
         self,
         control: str,
@@ -1887,17 +1730,18 @@ class ControlCreatorWidget(QtWidgets.QWidget):
         Shapes with an incoming color connection are left alone.
         """
 
-        shapes = cmds.listRelatives(
-            control,
-            shapes=True,
-            fullPath=True,
-            type="nurbsCurve",
-        ) or []
+        shapes = (
+            cmds.listRelatives(
+                control,
+                shapes=True,
+                fullPath=True,
+                type="nurbsCurve",
+            )
+            or []
+        )
 
         for shape in shapes:
-            if self._has_color_connection(
-                shape
-            ):
+            if self._has_color_connection(shape):
                 continue
 
             cmds.setAttr(
@@ -1910,10 +1754,11 @@ class ControlCreatorWidget(QtWidgets.QWidget):
                 1,
             )
 
-            cmds.setAttr(   #type:ignore
+            cmds.setAttr(  # type:ignore
                 f"{shape}.overrideColorRGB",
                 *self.control_color_rgb,
             )
+
     def _has_color_connection(
         self,
         shape: str,
@@ -1933,12 +1778,15 @@ class ControlCreatorWidget(QtWidgets.QWidget):
             if not cmds.objExists(plug):
                 continue
 
-            connections = cmds.listConnections(
-                plug,
-                source=True,
-                destination=False,
-                plugs=True,
-            ) or []
+            connections = (
+                cmds.listConnections(
+                    plug,
+                    source=True,
+                    destination=False,
+                    plugs=True,
+                )
+                or []
+            )
 
             if connections:
                 return True
@@ -1951,22 +1799,19 @@ class ControlCreatorWidget(QtWidgets.QWidget):
     ) -> ShapeDisplayAttribute:
         """Capture either the incoming connection or current value."""
 
-        connections = cmds.listConnections(
-            plug,
-            source=True,
-            destination=False,
-            plugs=True,
-        ) or []
-
-        connection = (
-            connections[0]
-            if connections
-            else None
+        connections = (
+            cmds.listConnections(
+                plug,
+                source=True,
+                destination=False,
+                plugs=True,
+            )
+            or []
         )
 
-        value = cmds.getAttr(
-            plug
-        )
+        connection = connections[0] if connections else None
+
+        value = cmds.getAttr(plug)
 
         return ShapeDisplayAttribute(
             value=value,
@@ -1980,12 +1825,8 @@ class ControlCreatorWidget(QtWidgets.QWidget):
         """Store display settings from an existing control shape."""
 
         return ShapeDisplaySettings(
-            line_width=self._get_display_attribute(
-                f"{shape}.lineWidth"
-            ),
-            draw_on_top=self._get_display_attribute(
-                f"{shape}.alwaysDrawOnTop"
-            ),
+            line_width=self._get_display_attribute(f"{shape}.lineWidth"),
+            draw_on_top=self._get_display_attribute(f"{shape}.alwaysDrawOnTop"),
         )
 
     def _apply_shape_display_settings(
@@ -2025,9 +1866,6 @@ class ControlCreatorWidget(QtWidgets.QWidget):
             target,
             settings.value,
         )
-    
-    
-
 
     def build_control(self) -> None:
         selected_shape = self.shape_browser.selected_shape
@@ -2140,7 +1978,5 @@ class ControlCreatorWidget(QtWidgets.QWidget):
                         drivers=[ctrl.ctrl],
                         driven=transform,
                         parent=None,
-
-
                         constraint_type="parent",
                     )
