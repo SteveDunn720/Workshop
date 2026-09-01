@@ -6,7 +6,7 @@ from maya.api.OpenMaya import MMatrix
 
 from Workshop.joint import create_joint
 from Workshop.transform.matrix import set_local_matrix
-from Workshop.transform.utils import match_location, match_transform
+from Workshop.transform.utils import create_transform, match_location, match_transform
 from Workshop.transform.curve import create_line_curve, style_curve, curve_cvs
 
 @dataclass
@@ -33,6 +33,94 @@ class SplineGuideInfo:
 @dataclass
 class ChainGuideInfo:
     guides:list[GuideInfo]
+
+
+def mirror_guide(guide: GuideInfo) -> GuideInfo | None:
+    if guide.guide_type == 'joint':
+
+        temp_parent = create_transform(name='temp_grp')
+        parent = cmds.listRelatives(guide.name, parent=True)
+
+        new_guide = create_guide_from_position(
+            pos=guide.pos,
+            guide_name=guide.descriptor.replace('_L', '_R'),
+            parent=temp_parent,
+            component_type='joint',
+        )
+
+        cmds.setAttr(f'{new_guide.name}.rotate', *guide.rot)
+        cmds.setAttr(f'{temp_parent}.scaleX', -1)
+
+        cmds.parent(new_guide.name, parent[0])
+
+        cmds.delete(temp_parent)
+
+        return new_guide
+
+    print(f'mirror not built for {guide.guide_type}')
+    return None
+
+
+def align_guides(
+    guide_01: GuideInfo,
+    guide_02: GuideInfo,
+    primary_axis: str = "X",
+    flip: bool = False,
+) -> GuideInfo:
+
+    axis = primary_axis.upper()
+
+    axis_vectors = {
+        "X": (1, 0, 0),
+        "Y": (0, 1, 0),
+        "Z": (0, 0, 1),
+    }
+
+    if axis not in axis_vectors:
+        raise ValueError(
+            f"Invalid primary_axis: {primary_axis}. Expected X, Y, or Z."
+        )
+
+    aim_vector = axis_vectors[axis]
+
+    if flip:
+        aim_vector = tuple(-value for value in aim_vector)
+
+    # Pick an up axis that is not the primary axis
+    up_vectors = {
+        "X": (0, 1, 0),
+        "Y": (0, 0, 1),
+        "Z": (0, 1, 0),
+    }
+
+    up_vector = up_vectors[axis]
+
+    aim = cmds.aimConstraint(
+        guide_02.name,
+        guide_01.name,
+        aimVector=aim_vector,
+        upVector=up_vector,
+        worldUpType="vector",
+        worldUpVector=up_vector,
+        maintainOffset=False,
+    )
+
+    cmds.delete(aim)
+
+    rotation = cmds.xform(
+        guide_01.name,
+        query=True,
+        rotation=True,
+        worldSpace=True,
+    )
+
+    guide_01.rot = (
+        rotation[0],
+        rotation[1],
+        rotation[2],
+    )
+
+    return guide_01
 
 
 def create_guide_from_position(pos, guide_name, parent, component_type:str | None = None)->GuideInfo:
