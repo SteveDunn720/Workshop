@@ -6,10 +6,11 @@ import maya.cmds as cmds
 
 from Workshop.control.core import Control
 from Workshop.transform.constraint import constraint
-from Workshop.control import create_control
+from Workshop.control import create_control, Control
 from Workshop.joint import create_joint
 from Workshop.guide.core import GuideInfo, align_guides, create_guide_from_position, mirror_guide
-from Workshop.maya_api.node import DecomposeMatrixNode, NearestPointOnCurveNode
+from Workshop.maya_api.node import DecomposeMatrixNode, NearestPointOnCurveNode, PointOnCurveNode, RemapValueNode, SumNode
+from Workshop.tag.core import lock_tag
 
 from .module_initialize import module_prep, module_space
 
@@ -69,6 +70,87 @@ class Mouth:
 
         cmds.delete(dec.name, near.name)
         return num
+
+    def connect_to_path(self, path_curve:str, control:Control, driver_control:Control, path_percent:float, percent_max:float=.999, percent_min:float=.1):
+
+        arc_length = cmds.arclen(path_curve)
+
+        if not percent_min < path_percent < percent_max:
+            raise ValueError(
+                "path_percent must fall between percent_min and percent_max."
+            )
+
+        control_min = -(
+            path_percent - percent_min
+        ) * arc_length
+
+        control_max = (
+            percent_max - path_percent
+        ) * arc_length
+
+        half_default = path_percent * 0.5
+
+        positive = RemapValueNode(
+            name=f"{control.name}_positive_remap"
+        )
+
+        positive.input_min.set(0.0)
+        positive.input_max.set(control_max)
+
+        positive.output_min.set(half_default)
+        positive.output_max.set(
+            percent_max - half_default
+        )
+
+        positive.input_value.connect_from(f'{driver_control.ctrl}.translateX')
+
+
+        negative = RemapValueNode(
+            name=f"{control.name}_negative_remap"
+        )
+
+        negative.input_min.set(0.0)
+        negative.input_max.set(control_min)
+
+        negative.output_min.set(half_default)
+        negative.output_max.set(
+            percent_min - half_default
+        )
+
+        negative.input_value.connect_from(f'{driver_control.ctrl}.translateX')
+
+
+        total = SumNode(
+            name=f"{control.name}_curve_drive_sum"
+        )
+
+        total.input[0].connect_from(positive.output)
+        total.input[1].connect_from(negative.output)
+
+
+        poc = PointOnCurveNode(name=f"{control.name}_curve_poc")
+
+        curve_shape = cmds.listRelatives(
+            path_curve,
+            shapes=True,
+            noIntermediate=True,
+        )[0]
+
+        poc.input_curve.connect_from(f"{curve_shape}.worldSpace[0]")
+        poc.parameter.connect_from(total.output)
+
+        poc.position.connect_to(f'{control.top}.translate')
+
+        constraint = cmds.tangentConstraint(
+            path_curve,
+            control.top,
+            aimVector=(1, 0, 0),
+            upVector=(0, 1, 0),
+            worldUpType="vector",
+            worldUpVector=(0, 1, 0),
+        )
+
+
 
     def mouth_build(self):
 
@@ -149,16 +231,77 @@ class Mouth:
 
                 align_guides(guide_01=lipcorner_guide, guide_02=lipmid_guide, flip=True)
                 align_guides(guide_01=lipmid_guide, guide_02=lipcorner_guide)
+
+
+                self.l_corner = create_control(
+                    name=f'lip_corner_{side}',
+                    parent=self.control_grp,
+                    transform=lipcorner_guide.name,
+                    size=self.control_size/60,
+                    control_shape='triangle',
+                    direction="y",
+                    color_type=self.main_L_color if side == 'L' else self.main_R_color,
+                    shape_position_offset=(0, 0, self.control_size/80),
+                    shape_rotation_offset=(90, 0, -90)
+                )
+
+                lock_tag(object=self.l_corner.ctrl, translate=(False,False,True), rotate=(True,True,True), scale=(True,True,True), visibility=True, hide_tag=True)
+
+
             else:
 
                 lipcorner_guide = mirror_guide(guide=lipcorner_guide)
                 lipmid_guide = mirror_guide(guide=lipmid_guide)
 
+                self.r_corner = create_control(
+                    name=f'lip_corner_{side}',
+                    parent=self.control_grp,
+                    transform=lipcorner_guide.name,
+                    size=self.control_size/60,
+                    control_shape='triangle',
+                    direction="y",
+                    color_type=self.main_L_color if side == 'L' else self.main_R_color,
+                    shape_position_offset=(0, 0, self.control_size/80),
+                    shape_rotation_offset=(90, 0, -90)
+                )
+
+                lock_tag(object=self.r_corner.ctrl, translate=(False,False,True), rotate=(True,True,True), scale=(True,True,True), visibility=True, hide_tag=True)
+
+
+
             for vertical in ['upper', 'lower']:
                 v_mod = 1 if vertical == 'upper' else -1
+
+                if side == 'L':
+                    if vertical == 'upper':
+                        self.upper_lip = create_control(
+                            name=f'lip_{vertical}_M',
+                            parent=self.control_grp,
+                            transform=lipcenter_guide.name,
+                            size=self.control_size/60,
+                            control_shape='line',
+                            direction="y",
+                            color_type=self.main_M_color,
+                            shape_position_offset=(0,self.control_size/35*v_mod,self.control_size/90),
+                            shape_rotation_offset=(0, 0, 0)
+                        )
+
+                    if vertical == 'lower':
+                        self.upper_lip = create_control(
+                            name=f'lip_{vertical}_M',
+                            parent=self.control_grp,
+                            transform=lipcenter_guide.name,
+                            size=self.control_size/60,
+                            control_shape='line',
+                            direction="y",
+                            color_type=self.main_M_color,
+                            shape_position_offset=(0,self.control_size/35*v_mod,self.control_size/90),
+                            shape_rotation_offset=(0, 0, 0)
+                        )
+
                 if side == 'L':
 
-                    lip_center = self.mouth_ctrl = create_control(
+                    lip_center = create_control(
                                 name=f'{vertical}_lip_M',
                                 parent=self.control_grp,
                                 transform=lipcenter_guide.name,
@@ -172,7 +315,7 @@ class Mouth:
 
                     self.main_controls[f'{vertical}_M_center'] = lip_center
 
-                lip_mid = self.mouth_ctrl = create_control(
+                lip_mid = create_control(
                         name=f'{vertical}_lip_mid_{side}',
                         parent=self.control_grp,
                         transform=lipmid_guide.name,
@@ -187,7 +330,7 @@ class Mouth:
                 
 
 
-                lip_corner = self.mouth_ctrl = create_control(
+                lip_corner = create_control(
                     name=f'{vertical}_lip_corner_{side}',
                     parent=self.control_grp,
                     transform=lipcorner_guide.name,
@@ -199,8 +342,17 @@ class Mouth:
                     shape_rotation_offset=(90*v_mod,0,0)
                 )
 
+                cmds.hide(lip_corner.top)
+
                 self.main_controls[f'{vertical}_{side}_mid'] = lip_mid
                 self.main_controls[f'{vertical}_{side}_corner'] = lip_corner
+
+                ################################# 
+
+                path=cmds.duplicate(self.guides[f'{side}_path'].name, name=f'{vertical}_path_{side}_curve')[0]
+
+                self.connect_to_path(control=lip_corner, path_curve=path, path_percent=corner_percent, driver_control=self.r_corner if side =='R' else self.l_corner)
+                self.connect_to_path(control=lip_mid, path_curve=path, path_percent=mid_percent, driver_control=self.r_corner if side =='R' else self.l_corner, percent_max=.5, percent_min=.05)
 
 
                     
