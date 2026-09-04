@@ -92,7 +92,8 @@ class Jaw:
             sdk_offset=True, 
             color_type=self.sub_control_color,
             shape_rotation_offset=(rot - 90,0,0),
-            dimensions=(1,1.3,1.3)
+            dimensions=(1,1.3,1.3),
+            shape_position_offset=(0,-self.control_size/60,0)
         )
 
         module_space(control=self.jaw_ctrl, space_list=self.control_space)

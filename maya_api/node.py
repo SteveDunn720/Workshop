@@ -531,6 +531,40 @@ class ReverseNode(Node):
         self.output = Vector3Attribute(f"{self.name}.output")
 
 
+class PointOnCurveNode(Node):
+    """Maya pointOnCurveInfo node with enhanced interface."""
+
+    def __init__(self, name: str = "pointOnCurveInfo") -> None:
+        super().__init__("pointOnCurveInfo", name)
+
+    def _setup_attributes(self) -> None:
+        self.input_curve = NurbsCurveAttribute(f"{self.name}.inputCurve")
+
+        self.parameter = ScalarAttribute(f"{self.name}.parameter")
+        self.turn_on_percentage = BooleanAttribute(
+            f"{self.name}.turnOnPercentage"
+        )
+
+        self.position = Vector3Attribute(f"{self.name}.position")
+
+        self.tangent = Vector3Attribute(f"{self.name}.tangent")
+        self.normalized_tangent = Vector3Attribute(
+            f"{self.name}.normalizedTangent"
+        )
+
+        self.normal = Vector3Attribute(f"{self.name}.normal")
+        self.normalized_normal = Vector3Attribute(
+            f"{self.name}.normalizedNormal"
+        )
+
+        self.curvature_center = Vector3Attribute(
+            f"{self.name}.curvatureCenter"
+        )
+        self.curvature_radius = ScalarAttribute(
+            f"{self.name}.curvatureRadius"
+        )
+
+
 class MultiplyPointByMatrixNode(Node):
     """Maya multiplyPointByMatrix node with enhanced interface."""
 
