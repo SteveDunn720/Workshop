@@ -11,6 +11,7 @@ from Workshop.joint import create_joint
 from Workshop.guide.core import GuideInfo, align_guides, create_guide_from_position, mirror_guide
 from Workshop.maya_api.node import DecomposeMatrixNode, NearestPointOnCurveNode, PointOnCurveNode, RemapValueNode, SumNode
 from Workshop.tag.core import lock_tag
+from Workshop.transform.utils import create_transform
 
 from .module_initialize import module_prep, module_space
 
@@ -71,30 +72,34 @@ class Mouth:
         cmds.delete(dec.name, near.name)
         return num
 
-    def connect_to_path(self, path_curve:str, control:Control, driver_control:Control, path_percent:float, percent_max:float=.999, percent_min:float=.1):
+    def connect_to_path(
+        self,
+        path_curve: str,
+        transform: str,
+        driver_control: Control,
+        path_percent: float,
+        reference_percent: float = .4,
+        percent_max: float = .999,
+        percent_min: float = .1,
+    ):
 
+        
         arc_length = cmds.arclen(path_curve)
 
-        if not percent_min < path_percent < percent_max:
-            raise ValueError(
-                "path_percent must fall between percent_min and percent_max."
-            )
-
-        control_min = -(
-            path_percent - percent_min
-        ) * arc_length
-
-        control_max = (
-            percent_max - path_percent
-        ) * arc_length
+        control_max = arc_length * (1-reference_percent)  #type:ignore
+        control_min = -arc_length * reference_percent #type:ignore
 
         half_default = path_percent * 0.5
 
+
+
+
+
+
         positive = RemapValueNode(
-            name=f"{control.name}_positive_remap"
+            name=f"{transform}_positive_remap"
         )
 
-        positive.input_min.set(0.0)
         positive.input_max.set(control_max)
 
         positive.output_min.set(half_default)
@@ -106,7 +111,7 @@ class Mouth:
 
 
         negative = RemapValueNode(
-            name=f"{control.name}_negative_remap"
+            name=f"{transform}_negative_remap"
         )
 
         negative.input_min.set(0.0)
@@ -121,14 +126,14 @@ class Mouth:
 
 
         total = SumNode(
-            name=f"{control.name}_curve_drive_sum"
+            name=f"{transform}_curve_drive_sum"
         )
 
         total.input[0].connect_from(positive.output)
         total.input[1].connect_from(negative.output)
 
 
-        poc = PointOnCurveNode(name=f"{control.name}_curve_poc")
+        poc = PointOnCurveNode(name=f"{transform}_curve_poc")
 
         curve_shape = cmds.listRelatives(
             path_curve,
@@ -139,16 +144,25 @@ class Mouth:
         poc.input_curve.connect_from(f"{curve_shape}.worldSpace[0]")
         poc.parameter.connect_from(total.output)
 
-        poc.position.connect_to(f'{control.top}.translate')
+        poc.position.connect_to(f'{transform}.translate')
 
         constraint = cmds.tangentConstraint(
             path_curve,
-            control.top,
+            transform,
             aimVector=(1, 0, 0),
             upVector=(0, 1, 0),
             worldUpType="vector",
             worldUpVector=(0, 1, 0),
         )
+
+        cmds.transformLimits(
+            driver_control.ctrl,
+            tx=(control_min, control_max),
+            etx=(True, True),
+        )
+
+
+
 
 
 
@@ -171,10 +185,12 @@ class Mouth:
                     turnOnPercentage=True,
                 )
 
-        center_guide = create_guide_from_position(guide_name='mouth_center_M', pos=center_pos, parent='guides')
-        
+        center_guide = create_guide_from_position(guide_name='mouth_center_M', pos=center_pos, parent='guides')\
 
         for side in ['L', 'R']:
+
+            path=cmds.duplicate(self.guides[f'{side}_path'].name, name=f'path_{side}_curve')[0]
+            cmds.parent(path, self.guts)
 
             mid_pos = cmds.pointOnCurve(
                         self.guides[f'{side}_mouth'].name,
@@ -245,7 +261,7 @@ class Mouth:
                     shape_rotation_offset=(90, 0, -90)
                 )
 
-                lock_tag(object=self.l_corner.ctrl, translate=(False,False,True), rotate=(True,True,True), scale=(True,True,True), visibility=True, hide_tag=True)
+                lock_tag(object=self.l_corner.ctrl, translate=(False,False,True), rotate=(True,True,False), scale=(True,True,True), visibility=True, hide_tag=True)
 
 
             else:
@@ -265,9 +281,20 @@ class Mouth:
                     shape_rotation_offset=(90, 0, -90)
                 )
 
-                lock_tag(object=self.r_corner.ctrl, translate=(False,False,True), rotate=(True,True,True), scale=(True,True,True), visibility=True, hide_tag=True)
+                lock_tag(object=self.r_corner.ctrl, translate=(False,False,True), rotate=(True,True,False), scale=(True,True,True), visibility=True, hide_tag=True)
 
-
+            if side == 'L':
+                self.mouth = create_control(
+                    name='mouth_main_M',
+                    parent=self.control_grp,
+                    transform=lipcenter_guide.name,
+                    size=self.control_size/15,
+                    control_shape='bracket',
+                    direction="y",
+                    color_type=self.main_M_color,
+                    shape_position_offset=(0,0,self.control_size/90),
+                    shape_rotation_offset=(90, 0, 0)
+                )
 
             for vertical in ['upper', 'lower']:
                 v_mod = 1 if vertical == 'upper' else -1
@@ -276,7 +303,7 @@ class Mouth:
                     if vertical == 'upper':
                         self.upper_lip = create_control(
                             name=f'lip_{vertical}_M',
-                            parent=self.control_grp,
+                            parent=self.mouth.ctrl,
                             transform=lipcenter_guide.name,
                             size=self.control_size/60,
                             control_shape='line',
@@ -287,9 +314,9 @@ class Mouth:
                         )
 
                     if vertical == 'lower':
-                        self.upper_lip = create_control(
+                        self.lower_lip = create_control(
                             name=f'lip_{vertical}_M',
-                            parent=self.control_grp,
+                            parent=self.mouth.ctrl,
                             transform=lipcenter_guide.name,
                             size=self.control_size/60,
                             control_shape='line',
@@ -303,7 +330,7 @@ class Mouth:
 
                     lip_center = create_control(
                                 name=f'{vertical}_lip_M',
-                                parent=self.control_grp,
+                                parent=self.upper_lip.ctrl if vertical == 'upper' else self.lower_lip.ctrl,
                                 transform=lipcenter_guide.name,
                                 size=self.control_size/100,
                                 control_shape='triangle',
@@ -315,9 +342,11 @@ class Mouth:
 
                     self.main_controls[f'{vertical}_M_center'] = lip_center
 
+                mid_pin = create_transform(name=f'{vertical}_lip_mid_{side}_pin', transform=lipmid_guide.name, parent=self.guts)
+
                 lip_mid = create_control(
                         name=f'{vertical}_lip_mid_{side}',
-                        parent=self.control_grp,
+                        parent=self.upper_lip.ctrl if vertical == 'upper' else self.lower_lip.ctrl,
                         transform=lipmid_guide.name,
                         size=self.control_size/100,
                         control_shape='triangle',
@@ -327,8 +356,7 @@ class Mouth:
                         shape_rotation_offset=(90*v_mod,0,0)
                     )
 
-                
-
+                corner_pin = create_transform(name=f'{vertical}_lip_mid_{side}_pin', transform=lipmid_guide.name, parent=self.guts)
 
                 lip_corner = create_control(
                     name=f'{vertical}_lip_corner_{side}',
@@ -342,17 +370,15 @@ class Mouth:
                     shape_rotation_offset=(90*v_mod,0,0)
                 )
 
-                cmds.hide(lip_corner.top)
+                #cmds.hide(lip_corner.top)
 
                 self.main_controls[f'{vertical}_{side}_mid'] = lip_mid
                 self.main_controls[f'{vertical}_{side}_corner'] = lip_corner
 
                 ################################# 
 
-                path=cmds.duplicate(self.guides[f'{side}_path'].name, name=f'{vertical}_path_{side}_curve')[0]
-
-                self.connect_to_path(control=lip_corner, path_curve=path, path_percent=corner_percent, driver_control=self.r_corner if side =='R' else self.l_corner)
-                self.connect_to_path(control=lip_mid, path_curve=path, path_percent=mid_percent, driver_control=self.r_corner if side =='R' else self.l_corner, percent_max=.5, percent_min=.05)
+                self.connect_to_path(transform=lip_corner.top, path_curve=path, path_percent=corner_percent, driver_control=self.r_corner if side =='R' else self.l_corner)
+                self.connect_to_path(transform=mid_pin, path_curve=path, path_percent=mid_percent, driver_control=self.r_corner if side =='R' else self.l_corner, percent_max=.5, percent_min=.05)
 
 
                     
