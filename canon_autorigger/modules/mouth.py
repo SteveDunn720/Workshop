@@ -9,7 +9,7 @@ from Workshop.transform.constraint import constraint
 from Workshop.control import create_control, Control
 from Workshop.joint import create_joint
 from Workshop.guide.core import GuideInfo, align_guides, create_guide_from_position, mirror_guide
-from Workshop.maya_api.node import DecomposeMatrixNode, NearestPointOnCurveNode, PointOnCurveNode, RemapValueNode, SumNode
+from Workshop.maya_api.node import DecomposeMatrixNode, MultMatrixNode, MultiplyDivideNode, NearestPointOnCurveNode, PointOnCurveNode, RemapValueNode, SumNode
 from Workshop.tag.core import lock_tag
 from Workshop.transform.utils import create_transform
 
@@ -76,11 +76,14 @@ class Mouth:
         self,
         path_curve: str,
         transform: str,
+        control:Control,
         driver_control: Control,
         path_percent: float,
         reference_percent: float = .4,
         percent_max: float = .999,
         percent_min: float = .1,
+        twist_percent:float = .5,
+
     ):
 
         
@@ -90,11 +93,6 @@ class Mouth:
         control_min = -arc_length * reference_percent #type:ignore
 
         half_default = path_percent * 0.5
-
-
-
-
-
 
         positive = RemapValueNode(
             name=f"{transform}_positive_remap"
@@ -160,6 +158,36 @@ class Mouth:
             tx=(control_min, control_max),
             etx=(True, True),
         )
+
+        original_inverse_matrix = cmds.getAttr(f'{control.top}.worldInverseMatrix[0]')
+
+        mm = MultMatrixNode(name=f"{transform}_MM")
+
+        mm.matrix_in[0].connect_from(f"{transform}.worldMatrix[0]")
+        mm.matrix_in[1].set(original_inverse_matrix)
+
+        dec = DecomposeMatrixNode(name=f"{transform}_MM")
+
+        dec.input_matrix.connect_from(mm.matrix_sum)
+
+        dec.output_translate.connect_to(f'{control.sdk}.translate')
+        dec.output_rotate.x.connect_to(f'{control.sdk}.rotateX')
+        dec.output_rotate.y.connect_to(f'{control.sdk}.rotateY')
+
+        rot_Z_sum = SumNode(name=f"{transform}_sum")
+
+        if twist_percent == 1:
+            ctrl_twist=f'{driver_control.ctrl}.rotateZ'
+        else:
+            mult = MultiplyDivideNode(name=f"{transform}_MD")
+            mult.input1.x.connect_from(f'{driver_control.ctrl}.rotateZ')
+            mult.input2.x.set(twist_percent)
+            ctrl_twist = mult.output.x
+
+        rot_Z_sum.input[0].connect_from(dec.output_rotate.z)
+        rot_Z_sum.input[1].connect_from(ctrl_twist)
+        rot_Z_sum.output.connect_to(f'{control.sdk}.rotateZ')
+ 
 
 
 
@@ -248,10 +276,22 @@ class Mouth:
                 align_guides(guide_01=lipcorner_guide, guide_02=lipmid_guide, flip=True)
                 align_guides(guide_01=lipmid_guide, guide_02=lipcorner_guide)
 
+                self.mouth = create_control(
+                    name='mouth_main_M',
+                    parent=self.control_grp,
+                    transform=lipcenter_guide.name,
+                    size=self.control_size/15,
+                    control_shape='bracket',
+                    direction="y",
+                    color_type=self.main_M_color,
+                    shape_position_offset=(0,0,self.control_size/90),
+                    shape_rotation_offset=(90, 0, 0)
+                )
+
 
                 self.l_corner = create_control(
                     name=f'lip_corner_{side}',
-                    parent=self.control_grp,
+                    parent=self.mouth.ctrl,
                     transform=lipcorner_guide.name,
                     size=self.control_size/60,
                     control_shape='triangle',
@@ -271,7 +311,7 @@ class Mouth:
 
                 self.r_corner = create_control(
                     name=f'lip_corner_{side}',
-                    parent=self.control_grp,
+                    parent=self.mouth.ctrl,
                     transform=lipcorner_guide.name,
                     size=self.control_size/60,
                     control_shape='triangle',
@@ -283,18 +323,6 @@ class Mouth:
 
                 lock_tag(object=self.r_corner.ctrl, translate=(False,False,True), rotate=(True,True,False), scale=(True,True,True), visibility=True, hide_tag=True)
 
-            if side == 'L':
-                self.mouth = create_control(
-                    name='mouth_main_M',
-                    parent=self.control_grp,
-                    transform=lipcenter_guide.name,
-                    size=self.control_size/15,
-                    control_shape='bracket',
-                    direction="y",
-                    color_type=self.main_M_color,
-                    shape_position_offset=(0,0,self.control_size/90),
-                    shape_rotation_offset=(90, 0, 0)
-                )
 
             for vertical in ['upper', 'lower']:
                 v_mod = 1 if vertical == 'upper' else -1
@@ -335,6 +363,7 @@ class Mouth:
                                 size=self.control_size/100,
                                 control_shape='triangle',
                                 direction="y",
+                                sdk_offset=True,
                                 color_type=self.main_M_color,
                                 shape_position_offset=(0,self.control_size/70*v_mod,self.control_size/80),
                                 shape_rotation_offset=(90*v_mod,0,0)
@@ -351,20 +380,22 @@ class Mouth:
                         size=self.control_size/100,
                         control_shape='triangle',
                         direction="y",
+                        sdk_offset=True,
                         color_type=self.main_L_color if side == 'L' else self.main_R_color,
                         shape_position_offset=(0,self.control_size/70*v_mod,self.control_size/80),
                         shape_rotation_offset=(90*v_mod,0,0)
                     )
 
-                corner_pin = create_transform(name=f'{vertical}_lip_mid_{side}_pin', transform=lipmid_guide.name, parent=self.guts)
+                corner_pin = create_transform(name=f'{vertical}_lip_corner_{side}_pin', transform=lipmid_guide.name, parent=self.guts)
 
                 lip_corner = create_control(
                     name=f'{vertical}_lip_corner_{side}',
-                    parent=self.control_grp,
+                    parent=self.mouth.ctrl,
                     transform=lipcorner_guide.name,
                     size=self.control_size/100,
                     control_shape='triangle',
                     direction="y",
+                    sdk_offset=True,
                     color_type=self.main_L_color if side == 'L' else self.main_R_color,
                     shape_position_offset=(0,self.control_size/70*v_mod,self.control_size/80),
                     shape_rotation_offset=(90*v_mod,0,0)
@@ -377,9 +408,16 @@ class Mouth:
 
                 ################################# 
 
-                self.connect_to_path(transform=lip_corner.top, path_curve=path, path_percent=corner_percent, driver_control=self.r_corner if side =='R' else self.l_corner)
-                self.connect_to_path(transform=mid_pin, path_curve=path, path_percent=mid_percent, driver_control=self.r_corner if side =='R' else self.l_corner, percent_max=.5, percent_min=.05)
+                self.connect_to_path(transform=corner_pin, control=lip_corner, path_curve=path, path_percent=corner_percent, driver_control=self.r_corner if side =='R' else self.l_corner, twist_percent=1)
+                self.connect_to_path(transform=mid_pin, control=lip_mid, path_curve=path, path_percent=mid_percent, driver_control=self.r_corner if side =='R' else self.l_corner, percent_max=.5, percent_min=.05, twist_percent=.25)
 
+            end = cmds.cluster(f"{path}.cv[2:3]", name="end_cluster")
+
+            cmds.parent(end[1], self.guts)
+
+            driver = self.l_corner if side == 'L' else self.r_corner
+            
+            cmds.connectAttr(f'{driver.ctrl}.translateY', f'{end[1]}.translateY')
 
                     
 
