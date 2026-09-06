@@ -25,6 +25,7 @@ class Mouth:
     def __init__(
         self,
         guides: dict[str, GuideInfo],
+        jaw:Control,
         part: str = "mouth",
         side: str = "M",
         parent: str = "components",
@@ -42,6 +43,7 @@ class Mouth:
         self.guides: dict[str, GuideInfo] = guides
         self.joint_parent = joint_parent
         self.control_space = control_space
+        self.jaw = jaw
 
 
         self.main_M_color = 'Middle'
@@ -56,9 +58,6 @@ class Mouth:
     # -------------------
     # Build steps
     # -------------------
-
-
-
 
     def get_curve_percent(self, guide:GuideInfo, curve:str)->float:
         near = NearestPointOnCurveNode(name=f'{self.part}_NPOC')
@@ -189,7 +188,66 @@ class Mouth:
         rot_Z_sum.output.connect_to(f'{control.sdk}.rotateZ')
  
 
+    def connect_jaw(self, control:Control, jaw:Control, x_range:tuple=(-90,90), y_range:tuple=(-20,20), z_range:tuple=(-90,90), trans_mult:float= .5, rot_mult:float=1):
+        control.jaw_pos = create_transform(name=f'{control.name}_jaw_pos', parent=control.top, transform=jaw.ctrl)
+        control.jaw_offset = create_transform(name=f'{control.name}_jaw_offset', parent=control.jaw_pos, transform=jaw.ctrl)
+        cmds.parent(control.sdk, control.jaw_offset)
 
+        lock_tag(object=control.jaw_pos)
+        lock_tag(object=control.jaw_offset)
+
+        remapx = RemapValueNode(name=f"{control.name}_remapX")
+        remapx.input_max.set(x_range[1])
+        remapx.input_min.set(x_range[0])
+        remapx.output_max.set(x_range[1] * rot_mult)
+        remapx.output_min.set(x_range[0] * rot_mult)
+        remapx.input_value.connect_from(f'{jaw.ctrl}.rotateX')
+        remapx.output.connect_to(f'{control.jaw_offset}.rotateX')
+
+        remapz = RemapValueNode(name=f"{control.name}_remapZ")
+        remapz.input_max.set(z_range[1])
+        remapz.input_min.set(z_range[0])
+        remapz.output_max.set(z_range[1] * rot_mult)
+        remapz.output_min.set(z_range[0] * rot_mult)
+        remapz.input_value.connect_from(f'{jaw.ctrl}.rotateZ')
+        remapz.output.connect_to(f'{control.jaw_offset}.rotateZ')
+
+        remapy = RemapValueNode(name=f"{control.name}_remapY")
+        remapy.input_max.set(y_range[1])
+        remapy.input_min.set(y_range[0])
+        remapy.output_max.set(y_range[1] * rot_mult)
+        remapy.output_min.set(y_range[0] * rot_mult)
+        remapy.input_value.connect_from(f'{jaw.ctrl}.rotateY')
+        remapy.output.connect_to(f'{control.jaw_offset}.rotateY')
+
+        mult = MultiplyDivideNode(name=f"{control.name}_mult")
+
+        mult.input1.connect_from(f'{jaw.ctrl}.translate')
+        mult.input2.set((trans_mult, trans_mult, trans_mult))
+
+        mult.output.connect_to(f'{control.jaw_offset}.translate')
+
+    
+
+
+
+
+        """mm = MultMatrixNode(name=f"{control.name}_MM")
+
+        #original_inverse_matrix = cmds.getAttr(f'{control.top}.worldInverseMatrix[0]')
+        
+        mm.matrix_in[0].connect_from(f"{jaw.ctrl}.worldMatrix[0]")
+        #mm.matrix_in[1].set(original_inverse_matrix)
+        mm.matrix_in[1].connect_from(f'{jaw.top}.worldInverseMatrix[0]')
+
+        dec = DecomposeMatrixNode(name=f"{control.name}_MM")
+
+        dec.input_matrix.connect_from(mm.matrix_sum)
+
+        dec.output_translate.connect_to(f'{control.jaw_offset}.translate')
+        dec.output_rotate.connect_to(f'{control.jaw_offset}.rotate')
+"""
+    
 
 
 
@@ -203,8 +261,6 @@ class Mouth:
         self.guts = prep.guts
 
         self.main_controls = {}
-
-
 
         center_pos = cmds.pointOnCurve(
                     self.guides['L_mouth'].name,
@@ -296,10 +352,13 @@ class Mouth:
                     size=self.control_size/60,
                     control_shape='triangle',
                     direction="y",
+                    sdk_offset=True,
                     color_type=self.main_L_color if side == 'L' else self.main_R_color,
                     shape_position_offset=(0, 0, self.control_size/80),
                     shape_rotation_offset=(90, 0, -90)
                 )
+
+                self.connect_jaw(jaw=self.jaw, control=self.l_corner, rot_mult=.5)
 
                 lock_tag(object=self.l_corner.ctrl, translate=(False,False,True), rotate=(True,True,False), scale=(True,True,True), visibility=True, hide_tag=True)
 
@@ -315,11 +374,14 @@ class Mouth:
                     transform=lipcorner_guide.name,
                     size=self.control_size/60,
                     control_shape='triangle',
+                    sdk_offset=True,
                     direction="y",
                     color_type=self.main_L_color if side == 'L' else self.main_R_color,
                     shape_position_offset=(0, 0, self.control_size/80),
                     shape_rotation_offset=(90, 0, -90)
                 )
+
+                self.connect_jaw(jaw=self.jaw, control=self.r_corner, rot_mult=.5)
 
                 lock_tag(object=self.r_corner.ctrl, translate=(False,False,True), rotate=(True,True,False), scale=(True,True,True), visibility=True, hide_tag=True)
 
@@ -336,10 +398,13 @@ class Mouth:
                             size=self.control_size/60,
                             control_shape='line',
                             direction="y",
+                            sdk_offset=True,
                             color_type=self.main_M_color,
                             shape_position_offset=(0,self.control_size/35*v_mod,self.control_size/90),
                             shape_rotation_offset=(0, 0, 0)
                         )
+
+                        self.connect_jaw(jaw=self.jaw, control=self.upper_lip, x_range=(-90,0))
 
                     if vertical == 'lower':
                         self.lower_lip = create_control(
@@ -349,10 +414,12 @@ class Mouth:
                             size=self.control_size/60,
                             control_shape='line',
                             direction="y",
+                            sdk_offset=True,
                             color_type=self.main_M_color,
                             shape_position_offset=(0,self.control_size/35*v_mod,self.control_size/90),
                             shape_rotation_offset=(0, 0, 0)
                         )
+                        self.connect_jaw(jaw=self.jaw, control=self.lower_lip,)
 
                 if side == 'L':
 
@@ -417,7 +484,20 @@ class Mouth:
 
             driver = self.l_corner if side == 'L' else self.r_corner
             
-            cmds.connectAttr(f'{driver.ctrl}.translateY', f'{end[1]}.translateY')
+            #cmds.connectAttr(f'{driver.ctrl}.translateY', f'{end[1]}.translateY')
+
+            original_inverse_matrix = cmds.getAttr(f'{driver.top}.worldInverseMatrix[0]')
+            
+            mm = MultMatrixNode(name=f"{driver.name}_MM")
+    
+            mm.matrix_in[0].connect_from(f"{driver.ctrl}.worldMatrix[0]")
+            mm.matrix_in[1].set(original_inverse_matrix)
+    
+            dec = DecomposeMatrixNode(name=f"{driver.name}_MM")
+    
+            dec.input_matrix.connect_from(mm.matrix_sum)
+    
+            dec.output_translate.y.connect_to(f'{end[1]}.translateY')
 
                     
 

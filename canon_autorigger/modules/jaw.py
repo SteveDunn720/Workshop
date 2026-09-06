@@ -14,8 +14,9 @@ import math
 
 @dataclass
 class module_info:
-    control:Control
-    joint:str
+    jaw:Control
+    larynx:Control
+    joint:list[str]
 
 class Jaw:
     def __init__(
@@ -144,5 +145,5 @@ class Jaw:
 
         #constraint(drivers=[self.larynx_ctrl.ctrl, self.jaw_ctrl.ctrl], driven=self.larynx_joint, constraint_type='parent', parent=self.guts)
 
-        jaw_info = module_info(control =self.jaw_ctrl, joint=self.jaw_joint)
+        jaw_info = module_info(jaw =self.jaw_ctrl, joint=[self.jaw_joint, self.jaw_ee_joint, self.larynx_joint], larynx=self.larynx_ctrl)
         return jaw_info
