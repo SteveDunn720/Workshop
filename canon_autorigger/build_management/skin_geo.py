@@ -1,7 +1,8 @@
 import maya.cmds as cmds
 from Workshop.tag.core import sets_tag
+from Workshop.skin.core import skin_geometry
 from .load_guides import RIG_BUILD_DIRECTORY, CANNON_DIRECTORY
-from 
+
 
 SKINNABLE_TYPES = {
     "mesh",
@@ -32,7 +33,6 @@ def mesh_skin(geo_root:str='geo', skin_method:int=0, joint_set:str='bind_joints_
     force_single: skins mesh if already skinned
     '''
 
-
     joints = cmds.sets(joint_set, query=True) or []
     joints = cmds.ls(joints, type="joint") #type:ignore
 
@@ -44,19 +44,9 @@ def mesh_skin(geo_root:str='geo', skin_method:int=0, joint_set:str='bind_joints_
             history = cmds.listHistory(geo) or []
             if cmds.ls(history, type="skinCluster"): #type:ignore
                 continue
-
         skin = is_skinnable(obj=geo)
-
         if skin:
-
-            cmds.skinCluster(
-                joints,                      #type:ignore
-                geo,
-                toSelectedBones=True,
-                bindMethod=0,
-                skinMethod=skin_method,
-                normalizeWeights=1,
-            )
+            skin_geometry(bind_joints=joints, geometry=geo, skin_method=skin_method,)
         else:
             print(f'{geo} not skinnable')
 
