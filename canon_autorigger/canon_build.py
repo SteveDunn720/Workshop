@@ -3,6 +3,7 @@ import maya.cmds as cmds
 
 from Workshop.canon_autorigger.build_management.config_scene import configure_canon_scene
 from Workshop.canon_autorigger.build_management.load_guides import load_guides
+from Workshop.canon_autorigger.build_management.skin_geo import mesh_skin
 from Workshop.canon_autorigger import modules
 from Workshop.tag.core import get_tags
 from Workshop.canon_autorigger.canon_rig_config import generate_foot_guides, read_guides
@@ -133,6 +134,11 @@ def build(rig_name:str, config:rig_config):
     #cmds.delete('guides')
     cmds.delete('foot_guides_temp')
     cmds.hide('guides')
+
+
+    # skin geo start
+
+    mesh_skin()
 
 
 
