@@ -80,7 +80,7 @@ def skin_geometry(
     bind_joints: Iterable[str],
     geometry: str,
     name: str | None = None,
-    dual_quaternion: bool = False,
+    skin_method:int=0,
     local: bool = True,
 ) -> str:
     """
@@ -91,8 +91,7 @@ def skin_geometry(
         geometry (str): The name of the geometry to be skinned.
         name (str | None, optional): The name to assign to the skinCluster.
             If None, a name will be auto-generated based on the geometry name.
-        dual_quaternion (bool): Whether to use dual quaternion skinning.
-            Defaults to False (classic linear skinning).
+        skin_method:0-Classic Linear, 1-Dual Qaut, 2-Weight Blended
         local (bool): Whether to enable local space mode on the skin cluster.
 
     Returns:
@@ -113,7 +112,7 @@ def skin_geometry(
         *bind_joints,
         shape,
         toSelectedBones=True,
-        skinMethod=1 if dual_quaternion else 0,
+        skinMethod=skin_method,
         name=name,
     )[0]
     if local:
