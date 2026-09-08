@@ -191,7 +191,7 @@ class Mouth:
         rot_Z_sum.output.connect_to(f'{control.sdk}.rotateZ')
  
 
-    def connect_jaw(self, control:Control, jaw:Control, x_range:tuple=(-90,90), y_range:tuple=(-20,20), z_range:tuple=(-90,90), trans_mult:float= .5, rot_mult:float=1, extra_offset:bool=False):
+    def connect_jaw(self, control:Control, jaw:Control, x_range:tuple=(-90,90), y_range:tuple=(-20,20), z_range:tuple=(-90,90), trans_mult:float= .5, rot_mult:float=1, extra_offset:bool=False, x_mult=1):
         control.jaw_pos = create_transform(name=f'{control.name}_jaw_pos', parent=control.top, transform=jaw.ctrl)
         control.jaw_offset = create_transform(name=f'{control.name}_jaw_offset', parent=control.jaw_pos, transform=jaw.ctrl)
         if extra_offset:
@@ -206,8 +206,8 @@ class Mouth:
         remapx = RemapValueNode(name=f"{control.name}_remapX")
         remapx.input_max.set(x_range[1])
         remapx.input_min.set(x_range[0])
-        remapx.output_max.set(x_range[1] * rot_mult)
-        remapx.output_min.set(x_range[0] * rot_mult)
+        remapx.output_max.set(x_range[1] * x_mult)
+        remapx.output_min.set(x_range[0] * x_mult)
         remapx.input_value.connect_from(f'{jaw.ctrl}.rotateX')
         remapx.output.connect_to(f'{control.jaw_offset}.rotateX')
 
@@ -343,7 +343,7 @@ class Mouth:
                     shape_rotation_offset=(90, 0, -90)
                 )
 
-                self.connect_jaw(jaw=self.jaw, control=self.l_corner, rot_mult=.5)
+                self.connect_jaw(jaw=self.jaw, control=self.l_corner, rot_mult=.5, x_mult=.5)
 
                 lock_tag(object=self.l_corner.ctrl, translate=(False,False,True), rotate=(True,True,False), scale=(True,True,True), visibility=True, hide_tag=True)
 
@@ -366,7 +366,7 @@ class Mouth:
                     shape_rotation_offset=(90, 0, -90)
                 )
 
-                self.connect_jaw(jaw=self.jaw, control=self.r_corner, rot_mult=.5)
+                self.connect_jaw(jaw=self.jaw, control=self.r_corner, rot_mult=.5, x_mult=.5)
 
                 lock_tag(object=self.r_corner.ctrl, translate=(False,False,True), rotate=(True,True,False), scale=(True,True,True), visibility=True, hide_tag=True)
 
@@ -406,7 +406,7 @@ class Mouth:
                             shape_position_offset=(0,self.control_size/35*v_mod,self.control_size/90),
                             shape_rotation_offset=(0, 0, 0)
                         )
-                        self.connect_jaw(jaw=self.jaw, control=self.lower_lip,)
+                        self.connect_jaw(jaw=self.jaw, control=self.lower_lip, rot_mult=.6)
 
                 if side == 'L':
 
@@ -425,9 +425,8 @@ class Mouth:
 
                     true_list.append(lip_center)
 
-                    lip_center.inverse = create_transform(name=f'{lip_center.name}_inverse')
+                    lip_center.inverse = create_transform(name=f'{lip_center.name}_inverse', transform=lip_center.ctrl, parent=lip_center.ctrl)
                     cmds.setAttr(f'{lip_center.inverse}.scaleX', -1)
-                    cmds.parent(lip_center.inverse, lip_center.ctrl)
 
                     self.main_controls[f'{vertical}_M_center'] = lip_center
 
@@ -533,52 +532,92 @@ class Mouth:
         upper_controls = []
         joints = []
 
-        for vertical in ['upper', 'lower']:
-            driven = []
-            pin_list = upper_pins if vertical == "upper" else lower_pins
-            control_list = upper_controls if vertical == "upper" else lower_controls
-            driver_list = self.upper_controls if vertical == "upper" else self.lower_controls
-            v_mod = 1 if vertical == 'upper' else -1
+        for vertical in ["upper", "lower"]:
+
+            left_driven = []
+            right_driven = []
+
+            v_mod = 1 if vertical == "upper" else -1
+
+            center_driver = self.main_controls[f"{vertical}_M_center"]
+            left_mid = self.main_controls[f"{vertical}_L_mid"]
+            left_corner = self.main_controls[f"{vertical}_L_corner"]
+            right_mid = self.main_controls[f"{vertical}_R_mid"]
+            right_corner = self.main_controls[f"{vertical}_R_corner"]
+
             for guide in sorted_guides:
+
                 side = next(
-                    (side for side in ("_L_", "_R_", "_M_") if side in guide.name),
+                    (
+                        side
+                        for side in ("L", "R", "M")
+                        if f"_{side}" in guide.name
+                    ),
                     None
                 )
-                if side == '_L_':
+
+                if side == "L":
                     color = self.sub_L_color
-                elif side == '_R_':
+                elif side == "R":
                     color = self.sub_R_color
                 else:
                     color = self.sub_M_color
-                if vertical == 'upper':
-                    pin= create_transform(name=f'{guide.descriptor}_pin', parent=self.guts)
+
+                # Center sub-control follows the actual center control directly.
+                if side == "M":
+                    control_parent = center_driver.ctrl
+                else:
+                    control_parent = sub_mouth_grp
+
                 control = create_control(
-                    name=f'{vertical}_{guide.descriptor}',
-                    parent=sub_mouth_grp,
+                    name=f"{vertical}_{guide.descriptor}",
+                    parent=control_parent,
                     transform=guide.name,
-                    size=self.control_size/120,
-                    control_shape='circle',
+                    size=self.control_size / 120,
+                    control_shape="circle",
                     direction="y",
                     color_type=color,
-                    shape_rotation_offset=(0,0,90)
+                    #shape_rotation_offset=(0, 0, 0),
+                    #shape_position_offset=(0, v_mod * self.control_size / 120, 0)
                 )
-                driven.append(control.top)
-                cmds.xform(control.top, translation=(0, (v_mod * self.control_size / 120), 0), relative=True, objectSpace=True)
 
-                jnt = create_joint(name=f'{vertical}_{guide.descriptor}', transform=control.ctrl, parent=root_jnt)
+                jnt = create_joint(
+                    name=f"{vertical}_{guide.descriptor}",
+                    transform=control.ctrl,
+                    parent=root_jnt,
+                )
 
-            sorted_drivers = sorted(
-                driver_list,
-                key=lambda obj: cmds.xform(obj.ctrl, query=True, worldSpace=True, translation=True)[0] #type:ignore
-            )
+                # Center doesn't need to be driven by either spline.
+                if side == "L":
+                    left_driven.append(control.top)
 
-            ctrls = [control.ctrl for control in sorted_drivers]
+                elif side == "R":
+                    right_driven.append(control.top)
 
+            left_drivers = [
+                center_driver.ctrl,
+                left_mid.ctrl,
+                left_corner.ctrl,
+            ]
+
+            right_drivers = [
+                center_driver.inverse,
+                right_mid.ctrl,
+                right_corner.ctrl,
+            ]
 
             matrix_spline_from_transforms(
-                name=f'{vertical}_{self.part}_ms',
-                pinned_transforms=driven,
-                cv_transforms=ctrls,
+                name=f"{vertical}_{self.part}_L_ms",
+                pinned_transforms=left_driven,
+                cv_transforms=left_drivers,
+                parent=self.guts,
+                degree=2,
+            )
+
+            matrix_spline_from_transforms(
+                name=f"{vertical}_{self.part}_R_ms",
+                pinned_transforms=right_driven,
+                cv_transforms=right_drivers,
                 parent=self.guts,
                 degree=2,
             )
