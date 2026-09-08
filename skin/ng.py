@@ -84,6 +84,14 @@ def init_layers(shape: str) -> ng.Layers:
     layers.add("Base Weights")
     return layers
 
+@require_ng_skin
+def init_layers_from_transforms(transforms: list[str]) -> None:
+    for transform in transforms:
+        shapes = cmds.listRelatives(transform, shapes=True) or []
+
+        for shape in shapes:
+            init_layers(shape)
+
 
 @require_ng_skin
 def get_or_create_ng_layer(skin_cluster: str, layer_name: str) -> ng.Layer:
@@ -125,8 +133,8 @@ def apply_ng_skin_weights(weights_file: Path, geometry: str) -> None:
     config.use_distance_matching = False
     config.use_name_matching = True
 
-    if not weights_file.exists():
-        raise RuntimeError(f"{weights_file} doesn't exist, unable to load weights.")
+    """if not weights_file.exists():
+        raise RuntimeError(f"{weights_file} doesn't exist, unable to load weights.")"""
 
     # Run the import
     ng.import_json(

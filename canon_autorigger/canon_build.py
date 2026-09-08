@@ -136,7 +136,7 @@ def build(rig_name:str, config:rig_config):
 
     # skin geo start
     skin_meshes()
-    apply_skins(character=canon.primary_geo)
+    apply_skins(character=rig_name, primary_mesh=guides.primary_geo)
 
 
 

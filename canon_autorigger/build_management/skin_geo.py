@@ -1,7 +1,7 @@
 import maya.cmds as cmds
 from Workshop.tag.core import sets_tag
 from Workshop.skin.core import skin_geometry, transfer_skin_weights
-from Workshop.skin.ng import apply_ng_skin_weights
+from Workshop.skin.ng import apply_ng_skin_weights, init_layers_from_transforms
 from .load_guides import RIG_BUILD_DIRECTORY, CANNON_DIRECTORY
 from pathlib import Path
 
@@ -60,6 +60,8 @@ def geo_tags(geo_root:str='geo'):
 
 
 def apply_skins(character:str, geo_root:str='geo', primary_mesh='Cannon_UBM',):
+    #init_layers_from_transforms([primary_mesh])
+    #print('past')
     #apply body / primary mesh first
     apply_ng_skin_weights(
         weights_file= (
@@ -69,15 +71,17 @@ def apply_skins(character:str, geo_root:str='geo', primary_mesh='Cannon_UBM',):
             / "skin_data"
             / f"{primary_mesh}.json"
         ), 
-        geometry='Cannon_UBM'
+        geometry=primary_mesh
     )
+
 
     children = cmds.listRelatives(geo_root, children=True, type="transform", allDescendents=True) or []
     for geo in children:
         try:
-            skin = is_skinnable(obj=geo)
-            if skin:
-                try:
+            try:
+                if geo == primary_mesh:
+                    pass
+                else:
                     apply_ng_skin_weights(
                         weights_file= (
                             Path(RIG_BUILD_DIRECTORY)
@@ -86,12 +90,12 @@ def apply_skins(character:str, geo_root:str='geo', primary_mesh='Cannon_UBM',):
                             / "skin_data"
                             / f"{geo}.json"
                         ), 
-                        geometry='Cannon_UBM'
+                        geometry=geo
                     )
-                except Exception:
-                    transfer_skin_weights(
-                        source=primary_mesh, target=geo, 
-                    )
+            except Exception:
+                transfer_skin_weights(
+                    source=primary_mesh, target=geo, 
+                )
         except Exception:
             print(f'{Exception} skinning failed')
 
