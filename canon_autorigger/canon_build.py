@@ -3,7 +3,7 @@ import maya.cmds as cmds
 
 from Workshop.canon_autorigger.build_management.config_scene import configure_canon_scene
 from Workshop.canon_autorigger.build_management.load_guides import load_guides
-from Workshop.canon_autorigger.build_management.skin_geo import mesh_skin
+from Workshop.canon_autorigger.build_management.skin_geo import apply_skins, skin_meshes
 from Workshop.canon_autorigger import modules
 from Workshop.tag.core import get_tags
 from Workshop.canon_autorigger.canon_rig_config import generate_foot_guides, read_guides
@@ -27,11 +27,9 @@ def build(rig_name:str, config:rig_config):
     cmds.viewFit()
     cmds.select(clear=True)
 
-    guides = read_guides()
+    guides = read_guides(rig_name=rig_name)
 
     print(canon.scene_size)
-    print(canon.scene_size/5)
-    print(canon.scene_size/7.5)
 
 
 
@@ -137,8 +135,8 @@ def build(rig_name:str, config:rig_config):
 
 
     # skin geo start
-
-    mesh_skin()
+    skin_meshes()
+    apply_skins(character=canon.primary_geo)
 
 
 

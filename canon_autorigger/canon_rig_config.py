@@ -33,9 +33,11 @@ class cannon_guide_config:
     jaw:list[GuideInfo]
     mouth:dict[str,GuideInfo]
 
+    primary_geo:str
 
 
-def read_guides()->cannon_guide_config:
+
+def read_guides(rig_name:str='Canon')->cannon_guide_config:
     #read root
     root = read_guide('root_M_guide')
     # Spine
@@ -96,6 +98,10 @@ def read_guides()->cannon_guide_config:
     jaw = [read_guide('jaw_M_guide'), read_guide('jaw_ee_M_guide'), read_guide('larynx_M_guide')]
 
 
+    #geo temp logic, need to decide later how this will work
+    primary_mesh = f'{rig_name}_UBM_low'
+
+
 
 
     #tag geo
@@ -120,7 +126,9 @@ def read_guides()->cannon_guide_config:
         full_joint_correctives=True,
         face=face,
         jaw=jaw,
-        mouth=mouth
+        mouth=mouth,
+
+        primary_geo=primary_mesh,
     )
     return all_guides
     

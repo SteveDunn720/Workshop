@@ -1,7 +1,9 @@
 import maya.cmds as cmds
 from Workshop.tag.core import sets_tag
-from Workshop.skin.core import skin_geometry
+from Workshop.skin.core import skin_geometry, transfer_skin_weights
+from Workshop.skin.ng import apply_ng_skin_weights
 from .load_guides import RIG_BUILD_DIRECTORY, CANNON_DIRECTORY
+from pathlib import Path
 
 
 SKINNABLE_TYPES = {
@@ -24,7 +26,7 @@ def is_skinnable(obj: str) -> bool:
     )
 
 
-def mesh_skin(geo_root:str='geo', skin_method:int=0, joint_set:str='bind_joints_set', force_single_cluster:bool =True):
+def skin_meshes(geo_root:str='geo', skin_method:int=0, joint_set:str='bind_joints_set', force_single_cluster:bool =True):
     '''
     args:
     geo_root:group in maya that holds geo
@@ -55,3 +57,43 @@ def geo_tags(geo_root:str='geo'):
     children = cmds.listRelatives(geo_root, children=True, type="transform") or []
     for geo in children:
         sets_tag(geo, ['unreal_set'])
+
+
+def apply_skins(character:str, geo_root:str='geo', primary_mesh='Cannon_UBM',):
+    #apply body / primary mesh first
+    apply_ng_skin_weights(
+        weights_file= (
+            Path(RIG_BUILD_DIRECTORY)
+            / CANNON_DIRECTORY
+            / character
+            / "skin_data"
+            / f"{primary_mesh}.json"
+        ), 
+        geometry='Cannon_UBM'
+    )
+
+    children = cmds.listRelatives(geo_root, children=True, type="transform", allDescendents=True) or []
+    for geo in children:
+        try:
+            skin = is_skinnable(obj=geo)
+            if skin:
+                try:
+                    apply_ng_skin_weights(
+                        weights_file= (
+                            Path(RIG_BUILD_DIRECTORY)
+                            / CANNON_DIRECTORY
+                            / character
+                            / "skin_data"
+                            / f"{geo}.json"
+                        ), 
+                        geometry='Cannon_UBM'
+                    )
+                except Exception:
+                    transfer_skin_weights(
+                        source=primary_mesh, target=geo, 
+                    )
+        except Exception:
+            print(f'{Exception} skinning failed')
+
+
+
