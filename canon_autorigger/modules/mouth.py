@@ -12,6 +12,7 @@ from Workshop.guide.core import GuideInfo, align_guides, create_guide_from_posit
 from Workshop.maya_api.node import DecomposeMatrixNode, MultMatrixNode, MultiplyDivideNode, NearestPointOnCurveNode, PointOnCurveNode, RemapValueNode, SumNode
 from Workshop.tag.core import lock_tag
 from Workshop.transform.utils import create_transform
+from Workshop.spline.matrix_spline.build import matrix_spline_from_transforms
 
 from .module_initialize import module_prep, module_space
 
@@ -33,6 +34,7 @@ class Mouth:
         control_size: float = 1.0,
         joint_parent:str = 'skel',
         control_space:list = [],
+        divisions:int = 6
 
     ):
         self.part: str = part
@@ -44,6 +46,7 @@ class Mouth:
         self.joint_parent = joint_parent
         self.control_space = control_space
         self.jaw = jaw
+        self.divisions = divisions
 
 
         self.main_M_color = 'Middle'
@@ -188,10 +191,14 @@ class Mouth:
         rot_Z_sum.output.connect_to(f'{control.sdk}.rotateZ')
  
 
-    def connect_jaw(self, control:Control, jaw:Control, x_range:tuple=(-90,90), y_range:tuple=(-20,20), z_range:tuple=(-90,90), trans_mult:float= .5, rot_mult:float=1):
+    def connect_jaw(self, control:Control, jaw:Control, x_range:tuple=(-90,90), y_range:tuple=(-20,20), z_range:tuple=(-90,90), trans_mult:float= .5, rot_mult:float=1, extra_offset:bool=False):
         control.jaw_pos = create_transform(name=f'{control.name}_jaw_pos', parent=control.top, transform=jaw.ctrl)
         control.jaw_offset = create_transform(name=f'{control.name}_jaw_offset', parent=control.jaw_pos, transform=jaw.ctrl)
-        cmds.parent(control.sdk, control.jaw_offset)
+        if extra_offset:
+            control.extra_offset = create_transform(name=f'{control.name}_extra_offset', parent=control.jaw_offset, transform=control.ctrl)
+            cmds.parent(control.sdk, control.extra_offset)
+        else:
+            cmds.parent(control.sdk, control.jaw_offset)
 
         lock_tag(object=control.jaw_pos)
         lock_tag(object=control.jaw_offset)
@@ -227,30 +234,6 @@ class Mouth:
 
         mult.output.connect_to(f'{control.jaw_offset}.translate')
 
-    
-
-
-
-
-        """mm = MultMatrixNode(name=f"{control.name}_MM")
-
-        #original_inverse_matrix = cmds.getAttr(f'{control.top}.worldInverseMatrix[0]')
-        
-        mm.matrix_in[0].connect_from(f"{jaw.ctrl}.worldMatrix[0]")
-        #mm.matrix_in[1].set(original_inverse_matrix)
-        mm.matrix_in[1].connect_from(f'{jaw.top}.worldInverseMatrix[0]')
-
-        dec = DecomposeMatrixNode(name=f"{control.name}_MM")
-
-        dec.input_matrix.connect_from(mm.matrix_sum)
-
-        dec.output_translate.connect_to(f'{control.jaw_offset}.translate')
-        dec.output_rotate.connect_to(f'{control.jaw_offset}.rotate')
-"""
-    
-
-
-
 
     def mouth_build(self):
 
@@ -261,6 +244,8 @@ class Mouth:
         self.guts = prep.guts
 
         self.main_controls = {}
+        self.upper_controls = []
+        self.lower_controls = []
 
         center_pos = cmds.pointOnCurve(
                     self.guides['L_mouth'].name,
@@ -387,6 +372,7 @@ class Mouth:
 
 
             for vertical in ['upper', 'lower']:
+                true_list = self.upper_controls if vertical == "upper" else self.lower_controls
                 v_mod = 1 if vertical == 'upper' else -1
 
                 if side == 'L':
@@ -404,7 +390,8 @@ class Mouth:
                             shape_rotation_offset=(0, 0, 0)
                         )
 
-                        self.connect_jaw(jaw=self.jaw, control=self.upper_lip, x_range=(-90,0))
+
+                        self.connect_jaw(jaw=self.jaw, control=self.upper_lip, x_range=(-90,0), rot_mult=.2, trans_mult=.25)
 
                     if vertical == 'lower':
                         self.lower_lip = create_control(
@@ -436,6 +423,12 @@ class Mouth:
                                 shape_rotation_offset=(90*v_mod,0,0)
                             )
 
+                    true_list.append(lip_center)
+
+                    lip_center.inverse = create_transform(name=f'{lip_center.name}_inverse')
+                    cmds.setAttr(f'{lip_center.inverse}.scaleX', -1)
+                    cmds.parent(lip_center.inverse, lip_center.ctrl)
+
                     self.main_controls[f'{vertical}_M_center'] = lip_center
 
                 mid_pin = create_transform(name=f'{vertical}_lip_mid_{side}_pin', transform=lipmid_guide.name, parent=self.guts)
@@ -453,6 +446,8 @@ class Mouth:
                         shape_rotation_offset=(90*v_mod,0,0)
                     )
 
+                true_list.append(lip_mid)
+
                 corner_pin = create_transform(name=f'{vertical}_lip_corner_{side}_pin', transform=lipmid_guide.name, parent=self.guts)
 
                 lip_corner = create_control(
@@ -467,6 +462,9 @@ class Mouth:
                     shape_position_offset=(0,self.control_size/70*v_mod,self.control_size/80),
                     shape_rotation_offset=(90*v_mod,0,0)
                 )
+                true_list.append(lip_corner)
+
+                self.connect_jaw(jaw=self.jaw, control=lip_corner, rot_mult=.5, extra_offset=True)
 
                 #cmds.hide(lip_corner.top)
 
@@ -476,7 +474,7 @@ class Mouth:
                 ################################# 
 
                 self.connect_to_path(transform=corner_pin, control=lip_corner, path_curve=path, path_percent=corner_percent, driver_control=self.r_corner if side =='R' else self.l_corner, twist_percent=1)
-                self.connect_to_path(transform=mid_pin, control=lip_mid, path_curve=path, path_percent=mid_percent, driver_control=self.r_corner if side =='R' else self.l_corner, percent_max=.5, percent_min=.05, twist_percent=.25)
+                self.connect_to_path(transform=mid_pin, control=lip_mid, path_curve=path, path_percent=mid_percent, driver_control=self.r_corner if side =='R' else self.l_corner, percent_max=.5, percent_min=.05, twist_percent=0)
 
             end = cmds.cluster(f"{path}.cv[2:3]", name="end_cluster")
 
@@ -486,18 +484,118 @@ class Mouth:
             
             #cmds.connectAttr(f'{driver.ctrl}.translateY', f'{end[1]}.translateY')
 
-            original_inverse_matrix = cmds.getAttr(f'{driver.top}.worldInverseMatrix[0]')
+            up_sum = SumNode(name=f'{driver.name}_SUM')
+
+            up_sum.input[0].connect_from(f'{driver.ctrl}.translateY')
+
+            up_sum.output.connect_to(f'{end[1]}.translateY')
+
+
+        root_jnt = create_joint(name=f'def_{self.part}_root', transform=center_guide.name, parent=self.joint_parent, connect=False)
+        cmds.xform(root_jnt, translation=(0,0, -self.control_size / 10,), relative=True, objectSpace=True)
+
+        sub_mouth_grp = create_transform(name=f'{self.part}_subcontrols', parent=self.control_grp)
+
+        percent = 1/(self.divisions - 1)
+
+        #sub controls
+
+        sub_guides = []
+        last_guide = []
+        for i in range(self.divisions -1 ):
+            pos = cmds.pointOnCurve(
+                        self.guides[f'L_mouth'].name,
+                        parameter=percent * i,
+                        position=True,
+                        turnOnPercentage=True,
+                    )
+
+            side = 'M' if i== 0 else 'L'
+    
+            guide = create_guide_from_position(guide_name=f'sub{self.part}_{i:02d}_{side}', pos=pos, parent='guides')
+            sub_guides.append(guide)
+            if i != 0:
+                align_guides(guide_01=guide, guide_02=last_guide, flip=True)
+                mg = mirror_guide(guide=guide)
+                sub_guides.append(mg)
+
+            last_guide = guide
+
+
+        sorted_guides = sorted(
+        sub_guides,
+        key=lambda obj: cmds.xform(obj.name, query=True, worldSpace=True, translation=True)[0] #type:ignore
+        )
+
+        lower_pins = []
+        lower_controls = []
+        upper_pins = []
+        upper_controls = []
+        joints = []
+
+        for vertical in ['upper', 'lower']:
+            driven = []
+            pin_list = upper_pins if vertical == "upper" else lower_pins
+            control_list = upper_controls if vertical == "upper" else lower_controls
+            driver_list = self.upper_controls if vertical == "upper" else self.lower_controls
+            v_mod = 1 if vertical == 'upper' else -1
+            for guide in sorted_guides:
+                side = next(
+                    (side for side in ("_L_", "_R_", "_M_") if side in guide.name),
+                    None
+                )
+                if side == '_L_':
+                    color = self.sub_L_color
+                elif side == '_R_':
+                    color = self.sub_R_color
+                else:
+                    color = self.sub_M_color
+                if vertical == 'upper':
+                    pin= create_transform(name=f'{guide.descriptor}_pin', parent=self.guts)
+                control = create_control(
+                    name=f'{vertical}_{guide.descriptor}',
+                    parent=sub_mouth_grp,
+                    transform=guide.name,
+                    size=self.control_size/120,
+                    control_shape='circle',
+                    direction="y",
+                    color_type=color,
+                    shape_rotation_offset=(0,0,90)
+                )
+                driven.append(control.top)
+                cmds.xform(control.top, translation=(0, (v_mod * self.control_size / 120), 0), relative=True, objectSpace=True)
+
+                jnt = create_joint(name=f'{vertical}_{guide.descriptor}', transform=control.ctrl, parent=root_jnt)
+
+            sorted_drivers = sorted(
+                driver_list,
+                key=lambda obj: cmds.xform(obj.ctrl, query=True, worldSpace=True, translation=True)[0] #type:ignore
+            )
+
+            ctrls = [control.ctrl for control in sorted_drivers]
+
+
+            matrix_spline_from_transforms(
+                name=f'{vertical}_{self.part}_ms',
+                pinned_transforms=driven,
+                cv_transforms=ctrls,
+                parent=self.guts,
+                degree=2,
+            )
+
             
-            mm = MultMatrixNode(name=f"{driver.name}_MM")
-    
-            mm.matrix_in[0].connect_from(f"{driver.ctrl}.worldMatrix[0]")
-            mm.matrix_in[1].set(original_inverse_matrix)
-    
-            dec = DecomposeMatrixNode(name=f"{driver.name}_MM")
-    
-            dec.input_matrix.connect_from(mm.matrix_sum)
-    
-            dec.output_translate.y.connect_to(f'{end[1]}.translateY')
+
+
+                    
+
+                
+
+
+
+
+
+
+
 
                     
 
@@ -521,7 +619,7 @@ class Mouth:
 
 
 
-
+        module_space(control=self.mouth, space_list=self.control_space)
         """#controls
         self.mouth_ctrl = create_control(
             name=f'{self.part}_{self.side}',
@@ -533,7 +631,6 @@ class Mouth:
             color_type=self.control_color
         )
 
-        module_space(control=self.mouth_ctrl, space_list=self.control_space)
 
         #joints
 
