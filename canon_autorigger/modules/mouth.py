@@ -13,6 +13,7 @@ from Workshop.maya_api.node import DecomposeMatrixNode, MultMatrixNode, Multiply
 from Workshop.tag.core import lock_tag
 from Workshop.transform.utils import create_transform
 from Workshop.spline.matrix_spline.build import matrix_spline_from_transforms
+from Workshop.skin.split.tag import tag_for_weight_split
 
 from .module_initialize import module_prep, module_space
 
@@ -534,6 +535,8 @@ class Mouth:
 
         for vertical in ["upper", "lower"]:
 
+
+
             left_driven = []
             right_driven = []
 
@@ -577,8 +580,6 @@ class Mouth:
                     control_shape="circle",
                     direction="y",
                     color_type=color,
-                    #shape_rotation_offset=(0, 0, 0),
-                    #shape_position_offset=(0, v_mod * self.control_size / 120, 0)
                 )
 
                 jnt = create_joint(
@@ -586,6 +587,8 @@ class Mouth:
                     transform=control.ctrl,
                     parent=root_jnt,
                 )
+                if side == "M":
+                    middle_driven=jnt
 
                 # Center doesn't need to be driven by either spline.
                 if side == "L":
@@ -593,6 +596,12 @@ class Mouth:
 
                 elif side == "R":
                     right_driven.append(control.top)
+
+
+            tag_for_weight_split(
+                influence= middle_driven,  # <-- your SOURCE joint (must already exist)
+                split_influences=right_driven[::-1] + [middle_driven] + left_driven,  # <-- the ones you just created
+            )
 
             left_drivers = [
                 center_driver.ctrl,
@@ -621,6 +630,8 @@ class Mouth:
                 parent=self.guts,
                 degree=2,
             )
+
+
 
             
 

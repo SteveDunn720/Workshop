@@ -74,7 +74,7 @@ class Roll:
                 parent=roll_group,
                 transform=self.guides.true_ball.name,
                 size=self.control_size/8,
-                control_shape="circle",
+                control_shape="roll",
                 direction="y",
                 color_type=self.main_control_color,
                 ignore_rotations=True,
