@@ -305,6 +305,9 @@ def write_curve_to_library(
     json_dump = control_shape_data_to_json(curve_data)
     with open(file=json_path, mode="w") as json_file:
         json_file.write(json_dump)
+        
+    clear_control_shape_cache(name)
+
     log.info(f"The control shape for {curve} was written to the shape library at {json_path}")
 
 
@@ -432,3 +435,17 @@ def apply_control_shapes_file(filepath: Path) -> None:
         control_shape_data = ControlShapeData.from_dict(control_shape_data_dict)
         apply_control_shape_data(control, control_shape_data)
     log.info(f"Control shapes loaded and applied from {filepath}")
+
+def clear_control_shape_cache(control_shape: str | None = None) -> None:
+    """Clear cached control shape data.
+
+    Args:
+        control_shape:
+            Shape to remove from the cache. If None, clear the entire cache.
+    """
+    if control_shape is None:
+        _control_shape_data_cache.clear()
+        return
+
+    shape_name = control_shape.removesuffix(".json")
+    _control_shape_data_cache.pop(shape_name, None)
