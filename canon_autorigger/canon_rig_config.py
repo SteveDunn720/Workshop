@@ -32,6 +32,7 @@ class cannon_guide_config:
     face:list[GuideInfo]
     jaw:list[GuideInfo]
     mouth:dict[str,GuideInfo]
+    nose:dict[str,GuideInfo]
 
     primary_geo:str
 
@@ -70,6 +71,7 @@ def read_guides(rig_name:str='Canon')->cannon_guide_config:
     necktrap_cor = {}
 
     mouth = {}
+    nose = {}
     for side in ['L', 'R']:
         leg[side] = [read_guide(f'upperleg_{side}_guide'), read_guide(f'knee_{side}_guide'), read_guide(f'foot_{side}_guide')]
         arm[side] = [read_guide(f'shoulder_{side}_guide'), read_guide(f'elbow_{side}_guide'), read_guide(f'hand_{side}_guide')]
@@ -91,11 +93,18 @@ def read_guides(rig_name:str='Canon')->cannon_guide_config:
 
         mouth[f'{side}_mouth'] = read_guide(f'lip_{side}_guide')
         mouth[f'{side}_path'] = read_guide(f'mouth_path_{side}_guide')
+        nose[f'{side}_Nostril'] = read_guide(f'nose_Nostril_{side}_guide')
+        nose[f'{side}_Outer'] = read_guide(f'nose_NostrilOuter_L_{side}_guide')
+        nose[f'{side}_UpperCorner'] = read_guide(f'nose_UpperCorner_L_{side}_guide')
 
     #face_guides
 
     face = [read_guide('upper_head_M_guide'), read_guide('lower_head_M_guide')]
     jaw = [read_guide('jaw_M_guide'), read_guide('jaw_ee_M_guide'), read_guide('larynx_M_guide')]
+    nose['Nostril_Inner'] = read_guide('nose_Nostril_Inner_M_guide')
+    nose['Tip'] = read_guide('nose_Tip_M_guide')
+    nose['Bridge'] = read_guide('nose_Bridge_M_guide')
+    nose['Root'] = read_guide('nose_Root_M_guide')
 
 
     #geo temp logic, need to decide later how this will work
@@ -127,6 +136,7 @@ def read_guides(rig_name:str='Canon')->cannon_guide_config:
         face=face,
         jaw=jaw,
         mouth=mouth,
+        nose=nose,
 
         primary_geo=primary_mesh,
     )
