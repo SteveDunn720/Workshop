@@ -1,5 +1,5 @@
 {
-  "curveShape2": {
+  "bracketShape": {
     "degree": 3,
     "form": 0,
     "cv_positions": [
@@ -67,7 +67,7 @@
       5.0
     ]
   },
-  "curveShape3": {
+  "bracketShape1": {
     "degree": 3,
     "form": 0,
     "cv_positions": [

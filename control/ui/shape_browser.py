@@ -75,9 +75,10 @@ class ControlAuthoringWidget(QtWidgets.QWidget):
     ) -> None:
         super().__init__(parent)
 
+        self.shape_browser = shape_browser
+
         self._build_ui()
         self._connect_signals()
-        self.shape_browser = shape_browser
 
     # -------------------------------------------------------------------------
     # Properties
@@ -114,7 +115,18 @@ class ControlAuthoringWidget(QtWidgets.QWidget):
         name_label = QtWidgets.QLabel("Name")
 
         self.name_field = QtWidgets.QLineEdit()
-        self.name_field.setPlaceholderText("Control Shape Name")
+        self.name_field.setPlaceholderText("Search control shapes...")
+
+        self.name_completer = QtWidgets.QCompleter(self)
+        self.name_completer.setCaseSensitivity(QtCore.Qt.CaseInsensitive)
+        self.name_completer.setFilterMode(QtCore.Qt.MatchContains)
+        self.name_completer.setCompletionMode(
+            QtWidgets.QCompleter.PopupCompletion
+        )
+
+        self.name_field.setCompleter(self.name_completer)
+
+        self._refresh_name_completer()
 
         name_layout.addWidget(name_label)
         name_layout.addWidget(
@@ -176,6 +188,25 @@ class ControlAuthoringWidget(QtWidgets.QWidget):
     # -------------------------------------------------------------------------
     # Functions
     # -------------------------------------------------------------------------
+    def _refresh_name_completer(self) -> None:
+        """Refresh autocomplete names from the control shape library."""
+
+        shape_library = get_control_shape_library(
+            shape_library=self.shape_browser.shape_library,
+            icon_library=self.shape_browser.icon_library,
+        )
+
+        shape_names = [
+            shape_info.name
+            for shape_info in shape_library
+        ]
+
+        model = QtCore.QStringListModel(
+            shape_names,
+            self.name_completer,
+        )
+
+        self.name_completer.setModel(model)
 
     def clean_scene(self) -> None:
         """Remove the control-authoring helper scene."""
@@ -267,34 +298,68 @@ class ControlAuthoringWidget(QtWidgets.QWidget):
                 False,
             )
 
-        camera = place_snapshot_camera(
-            obj=control,
-            swivel=45.0,
-            tilt=45.0,
-            orthographic=True,
+        shapes = (
+            cmds.listRelatives(
+                control,
+                shapes=True,
+                fullPath=True,
+                type="nurbsCurve",
+            )
+            or []
         )
 
-        take_snapshot(
-            camera=camera,
-            path=ICON_PATH,
-            name=control_name,
-        )
+        original_line_widths = {}
 
-        delete_snapshot_camera()
+        for shp in shapes:
+            line_width_attr = f"{shp}.lineWidth"
+            original_line_widths[shp] = cmds.getAttr(line_width_attr)
+            cmds.setAttr(line_width_attr, 5.0)
+
+        try:
+            camera = place_snapshot_camera(
+                obj=control,
+                swivel=45.0,
+                tilt=45.0,
+                orthographic=True,
+            )
+
+            take_snapshot(
+                camera=camera,
+                path=ICON_PATH,
+                name=control_name,
+            )
+
+        finally:
+            for shape, line_width in original_line_widths.items():
+                if cmds.objExists(shape):
+                    cmds.setAttr(
+                        f"{shape}.lineWidth",
+                        line_width,
+                    )
+
+            delete_snapshot_camera()
         self.shape_browser.refresh()
+        self._refresh_name_completer()
 
     def load_shape(self) -> None:
         """Create a curve from the specified library shape."""
 
         control_name = self.control_name
 
+        # If the field is empty, use the currently selected browser shape.
         if not control_name:
-            QtWidgets.QMessageBox.warning(
-                self,
-                "Missing Control Name",
-                "Enter a control name before loading.",
-            )
-            return
+            selected_shape = self.shape_browser.selected_shape
+
+            if not selected_shape:
+                QtWidgets.QMessageBox.warning(
+                    self,
+                    "No Shape Selected",
+                    "Enter a control shape name or select one from the browser.",
+                )
+                return
+
+            control_name = selected_shape
+            self.name_field.setText(control_name)
 
         _create_control_curve(
             name=control_name,
