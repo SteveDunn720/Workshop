@@ -1572,8 +1572,12 @@ class ControlCreatorWidget(QtWidgets.QWidget):
 
             if color_on_shapes:
                 color = cmds.getAttr(f"{old_shapes[0]}.overrideColorRGB")
+                overwrites = cmds.getAttr(f"{old_shapes[0]}.overrideEnabled")
+                color_types = cmds.getAttr(f"{old_shapes[0]}.overrideRGBColors")
             else:
                 color = None
+                overwrites = None
+                color_types = None
 
             # --------------------------------------------------------------
             # Create replacement shape
@@ -1628,8 +1632,8 @@ class ControlCreatorWidget(QtWidgets.QWidget):
                 )
 
                 if color_on_shapes:
-                    cmds.setAttr(f"{parented_shape[0]}.overrideEnabled", 1)
-                    cmds.setAttr(f"{parented_shape[0]}.overrideRGBColors", 1)
+                    cmds.setAttr(f"{parented_shape[0]}.overrideEnabled", overwrites) #type:ignore
+                    cmds.setAttr(f"{parented_shape[0]}.overrideRGBColors", color_types) #type:ignore
                     cmds.setAttr(
                         f"{parented_shape[0]}.overrideColorRGB",
                         *color[0],
