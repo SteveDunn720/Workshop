@@ -10,6 +10,7 @@ except ImportError:
     from shiboken2 import wrapInstance
 
 
+
 PRIMARY_UV_SET = 'UV_set_01'
 
 def get_uv_sets(mesh:str)-> list[str]:
@@ -43,12 +44,90 @@ def get_current_uv_set(mesh:str)->str | None:
 
     return uv_set 
 
-def create_uv_set(mesh:str, uv_set:str):
+def validate_uv_set(
+    mesh: str,
+    uv_set: str,
+    create: bool = False,
+) -> str:
+    """
+    Validate that a UV set exists on a mesh.
+
+    Args:
+        mesh: Mesh to check.
+        uv_set: UV set name.
+        create: If True, create the UV set if it does not exist.
+
+    Returns:
+        The validated UV set name.
+
+    Raises:
+        RuntimeError: If the UV set does not exist and create is False.
+    """
+
+    uv_sets = get_uv_sets(mesh=mesh)
+
+    if uv_set in uv_sets:
+        return uv_set
+
+    if create:
+        create_uv_set(
+            mesh=mesh,
+            uv_set=uv_set,
+        )
+
+        return uv_set
+
+    raise RuntimeError(
+        f"UV set '{uv_set}' does not exist on '{mesh}'."
+    )
+
+def create_uv_set(
+    mesh: str,
+    uv_set: str,
+    initialize: bool = True,
+) -> None:
+    """
+    Create a new UV set on a mesh.
+
+    Args:
+        mesh: Mesh to create the UV set on.
+        uv_set: Name of the new UV set.
+        initialize: If True, initialize the UV set with a camera projection.
+
+    Raises:
+        RuntimeError: If a UV set with the given name already exists.
+    """
+
+    if uv_set in get_uv_sets(mesh=mesh):
+        raise RuntimeError(
+            f"UV set '{uv_set}' already exists on '{mesh}'."
+        )
+
+    current_uv_set = get_current_uv_set(mesh=mesh)
+
     cmds.polyUVSet(
         mesh,
         create=True,
         uvSet=uv_set,
     )
+
+    if not initialize:
+        return
+
+    try:
+        set_current_uv_set(
+            mesh=mesh,
+            uv_set=uv_set,
+        )
+
+        camera_project(mesh=mesh, uv_set=uv_set)
+
+    finally:
+        if current_uv_set is not None:
+            set_current_uv_set(
+                mesh=mesh,
+                uv_set=current_uv_set,
+            )
 
 def set_current_uv_set(mesh:str, uv_set:str):
     """
@@ -188,3 +267,53 @@ def make_uv_set_first(mesh: str, uv_set: str) -> None:
         newUVSet=first_set,
     )
 
+def camera_project(
+    mesh: str,
+    uv_set: str,
+) -> None:
+    """
+    Create UVs for every face on a mesh using a camera projection.
+
+    Args:
+        mesh: Mesh to project.
+        uv_set: Existing UV set to project into.
+    """
+
+    validate_uv_set(
+        mesh=mesh,
+        uv_set=uv_set,
+    )
+
+    current_uv_set = get_current_uv_set(mesh=mesh)
+
+    face_count = cmds.polyEvaluate(
+        mesh,
+        face=True,
+    )
+
+    if not face_count:
+        raise RuntimeError(
+            f"Mesh '{mesh}' has no polygon faces."
+        )
+
+    faces = f"{mesh}.f[0:{face_count - 1}]"
+
+    try:
+        set_current_uv_set(
+            mesh=mesh,
+            uv_set=uv_set,
+        )
+
+        cmds.polyProjection(
+            faces,
+            type="planar",
+            mapDirection="camera",
+            constructionHistory=False,
+        )
+
+    finally:
+        if current_uv_set is not None:
+            set_current_uv_set(
+                mesh=mesh,
+                uv_set=current_uv_set,
+            )
