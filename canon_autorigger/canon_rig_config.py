@@ -94,8 +94,8 @@ def read_guides(rig_name:str='Canon')->cannon_guide_config:
         mouth[f'{side}_mouth'] = read_guide(f'lip_{side}_guide')
         mouth[f'{side}_path'] = read_guide(f'mouth_path_{side}_guide')
         nose[f'{side}_Nostril'] = read_guide(f'nose_Nostril_{side}_guide')
-        nose[f'{side}_Outer'] = read_guide(f'nose_NostrilOuter_L_{side}_guide')
-        nose[f'{side}_UpperCorner'] = read_guide(f'nose_UpperCorner_L_{side}_guide')
+        nose[f'{side}_Outer'] = read_guide(f'nose_NostrilOuter_{side}_guide')
+        nose[f'{side}_UpperCorner'] = read_guide(f'nose_UpperCorner_{side}_guide')
 
     #face_guides
 
