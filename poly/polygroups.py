@@ -592,3 +592,37 @@ def merge_polygroups(
     )
 
     return target
+
+def get_default_polygroup(
+    layer: PolyGroupLayer | PolyGroupSubLayer,
+) -> PolyGroup:
+    """Get the default polygroup from a layer."""
+
+    for polygroup in layer.polygroups:
+        if polygroup.index == 0:
+            return polygroup
+
+    raise RuntimeError(
+        f"Layer '{layer.name}' has no default polygroup."
+    )
+
+def delete_polygroup(
+    layer: PolyGroupLayer | PolyGroupSubLayer,
+    polygroup: PolyGroup,
+) -> None:
+    """Delete a polygroup and return its faces to the default polygroup."""
+
+    default = get_default_polygroup(
+        layer=layer,
+    )
+
+    if polygroup is default:
+        raise RuntimeError(
+            "Cannot delete the default polygroup."
+        )
+
+    merge_polygroups(
+        layer=layer,
+        target=default,
+        source=polygroup,
+    )
