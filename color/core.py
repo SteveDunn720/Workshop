@@ -1,4 +1,5 @@
 from typing import Iterable
+import random
 
 
 def add_colors(
@@ -77,3 +78,16 @@ def blend_colors_by_weight(
     for color, weight in zip(colors, weights):
         final_color = add_colors(scale_color(color, weight), final_color)
     return final_color
+
+
+def random_color(
+    min_value: float = 0.2,
+    max_value: float = 1.0,
+) -> tuple[float, float, float]:
+    """Generate a random RGB color."""
+
+    return (
+        random.uniform(min_value, max_value),
+        random.uniform(min_value, max_value),
+        random.uniform(min_value, max_value),
+    )

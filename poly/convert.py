@@ -130,3 +130,52 @@ def to_internal_edges(
     )
 
     return flatten_components(edges or [])
+
+
+
+def uv_shell_to_faces(
+    uv_shell: str | list[str],
+) -> list[str]:
+    """
+    Convert a UV shell to its polygon faces.
+
+    Args:
+        uv_shell: UV components belonging to a UV shell.
+
+    Returns:
+        Flattened list of polygon faces.
+    """
+
+    return to_faces(uv_shell)
+
+
+def uv_shell_to_edges(
+    uv_shell: str | list[str],
+) -> list[str]:
+    """
+    Convert a UV shell to its polygon edges.
+
+    Args:
+        uv_shell: UV components belonging to a UV shell.
+
+    Returns:
+        Flattened list of polygon edges.
+    """
+
+    return to_edges(uv_shell)
+
+
+def uv_shell_to_verts(
+    uv_shell: str | list[str],
+) -> list[str]:
+    """
+    Convert a UV shell to its polygon vertices.
+
+    Args:
+        uv_shell: UV components belonging to a UV shell.
+
+    Returns:
+        Flattened list of polygon vertices.
+    """
+
+    return to_verts(uv_shell)

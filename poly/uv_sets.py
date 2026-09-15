@@ -1,5 +1,7 @@
 import maya.cmds as cmds
 
+from Workshop.poly.convert import to_border_edges, uv_shell_to_faces
+
 try:
     from PySide6 import QtCore, QtGui, QtWidgets
     from shiboken6 import wrapInstance
@@ -317,3 +319,61 @@ def camera_project(
                 mesh=mesh,
                 uv_set=current_uv_set,
             )
+
+
+def uv_shell_to_border_edges(
+    uv_shell: str | list[str],
+) -> list[str]:
+    """
+    Get the border edges surrounding a UV shell.
+
+    Args:
+        uv_shell: UV components belonging to a UV shell.
+
+    Returns:
+        Flattened list of polygon edges around the shell's face region.
+    """
+
+    faces = uv_shell_to_faces(uv_shell)
+
+    return to_border_edges(faces)
+
+def copy_uv_set(
+    mesh: str,
+    source_uv_set: str,
+    target_uv_set: str,
+) -> str:
+    """Copy a UV set to a new UV set."""
+
+    validate_uv_set(
+        mesh=mesh,
+        uv_set=source_uv_set,
+    )
+
+    if uv_set_exists(
+        mesh=mesh,
+        uv_set=target_uv_set,
+    ):
+        raise RuntimeError(
+            f"UV set '{target_uv_set}' already exists "
+            f"on '{mesh}'."
+        )
+
+    cmds.polyUVSet(
+        mesh,
+        copy=True,
+        uvSet=source_uv_set,
+        newUVSet=target_uv_set,
+    )
+
+    return target_uv_set
+
+def uv_set_exists(
+    mesh: str,
+    uv_set: str,
+) -> bool:
+    """Check whether a UV set exists on a mesh."""
+
+    return uv_set in get_uv_sets(
+        mesh=mesh,
+    )
