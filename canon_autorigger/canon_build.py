@@ -114,6 +114,9 @@ def build(rig_name:str, config:rig_config):
 
     mouth = modules.Mouth(control_size=canon.scene_size, parent=canon.rig, joint_parent=faceinfo.lower_joint, guides=guides.mouth, jaw=jawinfo.jaw,  control_space=[faceinfo.lower_control])
     mouthinfo = mouth.mouth_build()
+
+    nose = modules.Nose(control_size=canon.scene_size, parent=canon.rig, joint_parent=faceinfo.lower_joint, guides=guides.nose,  control_space=[faceinfo.lower_control])
+    noseinfo = nose.nose_build()
     
       
 

@@ -24,8 +24,6 @@ class Nose:
         guides: dict = {},
         joint_parent:str = 'skel',
         control_space:list = [],
-        control_color:str = 'MISC',
-        control_shape:str = 'circle'
 
     ):
         self.part: str = part
@@ -62,7 +60,7 @@ class Nose:
             name=self.guides['Root'].descriptor,
             parent=self.control_grp,
             transform=self.guides['Root'].name,
-            size=self.control_size,
+            size=self.control_size/40,
             control_shape='round_square',
             direction="y",
             color_type=self.main_M_color
@@ -72,9 +70,56 @@ class Nose:
 
         #joints
 
-        self.nose_joint = create_joint(name=f'def_{self.part}_{self.side}', transform=self.nose_ctrl.ctrl, connect=True, parent=self.joint_parent)
+        self.nose_joint = create_joint(name=self.guides['Root'].descriptor, transform=self.nose_ctrl.ctrl, connect=True, parent=self.joint_parent)
 
         constraint(drivers=[self.nose_ctrl.ctrl], driven=self.nose_joint, constraint_type='parent', parent=self.guts)
 
         nose_info = module_info(control =self.nose_ctrl, joint=self.nose_joint)
+
+        #controls
+        self.bridge_ctrl = create_control(
+            name=self.guides['Bridge'].descriptor,
+            parent=self.control_grp,
+            transform=self.guides['Bridge'].name,
+            size=self.control_size/50,
+            control_shape='round_square',
+            direction="y",
+            color_type=self.main_M_color
+        )
+
+        module_space(control=self.bridge_ctrl, space_list=self.control_space)
+
+        #joints
+
+        self.bridge_joint = create_joint(name=f'def_{self.part}_{self.side}', transform=self.bridge_ctrl.ctrl, connect=True, parent=self.nose_joint)
+
+        constraint(drivers=[self.bridge_ctrl.ctrl], driven=self.bridge_joint, constraint_type='parent', parent=self.guts)
+
+        nose_info = module_info(control =self.bridge_ctrl, joint=self.bridge_joint)
+
+
+
+        for guide in [self.guides[f'L_Outer'], self.guides[f'R_Outer'], self.guides[f'L_UpperCorner'], self.guides[f'R_UpperCorner'], self.guides['Tip']]: #'Nostril_Inner' self.guides[f'L_Nostril'], self.guides[f'R_Nostril'],
+
+            if guide.descriptor.startswith("L_"):
+                color = self.main_L_color
+            elif guide.descriptor.startswith("R_"):
+                color = self.main_R_color
+            else:
+                color = self.main_M_color
+            ctrl = create_control(
+                name=guide.descriptor,
+                parent=self.nose_ctrl.ctrl,
+                transform=guide.name,
+                size=self.control_size/70 if guide == self.guides['Tip'] else self.control_size/150,
+                control_shape='circle',
+                direction="y",
+                color_type=color
+            )
+
+            joint = create_joint(name=guide.descriptor, transform=ctrl.ctrl, connect=True, parent=self.nose_joint)
+            
+            constraint(drivers=[ctrl.ctrl], driven=joint, constraint_type='parent', parent=self.guts)
+            
+
         return nose_info

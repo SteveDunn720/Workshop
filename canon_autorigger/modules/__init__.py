@@ -14,6 +14,7 @@ from . import ik_correctives
 from . import face
 from . import jaw
 from . import mouth
+from . import nose
 
 from .root import Root
 from .biped_limb import Limb
@@ -30,6 +31,7 @@ from .ik_correctives import Ik_correctives
 from .face import Face
 from .jaw import Jaw
 from .mouth import Mouth
+from .nose import Nose
 
 
 
@@ -66,4 +68,6 @@ __all__ = [
 "Jaw",
 "mouth",
 "Mouth",
+"nose",
+"Nose",
 ]
