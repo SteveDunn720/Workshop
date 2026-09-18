@@ -192,7 +192,7 @@ class Mouth:
         rot_Z_sum.output.connect_to(f'{control.sdk}.rotateZ')
  
 
-    def connect_jaw(self, control:Control, jaw:Control, x_range:tuple=(-90,90), y_range:tuple=(-20,20), z_range:tuple=(-90,90), trans_mult:float= .5, rot_mult:float=1, extra_offset:bool=False, x_mult=1):
+    def connect_jaw(self, control:Control, jaw:Control, x_range:tuple=(-90,90), y_range:tuple=(-20,20), z_range:tuple=(-90,90), trans_mult:float= .5, rot_mult:float=1, extra_offset:bool=False, x_mult=1, jaw_forward:bool=False):
         control.jaw_pos = create_transform(name=f'{control.name}_jaw_pos', parent=control.top, transform=jaw.ctrl)
         control.jaw_offset = create_transform(name=f'{control.name}_jaw_offset', parent=control.jaw_pos, transform=jaw.ctrl)
         if extra_offset:
@@ -229,11 +229,23 @@ class Mouth:
         remapy.output.connect_to(f'{control.jaw_offset}.rotateY')
 
         mult = MultiplyDivideNode(name=f"{control.name}_mult")
-
         mult.input1.connect_from(f'{jaw.ctrl}.translate')
         mult.input2.set((trans_mult, trans_mult, trans_mult))
 
-        mult.output.connect_to(f'{control.jaw_offset}.translate')
+        if jaw_forward:
+            mult.output.x.connect_to(f'{control.jaw_offset}.translateX')
+            mult.output.y.connect_to(f'{control.jaw_offset}.translateY')
+            forward_remap = RemapValueNode(f"{control.name}_forward_remap")
+            forward_sum = SumNode(f"{control.name}_forward_sum")
+            forward_remap.input_max.set(90)
+            forward_remap.output_max.connect_from(f'{jaw.ctrl}.jaw_mult')
+            forward_remap.input_value.connect_from(f'{jaw.ctrl}.rotateX')
+            forward_sum.input[0].connect_from(mult.output.z)
+            forward_sum.input[1].connect_from(forward_remap.output)
+            forward_sum.output.connect_to(f'{control.jaw_offset}.translateX')
+        else:
+
+            mult.output.connect_to(f'{control.jaw_offset}.translate')
 
 
     def mouth_build(self):
@@ -407,7 +419,7 @@ class Mouth:
                             shape_position_offset=(0,self.control_size/35*v_mod,self.control_size/90),
                             shape_rotation_offset=(0, 0, 0)
                         )
-                        self.connect_jaw(jaw=self.jaw, control=self.lower_lip, rot_mult=.6)
+                        self.connect_jaw(jaw=self.jaw, control=self.lower_lip, rot_mult=.6, jaw_forward=True)
 
                 if side == 'L':
 
@@ -476,9 +488,13 @@ class Mouth:
                 self.connect_to_path(transform=corner_pin, control=lip_corner, path_curve=path, path_percent=corner_percent, driver_control=self.r_corner if side =='R' else self.l_corner, twist_percent=1)
                 self.connect_to_path(transform=mid_pin, control=lip_mid, path_curve=path, path_percent=mid_percent, driver_control=self.r_corner if side =='R' else self.l_corner, percent_max=.5, percent_min=.05, twist_percent=0)
 
-            end = cmds.cluster(f"{path}.cv[2:3]", name="end_cluster")
+            end = cmds.cluster(f"{path}.cv[3]", name=f"{self.side}end_cluster")
+            midout = cmds.cluster(f"{path}.cv[2]", name=f"{self.side}midout_cluster")
+            midin = cmds.cluster(f"{path}.cv[1]", name=f"{self.side}midout_cluster")
 
             cmds.parent(end[1], self.guts)
+            cmds.parent(midout[1], self.guts)
+            cmds.parent(midin[1], self.guts)
 
             driver = self.l_corner if side == 'L' else self.r_corner
             
