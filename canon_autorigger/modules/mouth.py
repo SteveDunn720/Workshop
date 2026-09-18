@@ -63,6 +63,66 @@ class Mouth:
     # Build steps
     # -------------------
 
+    def connect_cluster_y(
+        self,
+        cluster: str,
+        driver: Control,
+        weight_plug=None,
+    ):
+        up_sum = SumNode(
+            name=f"{cluster}_Y_SUM"
+        )
+
+        # Corner control
+        up_sum.input[0].connect_from(
+            f"{driver.ctrl}.translateY"
+        )
+
+        # Jaw contribution goes here later
+        # up_sum.input[1].connect_from(jaw_y_output)
+
+        if weight_plug:
+            mult = MultiplyDivideNode(
+                name=f"{cluster}_Y_weight_MD"
+            )
+
+            mult.input1.x.connect_from(up_sum.output)
+            mult.input2.x.connect_from(weight_plug)
+
+            mult.output.x.connect_to(
+                f"{cluster}.translateY"
+            )
+
+        else:
+            up_sum.output.connect_to(
+                f"{cluster}.translateY"
+            )
+
+    def create_cluster_weight(
+        self,
+        driver: Control,
+        name: str,
+        input_min: float,
+        input_max: float,
+        output_min: float,
+        output_max: float,
+    ):
+        remap = RemapValueNode(
+            name=f"{name}_weight_RMV"
+        )
+
+        remap.input_min.set(input_min)
+        remap.input_max.set(input_max)
+
+        remap.output_min.set(output_min)
+        remap.output_max.set(output_max)
+
+        remap.input_value.connect_from(
+            f"{driver.ctrl}.translateX"
+        )
+
+        return remap.output
+
     def get_curve_percent(self, guide:GuideInfo, curve:str)->float:
         near = NearestPointOnCurveNode(name=f'{self.part}_NPOC')
         dec = DecomposeMatrixNode(name=f'{self.part}_DCM')
@@ -190,6 +250,33 @@ class Mouth:
         rot_Z_sum.input[0].connect_from(dec.output_rotate.z)
         rot_Z_sum.input[1].connect_from(ctrl_twist)
         rot_Z_sum.output.connect_to(f'{control.sdk}.rotateZ')
+
+    def connect_cluster_push(
+        self,
+        cluster: str,
+        driver: Control,
+        control_min: float,
+        push_amount: float,
+    ):
+        push_remap = RemapValueNode(
+            name=f"{cluster}_push_RMV"
+        )
+
+        # At default position, no push.
+        # At maximum inward position, full push.
+        push_remap.input_min.set(control_min)
+        push_remap.input_max.set(0.0)
+
+        push_remap.output_min.set(push_amount)
+        push_remap.output_max.set(0.0)
+
+        push_remap.input_value.connect_from(
+            f"{driver.ctrl}.translateX"
+        )
+
+        push_remap.output.connect_to(
+            f"{cluster}.translateZ"
+        )
  
 
     def connect_jaw(self, control:Control, jaw:Control, x_range:tuple=(-90,90), y_range:tuple=(-20,20), z_range:tuple=(-90,90), trans_mult:float= .5, rot_mult:float=1, extra_offset:bool=False, x_mult=1, jaw_forward:bool=False):
@@ -242,7 +329,7 @@ class Mouth:
             forward_remap.input_value.connect_from(f'{jaw.ctrl}.rotateX')
             forward_sum.input[0].connect_from(mult.output.z)
             forward_sum.input[1].connect_from(forward_remap.output)
-            forward_sum.output.connect_to(f'{control.jaw_offset}.translateX')
+            forward_sum.output.connect_to(f'{control.jaw_offset}.translateZ')
         else:
 
             mult.output.connect_to(f'{control.jaw_offset}.translate')
@@ -488,23 +575,89 @@ class Mouth:
                 self.connect_to_path(transform=corner_pin, control=lip_corner, path_curve=path, path_percent=corner_percent, driver_control=self.r_corner if side =='R' else self.l_corner, twist_percent=1)
                 self.connect_to_path(transform=mid_pin, control=lip_mid, path_curve=path, path_percent=mid_percent, driver_control=self.r_corner if side =='R' else self.l_corner, percent_max=.5, percent_min=.05, twist_percent=0)
 
-            end = cmds.cluster(f"{path}.cv[3]", name=f"{self.side}end_cluster")
-            midout = cmds.cluster(f"{path}.cv[2]", name=f"{self.side}midout_cluster")
-            midin = cmds.cluster(f"{path}.cv[1]", name=f"{self.side}midout_cluster")
 
-            cmds.parent(end[1], self.guts)
-            cmds.parent(midout[1], self.guts)
-            cmds.parent(midin[1], self.guts)
+            start = cmds.cluster(f"{path}.cv[0]",name=f"{self.part}_{side}_start_cluster",)
+            end = cmds.cluster(f"{path}.cv[3]", name=f"{self.part}_{side}end_cluster")
+            midout = cmds.cluster(f"{path}.cv[2]", name=f"{self.part}_{side}midout_cluster")
+            midin = cmds.cluster(f"{path}.cv[1]", name=f"{self.part}_{side}midout_cluster")
+
+            arc_length = cmds.arclen(path)
+
+            for cluster in (start, midin, midout, end):
+                cmds.parent(cluster[1], self.guts)
 
             driver = self.l_corner if side == 'L' else self.r_corner
             
             #cmds.connectAttr(f'{driver.ctrl}.translateY', f'{end[1]}.translateY')
 
-            up_sum = SumNode(name=f'{driver.name}_SUM')
+            # END
+            # Always follows 100%.
+            self.connect_cluster_y(
+                cluster=end[1],
+                driver=driver,
+            )
+
+            control_min = cmds.getAttr(f'{driver}.minTransXLimit')
+            control_max = cmds.getAttr(f'{driver}.maxTransXLimit')
+
+            self.connect_cluster_push(
+                cluster=start[1],
+                driver=driver,
+                control_min=control_min,
+                push_amount=arc_length /10 ,
+            )
+
+
+            # MID OUT
+            # Fully stretched = 0
+            # Moving inward = ramps toward 1
+
+            midout_weight = self.create_cluster_weight(
+                driver=driver,
+                name=f"{driver.name}_midout",
+                input_min=control_max,
+                input_max=0,
+                output_min=0,
+                output_max=1,
+            )
+
+            self.connect_cluster_y(
+                cluster=midout[1],
+                driver=driver,
+                weight_plug=midout_weight,
+            )
+
+
+            # MID IN
+            # Doesn't participate until farther inward.
+
+            midin_weight = self.create_cluster_weight(
+                driver=driver,
+                name=f"{driver.name}_midin",
+                input_min=0,
+                input_max=control_min,
+                output_min=0,
+                output_max=1,
+            )
+
+            self.connect_cluster_y(
+                cluster=midin[1],
+                driver=driver,
+                weight_plug=midin_weight,
+            )
+
+            self.connect_cluster_push(
+                cluster=midin[1],
+                driver=driver,
+                control_min=control_min,
+                push_amount=arc_length /30 ,
+            )
+
+            """ up_sum = SumNode(name=f'{driver.name}_SUM')
 
             up_sum.input[0].connect_from(f'{driver.ctrl}.translateY')
 
-            up_sum.output.connect_to(f'{end[1]}.translateY')
+            up_sum.output.connect_to(f'{end[1]}.translateY')"""
 
 
         root_jnt = create_joint(name=f'def_{self.part}_root', transform=center_guide.name, parent=self.joint_parent, connect=False)
