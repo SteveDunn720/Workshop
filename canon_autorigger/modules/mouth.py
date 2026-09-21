@@ -63,6 +63,89 @@ class Mouth:
     # Build steps
     # -------------------
 
+
+    def create_soft_driver(
+            self,
+            control: Control,
+            influences: list[tuple[Control, tuple[float, float, float]]] = [],
+        ):
+        # Follows the COMPLETE resulting control transform:
+        # top + jaw + sdk + animator movement + path movement.
+        driver_base = create_transform(
+            name=f"{control.name}_driver_base",
+            transform=control.ctrl,
+            parent=self.guts,
+        )
+
+        driver = create_transform(
+            name=f"{control.name}_driver",
+            transform=control.ctrl,
+            parent=driver_base,
+        )
+
+        # Since driver is underneath an already-matched base,
+        # zero it into that space.
+        cmds.setAttr(f"{driver}.translate", 0, 0, 0)
+        cmds.setAttr(f"{driver}.rotate", 0, 0, 0)
+
+        # Drive BASE from the final control world matrix.
+        mm = MultMatrixNode(
+            name=f"{control.name}_driver_base_MM"
+        )
+
+        mm.matrix_in[0].connect_from(
+            f"{control.ctrl}.worldMatrix[0]"
+        )
+
+        mm.matrix_in[1].connect_from(
+            f"{self.guts}.worldInverseMatrix[0]"
+        )
+
+        dec = DecomposeMatrixNode(
+            name=f"{control.name}_driver_base_DCM"
+        )
+
+        dec.input_matrix.connect_from(mm.matrix_sum)
+
+        dec.output_translate.connect_to(
+            f"{driver_base}.translate"
+        )
+
+        dec.output_rotate.connect_to(
+            f"{driver_base}.rotate"
+        )
+
+        # -------------------------
+        # Soft neighbor influence
+        # -------------------------
+
+        translate_sum = [
+            SumNode(name=f"{driver}_translate{axis}_SUM")
+            for axis in "XYZ"
+        ]
+
+        for index, (influence, weight) in enumerate(influences):
+
+            mult = MultiplyDivideNode(
+                name=f"{driver}_{influence.name}_soft_MD"
+            )
+
+            mult.input1.connect_from(
+                f"{influence.ctrl}.translate"
+            )
+
+            mult.input2.set(weight)
+
+            translate_sum[0].input[index].connect_from(mult.output.x)
+            translate_sum[1].input[index].connect_from(mult.output.y)
+            translate_sum[2].input[index].connect_from(mult.output.z)
+
+        translate_sum[0].output.connect_to(f"{driver}.translateX")
+        translate_sum[1].output.connect_to(f"{driver}.translateY")
+        translate_sum[2].output.connect_to(f"{driver}.translateZ")
+
+        return driver
+
     def connect_cluster_y(
         self,
         cluster: str,
@@ -478,7 +561,7 @@ class Mouth:
                 if side == 'L':
                     if vertical == 'upper':
                         self.upper_lip = create_control(
-                            name=f'lip_{vertical}_M',
+                            name=f'Main_{vertical}_M',
                             parent=self.mouth.ctrl,
                             transform=lipcenter_guide.name,
                             size=self.control_size/60,
@@ -495,7 +578,7 @@ class Mouth:
 
                     if vertical == 'lower':
                         self.lower_lip = create_control(
-                            name=f'lip_{vertical}_M',
+                            name=f'Main_{vertical}_M',
                             parent=self.mouth.ctrl,
                             transform=lipcenter_guide.name,
                             size=self.control_size/60,
@@ -524,9 +607,9 @@ class Mouth:
                             )
 
                     true_list.append(lip_center)
+                    
 
-                    lip_center.inverse = create_transform(name=f'{lip_center.name}_inverse', transform=lip_center.ctrl, parent=lip_center.ctrl)
-                    cmds.setAttr(f'{lip_center.inverse}.scaleX', -1)
+                    
 
                     self.main_controls[f'{vertical}_M_center'] = lip_center
 
@@ -706,16 +789,48 @@ class Mouth:
 
 
 
-            left_driven = []
-            right_driven = []
+            driven = []
 
             v_mod = 1 if vertical == "upper" else -1
 
-            center_driver = self.main_controls[f"{vertical}_M_center"]
-            left_mid = self.main_controls[f"{vertical}_L_mid"]
-            left_corner = self.main_controls[f"{vertical}_L_corner"]
-            right_mid = self.main_controls[f"{vertical}_R_mid"]
-            right_corner = self.main_controls[f"{vertical}_R_corner"]
+            center_control = self.main_controls[f"{vertical}_M_center"]
+            left_mid_control = self.main_controls[f"{vertical}_L_mid"]
+            left_corner_control = self.main_controls[f"{vertical}_L_corner"]
+            right_mid_control = self.main_controls[f"{vertical}_R_mid"]
+            right_corner_control = self.main_controls[f"{vertical}_R_corner"]
+
+            center_driver = self.create_soft_driver(
+                control=center_control,
+                influences=[
+                    (left_mid_control, (.25,.05,.25)),
+                    (right_mid_control, (.25,.05,.25)),
+                ],
+            )
+
+            left_mid_driver = self.create_soft_driver(
+                control=left_mid_control,
+                influences=[
+                    (center_control, (.25,.05,.25)),
+                ],
+            )
+
+            right_mid_driver = self.create_soft_driver(
+                control=right_mid_control,
+                influences=[
+                    (center_control,(.25,.05,.25)),
+                ],
+            )
+
+            left_corner_driver = self.create_soft_driver(
+                control=left_corner_control,
+            )
+
+            right_corner_driver = self.create_soft_driver(
+                control=right_corner_control,
+            )
+
+
+
 
             for guide in sorted_guides:
 
@@ -736,10 +851,8 @@ class Mouth:
                     color = self.sub_M_color
 
                 # Center sub-control follows the actual center control directly.
-                if side == "M":
-                    control_parent = center_driver.ctrl
-                else:
-                    control_parent = sub_mouth_grp
+                
+                control_parent = sub_mouth_grp
 
                 control = create_control(
                     name=f"{vertical}_{guide.descriptor}",
@@ -755,50 +868,66 @@ class Mouth:
                     name=f"{vertical}_{guide.descriptor}",
                     transform=control.ctrl,
                     parent=root_jnt,
+                    connect=False
                 )
-                if side == "M":
-                    middle_driven=jnt
 
-                # Center doesn't need to be driven by either spline.
-                if side == "L":
-                    left_driven.append(control.top)
+                constraint(driven=jnt, drivers=[control.ctrl], constraint_type="parent")
 
-                elif side == "R":
-                    right_driven.append(control.top)
+                if side == 'M':
+                    middle_driven = jnt
 
+                if side == "R":
+                    control.flip = create_transform(name=f'{control.name}_FLIP', transform=guide.name, parent=control_parent,)
+                    cmds.makeIdentity(
+                        control.flip,
+                        apply=True,
+                        translate=False,
+                        rotate=False,
+                        scale=True,
+                    )
+                    cmds.parent(control.top, control.flip)
+
+                    driven.append(control.flip)
+
+                    
+                else:
+
+
+                    # Center doesn't need to be driven by either spline.
+                    driven.append(control.top)
+
+
+            driven = sorted(
+                driven,
+                key=lambda transform: cmds.xform(
+                    transform,
+                    query=True,
+                    worldSpace=True,
+                    translation=True,
+                )[0], #type:ignore
+            )
+
+            drivers = [
+                right_corner_driver,
+                right_mid_driver,
+                center_driver,
+                left_mid_driver,
+                left_corner_driver
+            ]
 
             tag_for_weight_split(
                 influence= middle_driven,  # <-- your SOURCE joint (must already exist)
-                split_influences=right_driven[::-1] + [middle_driven] + left_driven,  # <-- the ones you just created
+                split_influences=driven,  # <-- the ones you just created
             )
-
-            left_drivers = [
-                center_driver.ctrl,
-                left_mid.ctrl,
-                left_corner.ctrl,
-            ]
-
-            right_drivers = [
-                center_driver.inverse,
-                right_mid.ctrl,
-                right_corner.ctrl,
-            ]
 
             matrix_spline_from_transforms(
                 name=f"{vertical}_{self.part}_L_ms",
-                pinned_transforms=left_driven,
-                cv_transforms=left_drivers,
+                pinned_transforms=driven,
+                cv_transforms=drivers,
                 parent=self.guts,
                 degree=2,
             )
 
-            matrix_spline_from_transforms(
-                name=f"{vertical}_{self.part}_R_ms",
-                pinned_transforms=right_driven,
-                cv_transforms=right_drivers,
-                parent=self.guts,
-                degree=2,
-            )
 
 
 
