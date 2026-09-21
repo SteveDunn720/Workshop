@@ -593,6 +593,8 @@ class Mouth:
 
                 if side == 'L':
 
+                    center_pin = create_transform(name=f'{vertical}_lip_center_M_pin', transform=lipcenter_guide.name, parent=self.guts)
+
                     lip_center = create_control(
                                 name=f'{vertical}_lip_M',
                                 parent=self.upper_lip.ctrl if vertical == 'upper' else self.lower_lip.ctrl,
@@ -609,6 +611,7 @@ class Mouth:
                     true_list.append(lip_center)
                     
 
+                    #self.connect_to_path(transform=center_pin, control=lip_center, path_curve=path, path_percent=0, driver_control=self.r_corner if side =='R' else self.l_corner, percent_max=0, percent_min=0, twist_percent=0)
                     
 
                     self.main_controls[f'{vertical}_M_center'] = lip_center
