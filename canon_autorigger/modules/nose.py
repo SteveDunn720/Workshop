@@ -107,14 +107,21 @@ class Nose:
                 color = self.main_R_color
             else:
                 color = self.main_M_color
+
+            if guide in [self.guides[f'L_Outer'], self.guides[f'R_Outer']]:
+                shape = 'bean'
+            else:
+                shape = 'circle'
             ctrl = create_control(
                 name=guide.descriptor,
                 parent=self.nose_ctrl.ctrl,
                 transform=guide.name,
                 size=self.control_size/70 if guide == self.guides['Tip'] else self.control_size/150,
-                control_shape='circle',
+                control_shape=shape,
                 direction="y",
-                color_type=color
+                color_type=color,
+                shape_rotation_offset=(0,90,0),
+                dimensions=(1,5,1),
             )
 
             joint = create_joint(name=guide.descriptor, transform=ctrl.ctrl, connect=True, parent=self.nose_joint)
