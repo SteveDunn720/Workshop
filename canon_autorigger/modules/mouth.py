@@ -550,6 +550,48 @@ class Mouth:
                 align_guides(guide_01=lipcorner_guide, guide_02=lipmid_guide, flip=True)
                 align_guides(guide_01=lipmid_guide, guide_02=lipcorner_guide)
 
+                # -----------------------------------
+                # Right macro spline-orient guides
+                # -----------------------------------
+
+                right_mid_pos = cmds.pointOnCurve(
+                    self.guides['R_path'].name,
+                    parameter=mid_percent,
+                    position=True,
+                    turnOnPercentage=True,
+                )
+
+                right_corner_pos = cmds.pointOnCurve(
+                    self.guides['R_path'].name,
+                    parameter=corner_percent,
+                    position=True,
+                    turnOnPercentage=True,
+                )
+
+                right_mid_spline_guide = create_guide_from_position(
+                    guide_name='lip_mid_R_spline',
+                    pos=right_mid_pos,
+                    parent='guides',
+                )
+
+                right_corner_spline_guide = create_guide_from_position(
+                    guide_name='lip_corner_R_spline',
+                    pos=right_corner_pos,
+                    parent='guides',
+                )
+
+                align_guides(
+                    guide_01=right_corner_spline_guide,
+                    guide_02=right_mid_spline_guide,
+                    flip=False,
+                )
+
+                align_guides(
+                    guide_01=right_mid_spline_guide,
+                    guide_02=right_corner_spline_guide,
+                    flip=True
+                )
+
                 self.mouth = create_control(
                     name='mouth_main_M',
                     parent=self.control_grp,
@@ -807,7 +849,7 @@ class Mouth:
                 right_inward=cmds.getAttr(
                     f"{self.r_corner.ctrl}.minTransXLimit"
                 ),
-                push_amount=arc_length/ 50,
+                push_amount=arc_length/ 30,
             )
 
 
@@ -823,11 +865,13 @@ class Mouth:
         # -----------------------------------
 
         sub_guides = []
-        last_guide = None
+        flip_guides = {}
+
+        last_left_guide = None
+        last_right_flip_guide = None
 
         for i in range(self.divisions - 1):
 
-            # Only sample the LEFT mouth path.
             pos = cmds.pointOnCurve(
                 self.guides['L_mouth'].name,
                 parameter=percent * i,
@@ -843,34 +887,69 @@ class Mouth:
                 parent='guides',
             )
 
-            # Center guide
+            # -------------------------
+            # CENTER
+            # -------------------------
+
             if i == 0:
                 sub_guides.append(guide)
-                last_guide = guide
+
+                last_left_guide = guide
+                last_right_flip_guide = guide
+
                 continue
 
-            # Align LEFT guide against the previous guide.
-            # For i == 1, last_guide is the CENTER guide,
-            # so the first left guide gets aligned correctly.
+            # -------------------------
+            # LEFT
+            # -------------------------
+
             align_guides(
                 guide_01=guide,
-                guide_02=last_guide,
+                guide_02=last_left_guide,
                 flip=True,
             )
 
             sub_guides.append(guide)
 
-            # Mirror the ALREADY ALIGNED left guide.
-            # We do not generate or re-align the right side independently.
-            mirrored_guide = mirror_guide(
+            # -------------------------
+            # RIGHT CONTROL GUIDE
+            # -------------------------
+
+            # This remains the true mirrored guide.
+            right_guide = mirror_guide(
                 guide=guide,
             )
 
-            sub_guides.append(mirrored_guide)
+            sub_guides.append(right_guide)
 
-            last_guide = guide
+            # -------------------------
+            # RIGHT FLIP GUIDE
+            # -------------------------
 
-        
+            # Start with the mirrored position.
+            right_flip_guide = create_guide_from_position(
+                guide_name=f'sub{self.part}_{i:02d}_R_flip',
+                pos=cmds.xform(
+                    right_guide.name,
+                    query=True,
+                    worldSpace=True,
+                    translation=True,
+                ),
+                parent='guides',
+            )
+
+            # But calculate its orientation using the SAME
+            # alignment behavior as the left chain.
+            align_guides(
+                guide_01=right_flip_guide,
+                guide_02=last_right_flip_guide,
+                flip=False,
+            )
+
+            flip_guides[right_guide.name] = right_flip_guide
+
+            last_left_guide = guide
+            last_right_flip_guide = right_flip_guide
 
 
         sorted_guides = sorted(
@@ -902,7 +981,7 @@ class Mouth:
                 control=center_control,
                 influences=[
                     (left_mid_control, (.25,.05,.25)),
-                    (right_mid_control, (.25,.05,.25)),
+                    (right_mid_control, (-.25,.05,.25)),
                 ],
             )
 
@@ -916,7 +995,7 @@ class Mouth:
             right_mid_driver = self.create_soft_driver(
                 control=right_mid_control,
                 influences=[
-                    (center_control,(.25,.05,.25)),
+                    (center_control,(-.25,.05,.25)),
                 ],
             )
 
@@ -926,6 +1005,18 @@ class Mouth:
 
             right_corner_driver = self.create_soft_driver(
                 control=right_corner_control,
+            )
+
+            right_mid_spline_driver = create_transform(
+                name=f"{right_mid_driver}_spline",
+                transform=right_mid_spline_guide.name,
+                parent=right_mid_driver,
+            )
+
+            right_corner_spline_driver = create_transform(
+                name=f"{right_corner_driver}_spline",
+                transform=right_corner_spline_guide.name,
+                parent=right_corner_driver,
             )
 
 
@@ -977,15 +1068,18 @@ class Mouth:
                     middle_driven = jnt
 
                 if side == "R":
-                    control.flip = create_transform(name=f'{control.name}_FLIP', transform=guide.name, parent=control_parent,)
-                    cmds.makeIdentity(
-                        control.flip,
-                        apply=True,
-                        translate=False,
-                        rotate=False,
-                        scale=True,
+
+                    flip_guide = flip_guides[guide.name]
+
+                    control.flip = create_transform(
+                        name=f'{control.name}_FLIP',
+                        transform=flip_guide.name,
+                        parent=control_parent,
                     )
-                    cmds.parent(control.top, control.flip)
+                    cmds.parent(
+                        control.top,
+                        control.flip,
+                    )
 
                     driven.append(control.flip)
                 else:
@@ -1004,11 +1098,11 @@ class Mouth:
             )
 
             drivers = [
-                right_corner_driver,
-                right_mid_driver,
+                right_corner_spline_driver,
+                right_mid_spline_driver,
                 center_driver,
                 left_mid_driver,
-                left_corner_driver
+                left_corner_driver,
             ]
 
             tag_for_weight_split(
