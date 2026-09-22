@@ -5,7 +5,7 @@ from attr import dataclass
 import maya.cmds as cmds
 
 from Workshop.control.core import Control
-from Workshop.transform.constraint import constraint
+from Workshop.transform.constraint import Constraint, constraint
 from Workshop.control import create_control, Control
 from Workshop.joint import create_joint
 from Workshop.guide.core import GuideInfo, align_guides, create_guide_from_position, mirror_guide
@@ -62,6 +62,37 @@ class Mouth:
     # -------------------
     # Build steps
     # -------------------
+
+    def connect_sticky_weight(
+        self,
+        constraint_node: Constraint,
+        normal_driver: str,
+        sticky_driver: str,
+        sticky_attr: str,
+        name: str,
+    ):
+        reverse = RemapValueNode(
+            name=f"{name}_sticky_reverse_RMV"
+        )
+
+        reverse.input_min.set(0.0)
+        reverse.input_max.set(1.0)
+        reverse.output_min.set(1.0)
+        reverse.output_max.set(0.0)
+
+        reverse.input_value.connect_from(sticky_attr)
+
+        # sticky: 0 -> 1
+        cmds.connectAttr(
+            sticky_attr,
+            constraint_node.weights[sticky_driver],
+            force=True,
+        )
+
+        # normal: 1 -> 0
+        reverse.output.connect_to(
+            constraint_node.weights[normal_driver]
+        )
 
 
     def create_soft_driver(
@@ -1019,6 +1050,8 @@ class Mouth:
                 parent=right_corner_driver,
             )
 
+            joints = []
+
 
 
 
@@ -1062,7 +1095,9 @@ class Mouth:
                     connect=False
                 )
 
-                constraint(driven=jnt, drivers=[control.ctrl], constraint_type="parent")
+                joints.append(jnt)
+
+                #constraint(driven=jnt, drivers=[control.ctrl], constraint_type="parent")
 
                 if side == 'M':
                     middle_driven = jnt
@@ -1128,6 +1163,94 @@ class Mouth:
                     constraint_type="parent",
                     maintain_offset=True,
                 )
+
+            if vertical == "upper":
+                upper_pins = matrix_spline.pinned_transforms
+                upper_controls = driven
+                upper_joints = joints
+            else:
+                lower_pins = matrix_spline.pinned_transforms
+                lower_controls = driven
+                lower_joints = joints
+
+
+        sticky_transforms = []
+
+        cmds.addAttr(
+            self.l_corner.ctrl,
+            longName="sticky",
+            attributeType="double",
+            minValue=0.0,
+            maxValue=1.0,
+            defaultValue=0.0,
+            keyable=True,
+        )
+
+        cmds.addAttr(
+            self.r_corner.ctrl,
+            longName="sticky",
+            attributeType="double",
+            minValue=0.0,
+            maxValue=1.0,
+            defaultValue=0.0,
+            keyable=True,
+        )
+
+        for index, (upper_control, lower_control) in enumerate(
+            zip(upper_controls, lower_controls)
+        ):
+            sticky_transform = create_transform(
+                name=f"{self.part}_sticky_{index:02d}",
+                parent=self.guts,
+            )
+
+            constraint(
+                driven=sticky_transform,
+                drivers=[
+                    upper_control,
+                    lower_control,
+                ],
+                constraint_type="parent",
+                maintain_offset=False,
+            )
+
+            sticky_transforms.append(sticky_transform)
+
+            upper_constraint = constraint(
+                driven=upper_joints[index],
+                drivers=[
+                    upper_control,
+                    sticky_transform,
+                ],
+                constraint_type="parent",
+                maintain_offset=False,
+            )
+
+            lower_constraint = constraint(
+                driven=lower_joints[index],
+                drivers=[
+                    lower_control,
+                    sticky_transform,
+                ],
+                constraint_type="parent",
+                maintain_offset=False,
+            )
+
+            self.connect_sticky_weight(
+                constraint_node=upper_constraint,
+                normal_driver=upper_control,
+                sticky_driver=sticky_transform,
+                sticky_attr=f"{self.l_corner.ctrl}.sticky",
+                name=f"upper_{self.part}_{index:02d}",
+            )
+
+            self.connect_sticky_weight(
+                constraint_node=lower_constraint,
+                normal_driver=lower_control,
+                sticky_driver=sticky_transform,
+                sticky_attr=f"{self.l_corner.ctrl}.sticky",
+                name=f"lower_{self.part}_{index:02d}",
+            )
 
 
 
