@@ -12,6 +12,37 @@ SKINNABLE_TYPES = {
     "nurbsCurve",
 }
 
+def remove_non_joint_influences(geometry: str):
+    """Remove any non-joint influences from skinClusters on geometry."""
+
+    history = cmds.listHistory(geometry) or []
+    skin_clusters = cmds.ls(history, type="skinCluster") or []
+
+    for skin_cluster in skin_clusters:
+        influences = cmds.skinCluster(
+            skin_cluster,
+            query=True,
+            influence=True,
+        ) or []
+
+        non_joint_influences = [
+            influence
+            for influence in influences
+            if cmds.nodeType(influence) != "joint"
+        ]
+
+        for influence in non_joint_influences:
+            print(
+                f"Removing non-joint influence "
+                f"'{influence}' from '{skin_cluster}'"
+            )
+
+            cmds.skinCluster(
+                skin_cluster,
+                edit=True,
+                removeInfluence=influence,
+            )
+
 def is_skinnable(obj: str) -> bool:
     shapes = cmds.listRelatives(
         obj,
@@ -75,7 +106,7 @@ def apply_skins(character:str, geo_root:str='geo', primary_mesh='Cannon_UBM',):
     )
 
 
-    children = cmds.listRelatives(geo_root, children=True, type="transform", allDescendents=True) or []
+    children = cmds.listRelatives(geo_root, children=True, type="joint", allDescendents=True) or []
     for geo in children:
         try:
             try:

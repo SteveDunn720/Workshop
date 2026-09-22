@@ -80,7 +80,7 @@ def skin_geometry(
     bind_joints: Iterable[str],
     geometry: str,
     name: str | None = None,
-    skin_method:int=0,
+    skin_method:int=2,
     local: bool = True,
 ) -> str:
     """
@@ -110,10 +110,11 @@ def skin_geometry(
         raise ValueError("The provided bind_joints list was empty")
     skin_cluster: str = cmds.skinCluster(  # type: ignore
         *bind_joints,
-        shape,
+        geometry,
         toSelectedBones=True,
         skinMethod=skin_method,
         name=name,
+        useComponentTags = False,
     )[0]
     if local:
         cmds.setAttr(f"{skin_cluster}.relativeSpaceMode", 1)  # type: ignore

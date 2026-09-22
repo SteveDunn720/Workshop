@@ -68,32 +68,118 @@ class Mouth:
         constraint_node: Constraint,
         normal_driver: str,
         sticky_driver: str,
-        sticky_attr: str,
+        left_sticky_attr: str,
+        right_sticky_attr: str,
+        index: int,
+        count: int,
+        step: float,
+        blend_distance: float,
         name: str,
     ):
-        reverse = RemapValueNode(
-            name=f"{name}_sticky_reverse_RMV"
+        # Distance at which this sub is completely sticky
+        # when propagation comes from each side.
+        left_full = (index + 1) * step
+        right_full = (count - index) * step
+
+        # Begin blending two divisions before reaching
+        # the fully-sticky position.
+        left_start = max(
+            0.0,
+            left_full - blend_distance,
         )
 
-        reverse.input_min.set(0.0)
-        reverse.input_max.set(1.0)
-        reverse.output_min.set(1.0)
-        reverse.output_max.set(0.0)
-
-        reverse.input_value.connect_from(sticky_attr)
-
-        # sticky: 0 -> 1
-        cmds.connectAttr(
-            sticky_attr,
-            constraint_node.weights[sticky_driver],
-            force=True,
+        right_start = max(
+            0.0,
+            right_full - blend_distance,
         )
 
-        # normal: 1 -> 0
-        reverse.output.connect_to(
+
+        # LEFT SIDE
+        left_remap = RemapValueNode(
+            name=f"{name}_left_sticky_RMV"
+        )
+
+        left_remap.input_min.set(left_start)
+        left_remap.input_max.set(left_full)
+
+        left_remap.output_min.set(0.0)
+        left_remap.output_max.set(1.0)
+
+        left_remap.input_value.connect_from(
+            left_sticky_attr
+        )
+
+
+        # RIGHT SIDE
+        right_remap = RemapValueNode(
+            name=f"{name}_right_sticky_RMV"
+        )
+
+        right_remap.input_min.set(right_start)
+        right_remap.input_max.set(right_full)
+
+        right_remap.output_min.set(0.0)
+        right_remap.output_max.set(1.0)
+
+        right_remap.input_value.connect_from(
+            right_sticky_attr
+        )
+
+
+        # Add the contribution from both corners.
+        sticky_sum = SumNode(
+            name=f"{name}_sticky_SUM"
+        )
+
+        sticky_sum.input[0].connect_from(
+            left_remap.output
+        )
+
+        sticky_sum.input[1].connect_from(
+            right_remap.output
+        )
+
+
+        # Clamp the combined sticky value to 0 -> 1.
+        sticky_remap = RemapValueNode(
+            name=f"{name}_sticky_RMV"
+        )
+
+        sticky_remap.input_min.set(0.0)
+        sticky_remap.input_max.set(1.0)
+
+        sticky_remap.output_min.set(0.0)
+        sticky_remap.output_max.set(1.0)
+
+        sticky_remap.input_value.connect_from(
+            sticky_sum.output
+        )
+
+
+        # Invert the final sticky result for the
+        # normal control weight.
+        normal_remap = RemapValueNode(
+            name=f"{name}_normal_RMV"
+        )
+
+        normal_remap.input_min.set(0.0)
+        normal_remap.input_max.set(1.0)
+
+        normal_remap.output_min.set(1.0)
+        normal_remap.output_max.set(0.0)
+
+        normal_remap.input_value.connect_from(
+            sticky_remap.output
+        )
+
+
+        sticky_remap.output.connect_to(
+            constraint_node.weights[sticky_driver]
+        )
+
+        normal_remap.output.connect_to(
             constraint_node.weights[normal_driver]
         )
-
 
     def create_soft_driver(
             self,
@@ -880,7 +966,7 @@ class Mouth:
                 right_inward=cmds.getAttr(
                     f"{self.r_corner.ctrl}.minTransXLimit"
                 ),
-                push_amount=arc_length/ 30,
+                push_amount=arc_length/ 10,
             )
 
 
@@ -1051,6 +1137,8 @@ class Mouth:
             )
 
             joints = []
+            controls = []
+            
 
 
 
@@ -1120,10 +1208,21 @@ class Mouth:
                 else:
 
                     driven.append(control.top)
+                controls.append(control.ctrl)
 
 
             driven = sorted(
                 driven,
+                key=lambda transform: cmds.xform(
+                    transform,
+                    query=True,
+                    worldSpace=True,
+                    translation=True,
+                )[0], #type:ignore
+            )
+
+            controls = sorted(
+                controls,
                 key=lambda transform: cmds.xform(
                     transform,
                     query=True,
@@ -1142,7 +1241,7 @@ class Mouth:
 
             tag_for_weight_split(
                 influence= middle_driven,  # <-- your SOURCE joint (must already exist)
-                split_influences=driven,  # <-- the ones you just created
+                split_influences=joints,  # <-- the ones you just created
             )
 
             matrix_spline = matrix_spline_from_transforms(
@@ -1166,22 +1265,32 @@ class Mouth:
 
             if vertical == "upper":
                 upper_pins = matrix_spline.pinned_transforms
-                upper_controls = driven
+                upper_controls = controls
                 upper_joints = joints
             else:
                 lower_pins = matrix_spline.pinned_transforms
-                lower_controls = driven
+                lower_controls = controls
                 lower_joints = joints
 
 
         sticky_transforms = []
+
+        sticky_max = arc_length * 2.0
+
+        # Number of intervals between subs.
+        step = sticky_max / len(upper_controls)
+
+        # Each sub begins blending two divisions before
+        # the sticky front fully reaches it.
+        blend_distance = step * 2.0
+
 
         cmds.addAttr(
             self.l_corner.ctrl,
             longName="sticky",
             attributeType="double",
             minValue=0.0,
-            maxValue=1.0,
+            maxValue=sticky_max,
             defaultValue=0.0,
             keyable=True,
         )
@@ -1191,10 +1300,11 @@ class Mouth:
             longName="sticky",
             attributeType="double",
             minValue=0.0,
-            maxValue=1.0,
+            maxValue=sticky_max,
             defaultValue=0.0,
             keyable=True,
         )
+
 
         for index, (upper_control, lower_control) in enumerate(
             zip(upper_controls, lower_controls)
@@ -1202,6 +1312,7 @@ class Mouth:
             sticky_transform = create_transform(
                 name=f"{self.part}_sticky_{index:02d}",
                 parent=self.guts,
+                transform=upper_control
             )
 
             constraint(
@@ -1223,7 +1334,7 @@ class Mouth:
                     sticky_transform,
                 ],
                 constraint_type="parent",
-                maintain_offset=False,
+                maintain_offset=True,
             )
 
             lower_constraint = constraint(
@@ -1233,22 +1344,32 @@ class Mouth:
                     sticky_transform,
                 ],
                 constraint_type="parent",
-                maintain_offset=False,
+                maintain_offset=True,
             )
 
             self.connect_sticky_weight(
-                constraint_node=upper_constraint,
+                upper_constraint,
                 normal_driver=upper_control,
                 sticky_driver=sticky_transform,
-                sticky_attr=f"{self.l_corner.ctrl}.sticky",
+                left_sticky_attr=f"{self.r_corner.ctrl}.sticky",
+                right_sticky_attr=f"{self.l_corner.ctrl}.sticky",
+                index=index,
+                count=len(upper_controls),
+                step=step,
+                blend_distance=blend_distance,
                 name=f"upper_{self.part}_{index:02d}",
             )
 
             self.connect_sticky_weight(
-                constraint_node=lower_constraint,
+                lower_constraint,
                 normal_driver=lower_control,
                 sticky_driver=sticky_transform,
-                sticky_attr=f"{self.l_corner.ctrl}.sticky",
+                left_sticky_attr=f"{self.r_corner.ctrl}.sticky",
+                right_sticky_attr=f"{self.l_corner.ctrl}.sticky",
+                index=index,
+                count=len(lower_controls),
+                step=step,
+                blend_distance=blend_distance,
                 name=f"lower_{self.part}_{index:02d}",
             )
 
