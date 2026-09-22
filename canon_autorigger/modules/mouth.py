@@ -81,6 +81,7 @@ class Mouth:
             name=f"{control.name}_driver",
             transform=control.ctrl,
             parent=driver_base,
+
         )
 
         # Since driver is underneath an already-matched base,
@@ -418,6 +419,55 @@ class Mouth:
             mult.output.connect_to(f'{control.jaw_offset}.translate')
 
 
+    def connect_center_push(
+        self,
+        control: Control,
+        left_corner: Control,
+        right_corner: Control,
+        left_inward: float,
+        right_inward: float,
+        push_amount: float,
+    ):
+        left_push = RemapValueNode(
+            name=f"{control.name}_L_push_RMV"
+        )
+
+        left_push.input_min.set(0)
+        left_push.input_max.set(left_inward)
+        left_push.output_min.set(0)
+        left_push.output_max.set(push_amount)
+
+        left_push.input_value.connect_from(
+            f"{left_corner.ctrl}.translateX"
+        )
+
+
+        right_push = RemapValueNode(
+            name=f"{control.name}_R_push_RMV"
+        )
+
+        right_push.input_min.set(0)
+        right_push.input_max.set(right_inward)
+        right_push.output_min.set(0)
+        right_push.output_max.set(push_amount)
+
+        right_push.input_value.connect_from(
+            f"{right_corner.ctrl}.translateX"
+        )
+
+
+        push_sum = SumNode(
+            name=f"{control.name}_push_SUM"
+        )
+
+        push_sum.input[0].connect_from(left_push.output)
+        push_sum.input[1].connect_from(right_push.output)
+
+        push_sum.output.connect_to(
+            f"{control.sdk}.translateZ"
+        )
+
+
     def mouth_build(self):
 
         #modeule prep work
@@ -593,8 +643,6 @@ class Mouth:
 
                 if side == 'L':
 
-                    center_pin = create_transform(name=f'{vertical}_lip_center_M_pin', transform=lipcenter_guide.name, parent=self.guts)
-
                     lip_center = create_control(
                                 name=f'{vertical}_lip_M',
                                 parent=self.upper_lip.ctrl if vertical == 'upper' else self.lower_lip.ctrl,
@@ -745,6 +793,23 @@ class Mouth:
 
             up_sum.output.connect_to(f'{end[1]}.translateY')"""
 
+        for vertical in ["upper", "lower"]:
+
+            center = self.main_controls[f"{vertical}_M_center"]
+
+            self.connect_center_push(
+                control=center,
+                left_corner=self.l_corner,
+                right_corner=self.r_corner,
+                left_inward=cmds.getAttr(
+                    f"{self.l_corner.ctrl}.minTransXLimit"
+                ),
+                right_inward=cmds.getAttr(
+                    f"{self.r_corner.ctrl}.minTransXLimit"
+                ),
+                push_amount=arc_length/ 50,
+            )
+
 
         root_jnt = create_joint(name=f'def_{self.part}_root', transform=center_guide.name, parent=self.joint_parent, connect=False)
         cmds.xform(root_jnt, translation=(0,0, -self.control_size / 10,), relative=True, objectSpace=True)
@@ -753,28 +818,59 @@ class Mouth:
 
         percent = 1/(self.divisions - 1)
 
-        #sub controls
+        # -----------------------------------
+        # Sub control guides
+        # -----------------------------------
 
         sub_guides = []
-        last_guide = []
-        for i in range(self.divisions -1 ):
-            pos = cmds.pointOnCurve(
-                        self.guides[f'L_mouth'].name,
-                        parameter=percent * i,
-                        position=True,
-                        turnOnPercentage=True,
-                    )
+        last_guide = None
 
-            side = 'M' if i== 0 else 'L'
-    
-            guide = create_guide_from_position(guide_name=f'sub{self.part}_{i:02d}_{side}', pos=pos, parent='guides')
+        for i in range(self.divisions - 1):
+
+            # Only sample the LEFT mouth path.
+            pos = cmds.pointOnCurve(
+                self.guides['L_mouth'].name,
+                parameter=percent * i,
+                position=True,
+                turnOnPercentage=True,
+            )
+
+            side = 'M' if i == 0 else 'L'
+
+            guide = create_guide_from_position(
+                guide_name=f'sub{self.part}_{i:02d}_{side}',
+                pos=pos,
+                parent='guides',
+            )
+
+            # Center guide
+            if i == 0:
+                sub_guides.append(guide)
+                last_guide = guide
+                continue
+
+            # Align LEFT guide against the previous guide.
+            # For i == 1, last_guide is the CENTER guide,
+            # so the first left guide gets aligned correctly.
+            align_guides(
+                guide_01=guide,
+                guide_02=last_guide,
+                flip=True,
+            )
+
             sub_guides.append(guide)
-            if i != 0:
-                align_guides(guide_01=guide, guide_02=last_guide, flip=True)
-                mg = mirror_guide(guide=guide)
-                sub_guides.append(mg)
+
+            # Mirror the ALREADY ALIGNED left guide.
+            # We do not generate or re-align the right side independently.
+            mirrored_guide = mirror_guide(
+                guide=guide,
+            )
+
+            sub_guides.append(mirrored_guide)
 
             last_guide = guide
+
+        
 
 
         sorted_guides = sorted(
@@ -865,6 +961,7 @@ class Mouth:
                     control_shape="circle",
                     direction="y",
                     color_type=color,
+                    shape_rotation_offset=(0,0,90)
                 )
 
                 jnt = create_joint(
@@ -891,12 +988,8 @@ class Mouth:
                     cmds.parent(control.top, control.flip)
 
                     driven.append(control.flip)
-
-                    
                 else:
 
-
-                    # Center doesn't need to be driven by either spline.
                     driven.append(control.top)
 
 
@@ -923,14 +1016,24 @@ class Mouth:
                 split_influences=driven,  # <-- the ones you just created
             )
 
-            matrix_spline_from_transforms(
-                name=f"{vertical}_{self.part}_L_ms",
-                pinned_transforms=driven,
+            matrix_spline = matrix_spline_from_transforms(
+                name=f"{vertical}_{self.part}_ms",
+                pinned_transforms=len(driven),
                 cv_transforms=drivers,
                 parent=self.guts,
                 degree=2,
             )
 
+            for spline_pin, driven_transform in zip(
+                matrix_spline.pinned_transforms,
+                driven,
+            ):
+                constraint(
+                    driven=driven_transform,
+                    drivers=[spline_pin],
+                    constraint_type="parent",
+                    maintain_offset=True,
+                )
 
 
 
