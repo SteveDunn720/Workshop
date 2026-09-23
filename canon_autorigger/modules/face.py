@@ -16,6 +16,11 @@ class module_info:
     upper_joint:str
     lower_control:Control
     lower_joint:str
+    top_control:Control
+    top_joint:str
+    muppet_control:Control
+    skull_joint:str
+    mid_joint:str
 
 class Face:
     def __init__(
@@ -57,7 +62,7 @@ class Face:
         self.mid_face_ctrl = create_control(
             name='muppet_M',
             parent=self.control_grp,
-            transform=self.guides[2].name,
+            transform=self.guides[-1].name,
             size=self.control_size/30,
             control_shape="round_square",
             direction="y",
@@ -70,7 +75,7 @@ class Face:
 
         #joints
 
-        self.mid_face_joint = create_joint(name=f'def_{self.guides[2].descriptor}', transform=self.mid_face_ctrl.ctrl, connect=False, parent=self.joint_parent)
+        self.mid_face_joint = create_joint(name=f'def_{self.guides[2].descriptor}', transform=self.guides[2].name, connect=False, parent=self.joint_parent)
 
         constraint(drivers=[self.mid_face_ctrl.ctrl], driven=self.mid_face_joint, constraint_type='parent', parent=self.guts)
 
@@ -135,5 +140,15 @@ class Face:
 
         constraint(drivers=[self.top_face_ctrl.ctrl], driven=self.top_face_joint, constraint_type='parent', parent=self.guts)
 
-        face_info = module_info(upper_control =self.upper_face_ctrl, upper_joint=self.upper_face_joint, lower_control =self.lower_face_ctrl, lower_joint=self.lower_face_joint)
+        face_info = module_info(
+            upper_control =self.upper_face_ctrl, 
+            upper_joint=self.upper_face_joint, 
+            lower_control =self.lower_face_ctrl, 
+            lower_joint=self.lower_face_joint,
+            top_control=self.top_face_ctrl,
+            top_joint=self.top_face_joint,
+            muppet_control=self.mid_face_ctrl , 
+            skull_joint=self.skull_face_joint , 
+            mid_joint=self.mid_face_joint ,
+        )
         return face_info

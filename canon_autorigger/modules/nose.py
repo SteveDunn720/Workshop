@@ -6,7 +6,7 @@ from Workshop.control import create_control
 from Workshop.joint import create_joint
 
 from .module_initialize import module_prep, module_space
-
+from .module_shared import create_driver_offset, create_blend_driver_offset
 
 @dataclass
 class module_info:
@@ -16,6 +16,9 @@ class module_info:
 class Nose:
     def __init__(
         self,
+        mouth,
+        jaw,
+        head, 
         part: str = "nose",
         side: str = "M",
         parent: str = "components",
@@ -24,6 +27,8 @@ class Nose:
         guides: dict = {},
         joint_parent:str = 'skel',
         control_space:list = [],
+        bridge_space:list = [],
+
 
     ):
         self.part: str = part
@@ -42,6 +47,10 @@ class Nose:
     
         self.main_R_color = 'Right'
         self.sub_R_color = 'SubRight'
+        self.mouth=mouth
+        self.jaw=jaw
+        self.head = head
+        self.bridge_space = bridge_space
 
     # -------------------
     # Build steps
@@ -63,11 +72,15 @@ class Nose:
             size=self.control_size/40,
             control_shape='round_square',
             direction="y",
+            sdk_offset=True,
             color_type=self.main_M_color,
             shape_rotation_offset=(90,0,0)
         )
 
         module_space(control=self.nose_ctrl, space_list=self.control_space)
+
+        create_blend_driver_offset(default_mult=.1, control=self.nose_ctrl, driver=self.mouth, parent_space=self.head.ctrl,)
+        create_driver_offset(control=self.nose_ctrl, driver=self.jaw, x_range=(-90,0), rot_mult=.2, trans_mult=.25, y_range=(0,0), z_range=(-5,5))
 
         #joints
 
@@ -88,7 +101,7 @@ class Nose:
             color_type=self.main_M_color
         )
 
-        module_space(control=self.bridge_ctrl, space_list=self.control_space)
+        module_space(control=self.bridge_ctrl, space_list=self.bridge_space)
 
         #joints
 

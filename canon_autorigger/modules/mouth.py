@@ -16,6 +16,7 @@ from Workshop.spline.matrix_spline.build import matrix_spline_from_transforms
 from Workshop.skin.split.tag import tag_for_weight_split
 
 from .module_initialize import module_prep, module_space
+from .module_shared import create_driver_offset
 
 
 @dataclass
@@ -26,6 +27,7 @@ class module_info:
 class Mouth:
     def __init__(
         self,
+        muppet,
         guides: dict[str, GuideInfo],
         jaw:Control,
         part: str = "mouth",
@@ -48,6 +50,7 @@ class Mouth:
         self.control_space = control_space
         self.jaw = jaw
         self.divisions = divisions
+        self.muppet = muppet
 
 
         self.main_M_color = 'Middle'
@@ -933,8 +936,8 @@ class Mouth:
                             shape_rotation_offset=(0, 0, 0)
                         )
 
-
                         self.connect_jaw(jaw=self.jaw, control=self.upper_lip, x_range=(-90,0), rot_mult=.2, trans_mult=.25)
+                        create_driver_offset(control=self.upper_lip, driver=self.muppet, x_range=(-90,0))
 
                     if vertical == 'lower':
                         self.lower_lip = create_control(
