@@ -611,7 +611,21 @@ class Mouth:
 
     def connect_jaw(self, control:Control, jaw:Control, x_range:tuple=(-90,90), y_range:tuple=(-20,20), z_range:tuple=(-90,90), trans_mult:float= .5, rot_mult:float=1, extra_offset:bool=False, x_mult=1, jaw_forward:bool=False):
         control.jaw_pos = create_transform(name=f'{control.name}_jaw_pos', parent=control.top, transform=jaw.ctrl)
-        control.jaw_offset = create_transform(name=f'{control.name}_jaw_offset', parent=control.jaw_pos, transform=jaw.ctrl)
+        if jaw_forward:
+            control.jaw_slide = create_transform(
+                name=f'{control.name}_jaw_slide',
+                parent=control.jaw_pos,
+                transform=jaw.ctrl,
+            )
+
+            jaw_offset_parent = control.jaw_slide
+
+        else:
+            jaw_offset_parent = control.jaw_pos
+        control.jaw_offset = create_transform(name=f'{control.name}_jaw_offset', parent=jaw_offset_parent, transform=jaw.ctrl)
+
+        
+
         if extra_offset:
             control.extra_offset = create_transform(name=f'{control.name}_extra_offset', parent=control.jaw_offset, transform=control.ctrl)
             cmds.parent(control.sdk, control.extra_offset)
@@ -648,21 +662,28 @@ class Mouth:
         mult = MultiplyDivideNode(name=f"{control.name}_mult")
         mult.input1.connect_from(f'{jaw.ctrl}.translate')
         mult.input2.set((trans_mult, trans_mult, trans_mult))
+        mult.output.connect_to(
+                        f'{control.jaw_offset}.translate'
+                    )
 
         if jaw_forward:
-            mult.output.x.connect_to(f'{control.jaw_offset}.translateX')
-            mult.output.y.connect_to(f'{control.jaw_offset}.translateY')
-            forward_remap = RemapValueNode(f"{control.name}_forward_remap")
-            forward_sum = SumNode(f"{control.name}_forward_sum")
-            forward_remap.input_max.set(90)
-            forward_remap.output_max.connect_from(f'{jaw.ctrl}.jaw_mult')
-            forward_remap.input_value.connect_from(f'{jaw.ctrl}.rotateX')
-            forward_sum.input[0].connect_from(mult.output.z)
-            forward_sum.input[1].connect_from(forward_remap.output)
-            forward_sum.output.connect_to(f'{control.jaw_offset}.translateZ')
-        else:
+            forward_remap = RemapValueNode(
+                name=f"{control.name}_forward_remap"
+            )
 
-            mult.output.connect_to(f'{control.jaw_offset}.translate')
+            forward_remap.input_value.connect_from(
+                f'{jaw.ctrl}.rotateX'
+            )
+
+            forward_remap.input_max.set(90)
+
+            forward_remap.output_max.connect_from(
+                f'{jaw.ctrl}.jaw_mult'
+            )
+
+            forward_remap.output.connect_to(
+                f'{control.jaw_slide}.translateZ'
+            )
 
 
     def connect_center_push(
@@ -846,8 +867,9 @@ class Mouth:
                     control_shape='bracket',
                     direction="y",
                     color_type=self.main_M_color,
-                    shape_position_offset=(0,0,self.control_size/90),
-                    shape_rotation_offset=(90, 0, 0)
+                    shape_position_offset=(0,0,-self.control_size/90),
+                    shape_rotation_offset=(90, 0, 0),
+                    dimensions=(1.3,0,0)
                 )
 
 
@@ -864,7 +886,7 @@ class Mouth:
                     shape_rotation_offset=(90, 0, -90)
                 )
 
-                self.connect_jaw(jaw=self.jaw, control=self.l_corner, rot_mult=.5, x_mult=.5)
+                self.connect_jaw(jaw=self.jaw, control=self.l_corner, rot_mult=.4, x_mult=.4,)
 
                 lock_tag(object=self.l_corner.ctrl, translate=(False,False,True), rotate=(True,True,False), scale=(True,True,True), visibility=True, hide_tag=True)
 
@@ -887,7 +909,7 @@ class Mouth:
                     shape_rotation_offset=(90, 0, -90)
                 )
 
-                self.connect_jaw(jaw=self.jaw, control=self.r_corner, rot_mult=.5, x_mult=.5)
+                self.connect_jaw(jaw=self.jaw, control=self.r_corner, rot_mult=.4, x_mult=.4, )
 
                 lock_tag(object=self.r_corner.ctrl, translate=(False,False,True), rotate=(True,True,False), scale=(True,True,True), visibility=True, hide_tag=True)
 
@@ -985,7 +1007,7 @@ class Mouth:
                 )
                 true_list.append(lip_corner)
 
-                self.connect_jaw(jaw=self.jaw, control=lip_corner, rot_mult=.5, extra_offset=True)
+                self.connect_jaw(jaw=self.jaw, control=lip_corner, rot_mult=.4, extra_offset=True, x_mult=.4, )
 
                 #cmds.hide(lip_corner.top)
 

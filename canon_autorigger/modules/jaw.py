@@ -130,7 +130,7 @@ class Jaw:
         jaw_remap.input_value.connect_from(f'{self.jaw_ctrl.ctrl}.rotateX')
         jaw_remap.input_max.set(90)
 
-        cmds.addAttr(self.jaw_ctrl.ctrl, longName="jaw_mult", defaultValue=self.control_size/10, keyable=True)
+        cmds.addAttr(self.jaw_ctrl.ctrl, longName="jaw_mult", defaultValue=self.control_size/80, keyable=True)
 
         jaw_remap.output_max.connect_from(f'{self.jaw_ctrl.ctrl}.jaw_mult')
         jaw_remap.output.connect_to(f'{self.jaw_ctrl.sdk}.translateZ')
