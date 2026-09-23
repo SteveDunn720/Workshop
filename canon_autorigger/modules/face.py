@@ -1,6 +1,5 @@
-from turtle import position
-
 from attr import dataclass
+import maya.cmds as cmds
 
 from Workshop.control.core import Control
 from Workshop.transform.constraint import constraint
@@ -21,6 +20,7 @@ class module_info:
     muppet_control:Control
     skull_joint:str
     mid_joint:str
+    submid_control:Control
 
 class Face:
     def __init__(
@@ -73,11 +73,28 @@ class Face:
         
         module_space(control=self.mid_face_ctrl, space_list=self.control_space)
 
+        self.mid_sub_ctrl = create_control(
+            name=f'def_{self.guides[2].descriptor}',
+            parent=self.mid_face_ctrl.ctrl,
+            transform=self.guides[2].name,
+            size=self.control_size/40,
+            control_shape="triangle",
+            direction="y",
+            shape_rotation_offset=(90,0,0),
+            shape_position_offset=(0,self.control_size/2,0), 
+            color_type=self.sub_control_color,
+            sdk_offset=True
+        )
+
+        cmds.hide(self.mid_sub_ctrl.ctrl)
+
+
+
         #joints
 
         self.mid_face_joint = create_joint(name=f'def_{self.guides[2].descriptor}', transform=self.guides[2].name, connect=False, parent=self.joint_parent)
 
-        constraint(drivers=[self.mid_face_ctrl.ctrl], driven=self.mid_face_joint, constraint_type='parent', parent=self.guts)
+        constraint(drivers=[self.mid_sub_ctrl.ctrl], driven=self.mid_face_joint, constraint_type='parent', parent=self.guts)
 
         self.skull_face_joint = create_joint(name='def_skull_M', transform=self.mid_face_ctrl.ctrl, connect=False, parent=self.joint_parent)
         
@@ -151,5 +168,6 @@ class Face:
             muppet_control=self.mid_face_ctrl , 
             skull_joint=self.skull_face_joint , 
             mid_joint=self.mid_face_joint ,
+            submid_control = self.mid_sub_ctrl
         )
         return face_info

@@ -889,7 +889,7 @@ class Mouth:
                     shape_rotation_offset=(90, 0, -90)
                 )
 
-                self.connect_jaw(jaw=self.jaw, control=self.l_corner, rot_mult=.4, x_mult=.4,)
+                self.connect_jaw(jaw=self.jaw, control=self.l_corner, rot_mult=.4, x_mult=.4, )
 
                 lock_tag(object=self.l_corner.ctrl, translate=(False,False,True), rotate=(True,True,False), scale=(True,True,True), visibility=True, hide_tag=True)
 

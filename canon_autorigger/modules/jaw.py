@@ -7,6 +7,7 @@ from Workshop.joint import create_joint
 from Workshop.maya_api.node import RemapValueNode
 from Workshop.transform.utils import create_transform
 
+from .module_shared import create_driver_offset
 from .module_initialize import module_prep, module_space
 
 import maya.cmds as cmds
@@ -31,8 +32,7 @@ class Jaw:
         joint_parent:str = 'skel',
         control_space:list = [],
         larynx_follow_space: str | None = None,
-        control_color:str = 'MISC',
-        control_shape:str = 'circle'
+        mid_face:Control|None = None
 
     ):
         self.part: str = part
@@ -46,6 +46,7 @@ class Jaw:
         self.main_control_color = 'Middle'
         self.sub_control_color = 'SubMiddle'
         self.larynx_follow_space=larynx_follow_space
+        self.mid_face = mid_face
 
     # -------------------
     # Build steps
@@ -301,6 +302,9 @@ class Jaw:
         self.larynx_joint = create_joint(name=f'def_{self.guides[2].descriptor}', transform=self.larynx_ctrl.ctrl, connect=True, parent=self.jaw_joint)
 
         #constraint(drivers=[self.larynx_ctrl.ctrl, self.jaw_ctrl.ctrl], driven=self.larynx_joint, constraint_type='parent', parent=self.guts)
+        
+        if self.mid_face:
+            create_driver_offset(control=self.mid_face, driver=self.jaw_ctrl, x_range=(-90,0), rot_mult=.8, trans_mult=.25, y_range=(0,0), z_range=(-5,5))
 
         jaw_info = module_info(jaw =self.jaw_ctrl, joint=[self.jaw_joint, self.jaw_ee_joint, self.larynx_joint], larynx=self.larynx_ctrl)
         return jaw_info
