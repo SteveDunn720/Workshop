@@ -63,11 +63,164 @@ class Mouth:
     # Build steps
     # -------------------
 
+
+    def drive_with_blend_matrix(
+        self,
+        driven: str,
+        base_driver: str,
+        blend_driver: str,
+        weight_plug: str,
+        name: str,
+    ):
+        # Intermediate transform that matches the joint's
+        # default world transform / handedness.
+        driver = create_transform(
+            name=f"{name}_driver",
+            transform=base_driver,
+            parent=self.guts,
+        )
+
+        # Blend between the normal control and sticky midpoint.
+        blend = cmds.createNode(
+            "blendMatrix",
+            name=f"{name}_BM",
+        )
+
+        cmds.connectAttr(
+            f"{base_driver}.worldMatrix[0]",
+            f"{blend}.inputMatrix",
+            force=True,
+        )
+
+        cmds.connectAttr(
+            f"{blend_driver}.worldMatrix[0]",
+            f"{blend}.target[0].targetMatrix",
+            force=True,
+        )
+
+        cmds.connectAttr(
+            weight_plug,
+            f"{blend}.target[0].weight",
+            force=True,
+        )
+
+        # Convert the blended world matrix into the
+        # intermediate driver's local space.
+        mult = MultMatrixNode(
+            name=f"{name}_local_MM"
+        )
+
+        mult.matrix_in[0].connect_from(
+            f"{blend}.outputMatrix"
+        )
+
+        mult.matrix_in[1].connect_from(
+            f"{self.guts}.worldInverseMatrix[0]"
+        )
+
+        decompose = DecomposeMatrixNode(
+            name=f"{name}_DCM"
+        )
+
+        decompose.input_matrix.connect_from(
+            mult.matrix_sum
+        )
+
+        decompose.output_translate.connect_to(
+            f"{driver}.translate"
+        )
+
+        decompose.output_rotate.connect_to(
+            f"{driver}.rotate"
+        )
+
+        # Let Maya handle the relationship between the
+        # clean driver transform and the actual joint.
+        constraint(
+            driven=driven,
+            drivers=[driver],
+            constraint_type="parent",
+            maintain_offset=True,
+            parent=self.guts,
+        )
+
+    
+
+    def create_sticky_midpoint(
+        self,
+        upper_control: str,
+        lower_control: str,
+        name: str,
+    ) -> str:
+
+        midpoint = create_transform(
+            name=name,
+            transform=upper_control,
+            parent=self.guts,
+        )
+
+        blend = cmds.createNode(
+            "blendMatrix",
+            name=f"{name}_BM",
+        )
+
+        # Base matrix
+        cmds.connectAttr(
+            f"{upper_control}.worldMatrix[0]",
+            f"{blend}.inputMatrix",
+            force=True,
+        )
+
+        # Blend halfway toward lower
+        cmds.connectAttr(
+            f"{lower_control}.worldMatrix[0]",
+            f"{blend}.target[0].targetMatrix",
+            force=True,
+        )
+
+        cmds.setAttr(
+            f"{blend}.target[0].weight",
+            0.5,
+        )
+
+        # Convert resulting world matrix into midpoint's
+        # parent space.
+        mult = MultMatrixNode(
+            name=f"{name}_local_MM"
+        )
+
+        mult.matrix_in[0].connect_from(
+            f"{blend}.outputMatrix"
+        )
+
+        mult.matrix_in[1].connect_from(
+            f"{self.guts}.worldInverseMatrix[0]"
+        )
+
+        decompose = DecomposeMatrixNode(
+            name=f"{name}_DCM"
+        )
+
+        decompose.input_matrix.connect_from(
+            mult.matrix_sum
+        )
+
+        decompose.output_translate.connect_to(
+            f"{midpoint}.translate"
+        )
+
+        decompose.output_rotate.connect_to(
+            f"{midpoint}.rotate"
+        )
+
+        decompose.output_scale.connect_to(
+            f"{midpoint}.scale"
+        )
+
+        return midpoint
+
     def connect_sticky_weight(
         self,
-        constraint_node: Constraint,
-        normal_driver: str,
-        sticky_driver: str,
         left_sticky_attr: str,
         right_sticky_attr: str,
         index: int,
@@ -155,31 +308,7 @@ class Mouth:
             sticky_sum.output
         )
 
-
-        # Invert the final sticky result for the
-        # normal control weight.
-        normal_remap = RemapValueNode(
-            name=f"{name}_normal_RMV"
-        )
-
-        normal_remap.input_min.set(0.0)
-        normal_remap.input_max.set(1.0)
-
-        normal_remap.output_min.set(1.0)
-        normal_remap.output_max.set(0.0)
-
-        normal_remap.input_value.connect_from(
-            sticky_remap.output
-        )
-
-
-        sticky_remap.output.connect_to(
-            constraint_node.weights[sticky_driver]
-        )
-
-        normal_remap.output.connect_to(
-            constraint_node.weights[normal_driver]
-        )
+        return sticky_remap.output
 
     def create_soft_driver(
             self,
@@ -1309,69 +1438,65 @@ class Mouth:
         for index, (upper_control, lower_control) in enumerate(
             zip(upper_controls, lower_controls)
         ):
-            sticky_transform = create_transform(
-                name=f"{self.part}_sticky_{index:02d}",
-                parent=self.guts,
-                transform=upper_control
-            )
+            # --------------------------------------------------
+            # Create the 50/50 upper/lower midpoint
+            # --------------------------------------------------
 
-            constraint(
-                driven=sticky_transform,
-                drivers=[
-                    upper_control,
-                    lower_control,
-                ],
-                constraint_type="parent",
-                maintain_offset=False,
+            sticky_transform = self.create_sticky_midpoint(
+                upper_control=upper_control,
+                lower_control=lower_control,
+                name=f"{self.part}_sticky_{index:02d}",
             )
 
             sticky_transforms.append(sticky_transform)
 
-            upper_constraint = constraint(
-                driven=upper_joints[index],
-                drivers=[
-                    upper_control,
-                    sticky_transform,
-                ],
-                constraint_type="parent",
-                maintain_offset=True,
-            )
 
-            lower_constraint = constraint(
-                driven=lower_joints[index],
-                drivers=[
-                    lower_control,
-                    sticky_transform,
-                ],
-                constraint_type="parent",
-                maintain_offset=True,
-            )
+            # --------------------------------------------------
+            # Calculate sticky amount for this lip position
+            # --------------------------------------------------
 
-            self.connect_sticky_weight(
-                upper_constraint,
-                normal_driver=upper_control,
-                sticky_driver=sticky_transform,
+            sticky_weight = self.connect_sticky_weight(
                 left_sticky_attr=f"{self.r_corner.ctrl}.sticky",
                 right_sticky_attr=f"{self.l_corner.ctrl}.sticky",
                 index=index,
                 count=len(upper_controls),
                 step=step,
                 blend_distance=blend_distance,
-                name=f"upper_{self.part}_{index:02d}",
+                name=f"{self.part}_{index:02d}",
             )
 
-            self.connect_sticky_weight(
-                lower_constraint,
-                normal_driver=lower_control,
-                sticky_driver=sticky_transform,
-                left_sticky_attr=f"{self.r_corner.ctrl}.sticky",
-                right_sticky_attr=f"{self.l_corner.ctrl}.sticky",
-                index=index,
-                count=len(lower_controls),
-                step=step,
-                blend_distance=blend_distance,
-                name=f"lower_{self.part}_{index:02d}",
+
+            # --------------------------------------------------
+            # Upper joint
+            #
+            # 0 = upper control
+            # 1 = sticky midpoint
+            # --------------------------------------------------
+
+            self.drive_with_blend_matrix(
+                driven=upper_joints[index],
+                base_driver=upper_control,
+                blend_driver=sticky_transform,
+                weight_plug=sticky_weight,
+                name=f"upper_{self.part}_{index:02d}_sticky",
             )
+
+
+            # --------------------------------------------------
+            # Lower joint
+            #
+            # 0 = lower control
+            # 1 = sticky midpoint
+            # --------------------------------------------------
+
+            self.drive_with_blend_matrix(
+                driven=lower_joints[index],
+                base_driver=lower_control,
+                blend_driver=sticky_transform,
+                weight_plug=sticky_weight,
+                name=f"lower_{self.part}_{index:02d}_sticky",
+            )
+                    
 
 
 
