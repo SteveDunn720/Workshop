@@ -869,7 +869,7 @@ class Mouth:
                     color_type=self.main_M_color,
                     shape_position_offset=(0,0,-self.control_size/90),
                     shape_rotation_offset=(90, 0, 0),
-                    dimensions=(1.3,0,0)
+                    dimensions=(1.3,1,1)
                 )
 
 
@@ -1117,7 +1117,7 @@ class Mouth:
                 right_inward=cmds.getAttr(
                     f"{self.r_corner.ctrl}.minTransXLimit"
                 ),
-                push_amount=arc_length/ 10,
+                push_amount=arc_length/ 20,
             )
 
 
