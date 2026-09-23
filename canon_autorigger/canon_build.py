@@ -106,10 +106,10 @@ def build(rig_name:str, config:rig_config):
 
     #face modules
 
-    face = modules.Face(control_size=canon.scene_size, parent=canon.rig, joint_parent=headinfo.joint, guides=guides.face, control_space=[headinfo.joint])
+    face = modules.Face(control_size=canon.scene_size, parent=canon.rig, joint_parent=headinfo.joint, guides=guides.face, control_space=[headinfo.control.ctrl])
     faceinfo = face.face_build()
 
-    jaw = modules.Jaw(control_size=canon.scene_size, parent=canon.rig, joint_parent=faceinfo.lower_joint, guides=guides.jaw, control_space=[faceinfo.lower_control])
+    jaw = modules.Jaw(control_size=canon.scene_size, parent=canon.rig, joint_parent=faceinfo.lower_joint, guides=guides.jaw, control_space=[faceinfo.lower_control], larynx_follow_space=headinfo.control.ctrl)
     jawinfo = jaw.jaw_build()
 
     mouth = modules.Mouth(control_size=canon.scene_size, parent=canon.rig, joint_parent=faceinfo.lower_joint, guides=guides.mouth, jaw=jawinfo.jaw,  control_space=[faceinfo.lower_control])

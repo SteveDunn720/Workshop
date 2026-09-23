@@ -63,7 +63,8 @@ class Nose:
             size=self.control_size/40,
             control_shape='round_square',
             direction="y",
-            color_type=self.main_M_color
+            color_type=self.main_M_color,
+            shape_rotation_offset=(90,0,0)
         )
 
         module_space(control=self.nose_ctrl, space_list=self.control_space)
@@ -101,9 +102,9 @@ class Nose:
 
         for guide in [self.guides[f'L_Outer'], self.guides[f'R_Outer'], self.guides[f'L_UpperCorner'], self.guides[f'R_UpperCorner'], self.guides['Tip']]: #'Nostril_Inner' self.guides[f'L_Nostril'], self.guides[f'R_Nostril'],
 
-            if guide.descriptor.startswith("L_"):
+            if guide in [self.guides[f'L_Outer'],  self.guides[f'L_UpperCorner']]:
                 color = self.main_L_color
-            elif guide.descriptor.startswith("R_"):
+            elif guide in [self.guides[f'R_Outer'],  self.guides[f'R_UpperCorner']]:
                 color = self.main_R_color
             else:
                 color = self.main_M_color
