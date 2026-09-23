@@ -53,10 +53,35 @@ class Face:
         self.control_grp = prep.control_grp
         self.guts = prep.guts
 
+
+        self.mid_face_ctrl = create_control(
+            name='muppet_M',
+            parent=self.control_grp,
+            transform=self.guides[2].name,
+            size=self.control_size/30,
+            control_shape="round_square",
+            direction="y",
+            shape_rotation_offset=(90,0,0),
+            shape_position_offset=(self.control_size/4,0,0), 
+            color_type=self.sub_control_color
+        )
+        
+        module_space(control=self.mid_face_ctrl, space_list=self.control_space)
+
+        #joints
+
+        self.mid_face_joint = create_joint(name=f'def_{self.guides[2].descriptor}', transform=self.mid_face_ctrl.ctrl, connect=False, parent=self.joint_parent)
+
+        constraint(drivers=[self.mid_face_ctrl.ctrl], driven=self.mid_face_joint, constraint_type='parent', parent=self.guts)
+
+        self.skull_face_joint = create_joint(name='def_skull_M', transform=self.mid_face_ctrl.ctrl, connect=False, parent=self.joint_parent)
+        
+        constraint(drivers=[self.mid_face_ctrl.ctrl], driven=self.skull_face_joint, constraint_type='parent', parent=self.guts)
+
         #controls
         self.upper_face_ctrl = create_control(
             name=self.guides[0].descriptor,
-            parent=self.control_grp,
+            parent=self.mid_face_ctrl.ctrl,
             transform=self.guides[0].name,
             size=self.control_size/30,
             control_shape="round_square",
@@ -66,7 +91,7 @@ class Face:
             color_type=self.sub_control_color
         )
 
-        module_space(control=self.upper_face_ctrl, space_list=self.control_space)
+        #module_space(control=self.upper_face_ctrl, space_list=self.control_space)
 
         self.lower_face_ctrl = create_control(
             name=self.guides[1].descriptor,
@@ -84,11 +109,31 @@ class Face:
 
         #joints
 
-        self.upper_face_joint = create_joint(name=f'def_{self.guides[0].descriptor}', transform=self.upper_face_ctrl.ctrl, connect=True, parent=self.joint_parent)
-        self.lower_face_joint = create_joint(name=f'def_{self.guides[1].descriptor}', transform=self.lower_face_ctrl.ctrl, connect=True, parent=self.joint_parent)
+        self.upper_face_joint = create_joint(name=f'def_{self.guides[0].descriptor}', transform=self.upper_face_ctrl.ctrl, connect=False, parent=self.joint_parent)
+        self.lower_face_joint = create_joint(name=f'def_{self.guides[1].descriptor}', transform=self.lower_face_ctrl.ctrl, connect=False, parent=self.joint_parent)
 
         constraint(drivers=[self.lower_face_ctrl.ctrl], driven=self.lower_face_joint, constraint_type='parent', parent=self.guts)
         constraint(drivers=[self.upper_face_ctrl.ctrl], driven=self.upper_face_joint, constraint_type='parent', parent=self.guts)
+
+        self.top_face_ctrl = create_control(
+            name=self.guides[3].descriptor,
+            parent=self.upper_face_ctrl.ctrl,
+            transform=self.guides[3].name,
+            size=self.control_size/30,
+            control_shape="round_square",
+            direction="y",
+            shape_rotation_offset=(90,0,0),
+            shape_position_offset=(self.control_size/4,0,0), 
+            color_type=self.sub_control_color
+        )
+        
+        #module_space(control=self.top_face_ctrl, space_list=self.control_space)
+
+        #joints
+
+        self.top_face_joint = create_joint(name=f'def_{self.guides[3].descriptor}', transform=self.top_face_ctrl.ctrl, connect=False, parent=self.joint_parent)
+
+        constraint(drivers=[self.top_face_ctrl.ctrl], driven=self.top_face_joint, constraint_type='parent', parent=self.guts)
 
         face_info = module_info(upper_control =self.upper_face_ctrl, upper_joint=self.upper_face_joint, lower_control =self.lower_face_ctrl, lower_joint=self.lower_face_joint)
         return face_info

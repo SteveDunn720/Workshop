@@ -99,7 +99,7 @@ def read_guides(rig_name:str='Canon')->cannon_guide_config:
 
     #face_guides
 
-    face = [read_guide('upper_head_M_guide'), read_guide('lower_head_M_guide')]
+    face = [read_guide('upper_head_M_guide'), read_guide('lower_head_M_guide'), read_guide('mid_head_M_guide'), read_guide('top_head_M_guide')]
     jaw = [read_guide('jaw_M_guide'), read_guide('jaw_ee_M_guide'), read_guide('larynx_M_guide')]
     nose['Nostril_Inner'] = read_guide('nose_Nostril_Inner_M_guide')
     nose['Tip'] = read_guide('nose_Tip_M_guide')

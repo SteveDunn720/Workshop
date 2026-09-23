@@ -20,8 +20,8 @@ from .module_initialize import module_prep, module_space
 
 @dataclass
 class module_info:
-    control:Control
-    joint:str
+    master:Control
+    master_joint:str
 
 class Mouth:
     def __init__(
@@ -1559,6 +1559,8 @@ class Mouth:
 
 
         module_space(control=self.mouth, space_list=self.control_space)
+        mouth_info = module_info(master=self.mouth, master_joint=root_jnt)
+        return mouth_info
         """#controls
         self.mouth_ctrl = create_control(
             name=f'{self.part}_{self.side}',
