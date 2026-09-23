@@ -64,10 +64,10 @@ class Face:
             parent=self.control_grp,
             transform=self.guides[-1].name,
             size=self.control_size/30,
-            control_shape="round_square",
+            control_shape="triangle",
             direction="y",
             shape_rotation_offset=(90,0,0),
-            shape_position_offset=(self.control_size/4,0,0), 
+            shape_position_offset=(0,self.control_size/2,0), 
             color_type=self.sub_control_color
         )
         
@@ -124,12 +124,13 @@ class Face:
             name=self.guides[3].descriptor,
             parent=self.upper_face_ctrl.ctrl,
             transform=self.guides[3].name,
-            size=self.control_size/30,
+            size=self.control_size/70,
             control_shape="round_square",
             direction="y",
             shape_rotation_offset=(90,0,0),
-            shape_position_offset=(self.control_size/4,0,0), 
-            color_type=self.sub_control_color
+            shape_position_offset=(0,self.control_size/10, self.control_size/6), 
+            color_type=self.sub_control_color,
+            dimensions=(8,.1,1)
         )
         
         #module_space(control=self.top_face_ctrl, space_list=self.control_space)
