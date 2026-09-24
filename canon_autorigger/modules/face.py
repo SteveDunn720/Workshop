@@ -67,7 +67,7 @@ class Face:
             control_shape="triangle",
             direction="y",
             shape_rotation_offset=(90,0,0),
-            shape_position_offset=(0,self.control_size/2,0), 
+            shape_position_offset=(0,self.control_size/2.5,0), 
             color_type=self.sub_control_color
         )
         
