@@ -119,6 +119,8 @@ def build(rig_name:str, config:rig_config):
     maxillaryinfo = arch.arch_build()
     arch = modules.Arch(part='mandibular', control_size=canon.scene_size, parent=canon.rig, joint_parent=faceinfo.lower_joint, guides=[guides.teeth[2], guides.teeth[3]], control_space=[jawinfo.jaw], driver=jawinfo.jaw, divisions = 2)
     mandibularinfo = arch.arch_build()
+    tongue = modules.Tongue(control_size=canon.scene_size, parent=canon.rig, joint_parent=faceinfo.lower_joint, guides=[guides.tongue], control_space=[jawinfo.jaw])
+    tongueinfo = tongue.tongue_build()
 
     nose = modules.Nose(control_size=canon.scene_size, parent=canon.rig, joint_parent=faceinfo.mid_joint, guides=guides.nose,  control_space=[faceinfo.muppet_control], mouth=mouthinfo.master, jaw=jawinfo.jaw, head=headinfo.control, bridge_space=[faceinfo.upper_control])
     noseinfo = nose.nose_build()

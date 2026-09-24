@@ -34,6 +34,7 @@ class cannon_guide_config:
     mouth:dict[str,GuideInfo]
     nose:dict[str,GuideInfo]
     teeth:list[GuideInfo]
+    tongue:GuideInfo
 
     primary_geo:str
 
@@ -107,6 +108,7 @@ def read_guides(rig_name:str='Canon')->cannon_guide_config:
     nose['Bridge'] = read_guide('nose_Bridge_M_guide')
     nose['Root'] = read_guide('nose_Root_M_guide')
     teeth = [read_guide('teeth_upper_L_guides'),read_guide('teeth_upper_R_guides'), read_guide('teeth_lower_L_guides'), read_guide('teeth_lower_R_guides') ]
+    tongue = read_guide('tongue_M_guide')
 
 
     #geo temp logic, need to decide later how this will work
@@ -140,6 +142,7 @@ def read_guides(rig_name:str='Canon')->cannon_guide_config:
         mouth=mouth,
         nose=nose,
         teeth=teeth,
+        tongue=tongue,
 
         primary_geo=primary_mesh,
     )

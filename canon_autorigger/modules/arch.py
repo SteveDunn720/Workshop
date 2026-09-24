@@ -133,7 +133,7 @@ class Arch:
                 name=g.descriptor,
                 parent=self.main_ctrl.ctrl,
                 transform=g.name,
-                size=self.control_size/100,
+                size=self.control_size/80,
                 control_shape='sphere',
                 direction="y",
                 color_type=color
