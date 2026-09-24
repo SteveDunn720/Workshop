@@ -23,6 +23,9 @@ from .module_shared import create_driver_offset
 class module_info:
     master:Control
     master_joint:str
+    path_pins:dict
+    corner_controls:dict
+    macro:dict
 
 class Mouth:
     def __init__(
@@ -749,6 +752,9 @@ class Mouth:
         self.main_controls = {}
         self.upper_controls = []
         self.lower_controls = []
+        path_pin_dict = {}
+        corner_controls = {}
+        macro = {}
 
         center_pos = cmds.pointOnCurve(
                     self.guides['L_mouth'].name,
@@ -889,6 +895,8 @@ class Mouth:
                     shape_rotation_offset=(90, 0, -90)
                 )
 
+                corner_controls['L'] = self.l_corner
+
                 self.connect_jaw(jaw=self.jaw, control=self.l_corner, rot_mult=.4, x_mult=.4, )
 
                 lock_tag(object=self.l_corner.ctrl, translate=(False,False,True), rotate=(True,True,False), scale=(True,True,True), visibility=True, hide_tag=True)
@@ -912,6 +920,8 @@ class Mouth:
                     shape_rotation_offset=(90, 0, -90)
                 )
 
+                corner_controls['R'] = self.r_corner
+
                 self.connect_jaw(jaw=self.jaw, control=self.r_corner, rot_mult=.4, x_mult=.4, )
 
                 lock_tag(object=self.r_corner.ctrl, translate=(False,False,True), rotate=(True,True,False), scale=(True,True,True), visibility=True, hide_tag=True)
@@ -934,7 +944,7 @@ class Mouth:
                             color_type=self.main_M_color,
                             shape_position_offset=(0,self.control_size/35*v_mod,self.control_size/90),
                             shape_rotation_offset=(0, 0, 0)
-                        )
+                        ) 
 
                         self.connect_jaw(jaw=self.jaw, control=self.upper_lip, x_range=(-90,0), rot_mult=.2, trans_mult=.25)
                         create_driver_offset(control=self.upper_lip, driver=self.muppet, x_range=(-90,0))
@@ -969,6 +979,8 @@ class Mouth:
                                 shape_rotation_offset=(90*v_mod,0,0)
                             )
 
+                    macro[f'{vertical}_M'] = lip_center
+
                     true_list.append(lip_center)
                     
 
@@ -992,6 +1004,8 @@ class Mouth:
                         shape_rotation_offset=(90*v_mod,0,0)
                     )
 
+                macro[f'{vertical}_mid_{side}'] = lip_mid
+
                 true_list.append(lip_mid)
 
                 corner_pin = create_transform(name=f'{vertical}_lip_corner_{side}_pin', transform=lipmid_guide.name, parent=self.guts)
@@ -1009,6 +1023,8 @@ class Mouth:
                     shape_rotation_offset=(90*v_mod,0,0)
                 )
                 true_list.append(lip_corner)
+
+                macro[f'{vertical}_corner_{side}'] = lip_corner
 
                 self.connect_jaw(jaw=self.jaw, control=lip_corner, rot_mult=.4, extra_offset=True, x_mult=.4, )
 
@@ -1562,7 +1578,7 @@ class Mouth:
 
 
         module_space(control=self.mouth, space_list=self.control_space)
-        mouth_info = module_info(master=self.mouth, master_joint=root_jnt)
+        mouth_info = module_info(master=self.mouth, master_joint=root_jnt, path_pins=path_pin_dict, corner_controls=corner_controls, macro=macro)
         return mouth_info
         """#controls
         self.mouth_ctrl = create_control(

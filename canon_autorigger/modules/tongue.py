@@ -94,9 +94,7 @@ class Tongue:
             g = create_guide_from_position(guide_name=f'{self.part}_0{i}_{self.side}', pos=pos, parent='guides')
             guides.append(g)
 
-            if i == self.divisions + 1:
-                self.align_guides(guide_01=g, guide_02=guides[i-1], flip_y=True)
-            elif i == 0:
+            if i == 0:
                 pass
             else:
                 self.align_guides(guide_01=g, guide_02=guides[i-1])

@@ -124,6 +124,10 @@ def build(rig_name:str, config:rig_config):
 
     nose = modules.Nose(control_size=canon.scene_size, parent=canon.rig, joint_parent=faceinfo.mid_joint, guides=guides.nose,  control_space=[faceinfo.muppet_control], mouth=mouthinfo.master, jaw=jawinfo.jaw, head=headinfo.control, bridge_space=[faceinfo.upper_control])
     noseinfo = nose.nose_build()
+
+    for side in ["L", "R"]:
+        nl_fold = modules.NL_Fold(control_size=canon.scene_size, side=side, parent=canon.rig, joint_parent=faceinfo.lower_joint, guides=[guides.nl[0]], control_space=[faceinfo.lower_control], upper_driver=noseinfo.control, lower_driver=mouthinfo.macro[f'upper_corner_{side}'], )
+        nl_foldinfo = nl_fold.nl_fold_build()
     
       
 

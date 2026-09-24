@@ -332,3 +332,196 @@ def create_blend_driver_offset(
         pos=driver_pos,
         offset=driver_offset,
     )
+
+
+def create_mid_blend_driver_offset(
+    control: Control,
+    driver_a: Control,
+    driver_b: Control,
+    parent_space: str,
+    blend: float = 0.5,
+) -> DriverOffset:
+    """
+    Drive a control from the change in the blended position between two drivers.
+
+    At rest:
+        midpoint_rest = blend(driver_a, driver_b)
+
+    At runtime:
+        midpoint_current = blend(driver_a, driver_b)
+
+        delta = midpoint_current * inverse(midpoint_rest)
+
+    Only that delta is applied to the affected control, so the control
+    does not snap to the midpoint when the rig is built.
+
+    Args:
+        control:
+            Control being affected.
+
+        driver_a:
+            First control contributing to the midpoint.
+
+        driver_b:
+            Second control contributing to the midpoint.
+
+        parent_space:
+            Space in which the two drivers should be evaluated.
+
+        blend:
+            Blend between driver_a and driver_b.
+            0.0 = driver_a
+            0.5 = midpoint
+            1.0 = driver_b
+    """
+
+    driven_name = control.name
+    driver_a_name = driver_a.name
+    driver_b_name = driver_b.name
+
+    # ---------------------------------------------------------
+    # Current SDK parent
+    # ---------------------------------------------------------
+
+    current_parent = cmds.listRelatives(
+        control.sdk,
+        parent=True,
+    )[0]
+
+    # ---------------------------------------------------------
+    # Create hierarchy AT THE CONTROL
+    #
+    # Unlike your other function, we don't want to create this
+    # hierarchy at either driver or at the midpoint.
+    # ---------------------------------------------------------
+
+    blend_pos = create_transform(
+        name=f"{driven_name}_{driver_a_name}_{driver_b_name}_blend_pos",
+        parent=current_parent,
+        transform=control.sdk,
+    )
+
+    blend_offset = create_transform(
+        name=f"{driven_name}_{driver_a_name}_{driver_b_name}_blend_offset",
+        parent=blend_pos,
+        transform=control.sdk,
+    )
+
+    cmds.parent(
+        control.sdk,
+        blend_offset,
+    )
+
+    lock_tag(object=blend_pos)
+    lock_tag(object=blend_offset)
+
+    # ---------------------------------------------------------
+    # Driver A relative to parent space
+    # ---------------------------------------------------------
+
+    driver_a_relative = MultMatrixNode(
+        name=f"{driven_name}_{driver_a_name}_relative_matrix"
+    )
+
+    driver_a_relative.matrix_in[0].connect_from(
+        f"{driver_a.ctrl}.worldMatrix[0]"
+    )
+
+    driver_a_relative.matrix_in[1].connect_from(
+        f"{parent_space}.worldInverseMatrix[0]"
+    )
+
+    # ---------------------------------------------------------
+    # Driver B relative to parent space
+    # ---------------------------------------------------------
+
+    driver_b_relative = MultMatrixNode(
+        name=f"{driven_name}_{driver_b_name}_relative_matrix"
+    )
+
+    driver_b_relative.matrix_in[0].connect_from(
+        f"{driver_b.ctrl}.worldMatrix[0]"
+    )
+
+    driver_b_relative.matrix_in[1].connect_from(
+        f"{parent_space}.worldInverseMatrix[0]"
+    )
+
+    # ---------------------------------------------------------
+    # Calculate current blended transform
+    #
+    # inputMatrix = A
+    # targetMatrix = B
+    #
+    # 0.0 -> A
+    # 0.5 -> midpoint
+    # 1.0 -> B
+    # ---------------------------------------------------------
+
+    midpoint_matrix = BlendMatrixNode(
+        name=f"{driven_name}_{driver_a_name}_{driver_b_name}_midpoint_matrix"
+    )
+
+    midpoint_matrix.input_matrix.connect_from(
+        driver_a_relative.matrix_sum
+    )
+
+    midpoint_matrix.target[0].target_matrix.connect_from(
+        driver_b_relative.matrix_sum
+    )
+
+    midpoint_matrix.target[0].weight.set(blend)
+
+    # ---------------------------------------------------------
+    # Store midpoint REST matrix
+    # ---------------------------------------------------------
+
+    rest_matrix = cmds.getAttr(
+        str(midpoint_matrix.output_matrix)
+    )
+
+    rest_inverse = cmds.createNode(
+        "inverseMatrix",
+        name=f"{driven_name}_{driver_a_name}_{driver_b_name}_midpoint_rest_inverse",
+    )
+
+    cmds.setAttr(
+        f"{rest_inverse}.inputMatrix",
+        *rest_matrix,
+        type="matrix",
+    )
+
+    # ---------------------------------------------------------
+    # Current midpoint * inverse(rest midpoint)
+    #
+    # At rest:
+    #
+    # midpoint * inverse(midpoint) = identity
+    #
+    # Therefore blend_offset receives no movement.
+    # ---------------------------------------------------------
+
+    delta_matrix = MultMatrixNode(
+        name=f"{driven_name}_{driver_a_name}_{driver_b_name}_midpoint_delta"
+    )
+
+    delta_matrix.matrix_in[0].connect_from(
+        midpoint_matrix.output_matrix
+    )
+
+    delta_matrix.matrix_in[1].connect_from(
+        f"{rest_inverse}.outputMatrix"
+    )
+
+    # ---------------------------------------------------------
+    # Apply midpoint DELTA to affected control
+    # ---------------------------------------------------------
+
+    delta_matrix.matrix_sum.connect_to(
+        f"{blend_offset}.offsetParentMatrix"
+    )
+
+    return DriverOffset(
+        pos=blend_pos,
+        offset=blend_offset,
+    )

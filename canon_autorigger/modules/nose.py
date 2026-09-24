@@ -88,8 +88,6 @@ class Nose:
 
         constraint(drivers=[self.nose_ctrl.ctrl], driven=self.nose_joint, constraint_type='parent', parent=self.guts)
 
-        nose_info = module_info(control =self.nose_ctrl, joint=self.nose_joint)
-
         #controls
         self.bridge_ctrl = create_control(
             name=self.guides['Bridge'].descriptor,
@@ -108,10 +106,6 @@ class Nose:
         self.bridge_joint = create_joint(name=f'def_{self.part}_{self.side}', transform=self.bridge_ctrl.ctrl, connect=True, parent=self.nose_joint)
 
         constraint(drivers=[self.bridge_ctrl.ctrl], driven=self.bridge_joint, constraint_type='parent', parent=self.guts)
-
-        nose_info = module_info(control =self.bridge_ctrl, joint=self.bridge_joint)
-
-
 
         for guide in [self.guides[f'L_Outer'], self.guides[f'R_Outer'], self.guides[f'L_UpperCorner'], self.guides[f'R_UpperCorner'], self.guides['Tip']]: #'Nostril_Inner' self.guides[f'L_Nostril'], self.guides[f'R_Nostril'],
 
@@ -141,6 +135,6 @@ class Nose:
             joint = create_joint(name=guide.descriptor, transform=ctrl.ctrl, connect=True, parent=self.nose_joint)
             
             constraint(drivers=[ctrl.ctrl], driven=joint, constraint_type='parent', parent=self.guts)
-            
 
+        nose_info = module_info(control =self.nose_ctrl, joint=self.nose_joint)
         return nose_info
