@@ -81,7 +81,8 @@ def skin_meshes(geo_root:str='geo', skin_method:int=0, joint_set:str='bind_joint
         if skin:
             skin_geometry(bind_joints=joints, geometry=geo, skin_method=skin_method,)
         else:
-            print(f'{geo} not skinnable')
+            pass
+            #print(f'{geo} not skinnable')
 
 
 def geo_tags(geo_root:str='geo'):
@@ -106,11 +107,12 @@ def apply_skins(character:str, geo_root:str='geo', primary_mesh='Cannon_UBM',):
     )
 
 
-    children = cmds.listRelatives(geo_root, children=True, type="joint", allDescendents=True) or []
+    children = cmds.listRelatives(geo_root, children=True, type="transform", allDescendents=True) or []
     for geo in children:
         try:
             try:
-                if geo == primary_mesh:
+                skin = is_skinnable(obj=geo)
+                if geo == primary_mesh or not skin:
                     pass
                 else:
                     apply_ng_skin_weights(

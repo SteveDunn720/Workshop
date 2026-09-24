@@ -757,7 +757,7 @@ class Mouth:
                     turnOnPercentage=True,
                 )
 
-        center_guide = create_guide_from_position(guide_name='mouth_center_M', pos=center_pos, parent='guides')\
+        center_guide = create_guide_from_position(guide_name='mouth_center_M', pos=center_pos, parent='guides')
 
         for side in ['L', 'R']:
 
@@ -952,7 +952,7 @@ class Mouth:
                             shape_position_offset=(0,self.control_size/35*v_mod,self.control_size/90),
                             shape_rotation_offset=(0, 0, 0)
                         )
-                        self.connect_jaw(jaw=self.jaw, control=self.lower_lip, rot_mult=.6, jaw_forward=True)
+                        self.connect_jaw(jaw=self.jaw, control=self.lower_lip, rot_mult=.6, jaw_forward=True, trans_mult=.8)
 
                 if side == 'L':
 

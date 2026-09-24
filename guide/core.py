@@ -350,3 +350,128 @@ def chain_guides(names:list, side:str='M', position:list=[], parent:str=''):
     info = chain_GuideInfo(guides=guide_list)
     return info
 
+
+
+def create_midpoint_guide(
+    guide_a: GuideInfo | str,
+    guide_b: GuideInfo | str,
+    name: str | None = None,
+    parent: str | None = None,
+    component_type: str | None = None,
+    position_only: bool = True,
+    create: bool = True,
+) -> GuideInfo | tuple[float, float, float]:
+    """
+    Create a guide halfway between two existing guides.
+
+    Args:
+        guide_a: First guide or Maya node name.
+        guide_b: Second guide or Maya node name.
+        name: Optional name override.
+        parent: Parent for the new guide.
+        component_type: Component metadata.
+        position_only: Ignore input rotations and scales.
+            When False, inherit guide A's world rotation.
+        create: If False, return the midpoint position
+            without creating a guide.
+
+    Returns:
+        GuideInfo if create=True, otherwise midpoint position.
+    """
+
+    if isinstance(guide_a, str):
+        guide_a = read_guide(guide_a)
+
+    if isinstance(guide_b, str):
+        guide_b = read_guide(guide_b)
+
+    # Always query current scene positions.
+    pos_a = cmds.xform(
+        guide_a.name,
+        query=True,
+        worldSpace=True,
+        translation=True,
+    )
+
+    pos_b = cmds.xform(
+        guide_b.name,
+        query=True,
+        worldSpace=True,
+        translation=True,
+    )
+
+    midpoint = tuple(
+        (a + b) * 0.5
+        for a, b in zip(pos_a, pos_b)
+    )
+
+    # Return the coordinates without creating anything.
+    if not create:
+        return midpoint
+
+    # Derive a name if none was supplied.
+    if name is None:
+        name_a = guide_a.descriptor or guide_a.name.removesuffix("_guide")
+        name_b = guide_b.descriptor or guide_b.name.removesuffix("_guide")
+
+        name = f"{name_a}_{name_b}_mid"
+
+    # Default to guide A's parent.
+    if parent is None:
+        parents = cmds.listRelatives(
+            guide_a.name,
+            parent=True,
+            fullPath=True,
+        ) or []
+
+        parent = parents[0] if parents else None
+
+    # Create the guide using the existing Workshop helper.
+    midpoint_guide = create_guide_from_position(
+        pos=midpoint,
+        guide_name=name,
+        parent=parent,
+        component_type=component_type,
+    )
+
+    if not position_only:
+        rotation = cmds.xform(
+            guide_a.name,
+            query=True,
+            worldSpace=True,
+            rotation=True,
+        )
+
+        cmds.xform(
+            midpoint_guide.name,
+            worldSpace=True,
+            rotation=rotation,
+        )
+
+    else:
+        cmds.xform(
+            midpoint_guide.name,
+            worldSpace=True,
+            rotation=(0, 0, 0),
+        )
+
+    # Keep GuideInfo synchronized with the Maya node.
+    midpoint_guide.pos = tuple(
+        cmds.xform(
+            midpoint_guide.name,
+            query=True,
+            worldSpace=True,
+            translation=True,
+        )
+    )
+
+    midpoint_guide.rot = tuple(
+        cmds.xform(
+            midpoint_guide.name,
+            query=True,
+            worldSpace=True,
+            rotation=True,
+        )
+    )
+
+    return midpoint_guide

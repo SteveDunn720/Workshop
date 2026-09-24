@@ -15,6 +15,7 @@ from . import face
 from . import jaw
 from . import mouth
 from . import nose
+from . import arch
 
 from .root import Root
 from .biped_limb import Limb
@@ -32,6 +33,7 @@ from .face import Face
 from .jaw import Jaw
 from .mouth import Mouth
 from .nose import Nose
+from .arch import Arch
 
 
 
@@ -70,4 +72,6 @@ __all__ = [
 "Mouth",
 "nose",
 "Nose",
+"arch",
+"Arch",
 ]
