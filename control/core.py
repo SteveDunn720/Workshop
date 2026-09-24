@@ -249,3 +249,54 @@ def build_control(
     return shape_parent
 
 
+
+def align_control_shape_world_z(
+    controls: list[Control],
+    target_z: float | None = None,
+):
+    """
+    Move control shapes so their pivots/visual origins share the same world Z.
+
+    Does not move the control transforms themselves.
+    """
+
+    if not controls:
+        return
+
+    # Use first control as the reference if no Z was supplied.
+    if target_z is None:
+        target_z = cmds.xform(
+            controls[0].ctrl,
+            query=True,
+            worldSpace=True,
+            translation=True,
+        )[2]
+
+    for control in controls:
+        ctrl_z = cmds.xform(
+            control.ctrl,
+            query=True,
+            worldSpace=True,
+            translation=True,
+        )[2]
+
+        z_offset = target_z - ctrl_z
+
+        shapes = cmds.listRelatives(
+            control.ctrl,
+            shapes=True,
+            noIntermediate=True,
+            fullPath=True,
+        ) or []
+
+        for shape in shapes:
+            cvs = f"{shape}.cv[*]"
+
+            cmds.move(
+                0,
+                0,
+                z_offset,
+                cvs,
+                relative=True,
+                worldSpace=True,
+            )

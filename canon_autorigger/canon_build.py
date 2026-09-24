@@ -128,6 +128,9 @@ def build(rig_name:str, config:rig_config):
     for side in ["L", "R"]:
         nl_fold = modules.NL_Fold(control_size=canon.scene_size, side=side, parent=canon.rig, joint_parent=faceinfo.lower_joint, guides=[guides.nl[0]], control_space=[faceinfo.lower_control], upper_driver=noseinfo.control, lower_driver=mouthinfo.macro[f'upper_corner_{side}'], )
         nl_foldinfo = nl_fold.nl_fold_build()
+
+        brow = modules.Brow(control_size=canon.scene_size, side=side, parent=canon.rig, joint_parent=faceinfo.top_joint, guides=[guides.brow[0]], control_space=[faceinfo.top_control], )
+        browinfo = brow.brow_build()
     
       
 

@@ -18,6 +18,7 @@ from . import nose
 from . import arch
 from . import tongue
 from . import nl_fold
+from . import brow
 
 from .root import Root
 from .biped_limb import Limb
@@ -38,6 +39,7 @@ from .nose import Nose
 from .arch import Arch
 from .tongue import Tongue
 from .nl_fold import NL_Fold
+from .brow import Brow
 
 
 
@@ -82,4 +84,6 @@ __all__ = [
 "Tongue",
 "nl_fold",
 "NL_Fold",
+"brow",
+"Brow",
 ]
