@@ -125,6 +125,7 @@ class NL_Fold:
 
         module_space(control=controls[0], space_list=[self.upper_driver])
         module_space(control=controls[2], space_list=[self.lower_driver])
+        module_space(control=controls[1], space_list=self.control_space)
         create_mid_blend_driver_offset(control=controls[1], driver_a=controls[0], driver_b=controls[2], parent_space=self.control_space[0],blend=.5 )
             
         for i in range(self.divisions + 1):
