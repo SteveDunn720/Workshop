@@ -6,6 +6,7 @@ from Workshop.control import create_control
 from Workshop.joint import create_joint
 from Workshop.spline.matrix_spline.build import matrix_spline_from_transforms
 from Workshop.transform.utils import create_transform
+from Workshop.maya_api.node import RemapValueNode
 from .module_shared import create_mid_blend_driver_offset
 from Workshop.guide.core import GuideInfo, create_guide_from_position, mirror_guide, read_guide
 from Workshop.skin.split.tag import tag_for_weight_split
@@ -25,6 +26,7 @@ class NL_Fold:
         self,
         upper_driver,
         lower_driver,
+        corner,
         part: str = "nl_fold",
         side: str = "M",
         parent: str = "components",
@@ -57,6 +59,7 @@ class NL_Fold:
             self.sub_color = 'SubRight'
         self.upper_driver = upper_driver
         self.lower_driver = lower_driver
+        self.corner = corner
 
     # -------------------
     # Build steps
@@ -127,6 +130,15 @@ class NL_Fold:
         module_space(control=controls[2], space_list=[self.lower_driver])
         module_space(control=controls[1], space_list=self.control_space)
         create_mid_blend_driver_offset(control=controls[1], driver_a=controls[0], driver_b=controls[2], parent_space=self.control_space[0],blend=.5 )
+        
+        control_max = cmds.getAttr(f'{self.corner.ctrl}.maxTransXLimit')
+        corner_remap = RemapValueNode(name = f'{controls[2].name}_remap')
+        corner_remap.input_value.connect_from(f'{self.corner.ctrl}.translateX')
+        corner_remap.input_max.set(control_max)
+        corner_remap.output_max.set(self.control_size/45)
+        corner_remap.output.connect_to(f'{controls[2].ctrl}.translateX')
+        corner_remap.output.connect_to(f'{controls[2].ctrl}.translateZ')
+
             
         for i in range(self.divisions + 1):
             pos = cmds.pointOnCurve(
