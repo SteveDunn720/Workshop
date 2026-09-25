@@ -131,6 +131,9 @@ def build(rig_name:str, config:rig_config):
 
         brow = modules.Brow(control_size=canon.scene_size, side=side, parent=canon.rig, joint_parent=faceinfo.top_joint, guides=[guides.brow[0]], control_space=[faceinfo.top_control], )
         browinfo = brow.brow_build()
+
+        cheek = modules.Cheek(control_size=canon.scene_size, side=side, parent=canon.rig, joint_parent=faceinfo.mid_joint, guides=guides.cheek[side], puff_space=[faceinfo.lower_control], cheekbone_space=[faceinfo.upper_control], driver=jawinfo.jaw, head_space=headinfo.control)
+        cheekinfo = cheek.cheek_build()
     
       
 

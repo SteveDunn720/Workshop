@@ -37,6 +37,7 @@ class cannon_guide_config:
     tongue:GuideInfo
     nl:list[GuideInfo]
     brow:list[GuideInfo]
+    cheek:dict[str, list[GuideInfo]]
 
     primary_geo:str
 
@@ -76,6 +77,7 @@ def read_guides(rig_name:str='Canon')->cannon_guide_config:
 
     mouth = {}
     nose = {}
+    cheek = {}
     for side in ['L', 'R']:
         leg[side] = [read_guide(f'upperleg_{side}_guide'), read_guide(f'knee_{side}_guide'), read_guide(f'foot_{side}_guide')]
         arm[side] = [read_guide(f'shoulder_{side}_guide'), read_guide(f'elbow_{side}_guide'), read_guide(f'hand_{side}_guide')]
@@ -100,6 +102,7 @@ def read_guides(rig_name:str='Canon')->cannon_guide_config:
         nose[f'{side}_Nostril'] = read_guide(f'nose_Nostril_{side}_guide')
         nose[f'{side}_Outer'] = read_guide(f'nose_NostrilOuter_{side}_guide')
         nose[f'{side}_UpperCorner'] = read_guide(f'nose_UpperCorner_{side}_guide')
+        cheek[f'{side}'] = [read_guide(f'cheek_puff_{side}_guide'), read_guide(f'cheek_bone_{side}_guide')]
 
     #face_guides
 
@@ -149,6 +152,7 @@ def read_guides(rig_name:str='Canon')->cannon_guide_config:
         tongue=tongue,
         nl=nl,
         brow=brow,
+        cheek=cheek,
 
         primary_geo=primary_mesh,
     )
