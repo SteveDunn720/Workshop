@@ -97,7 +97,7 @@ class Brow:
             sdk_offset=False,
             dimensions=(arc_length/2, 1, 1),
             shape_rotation_offset=(90,0,0),
-            shape_position_offset=(0,self.control_size/50, self.control_size/30)
+            shape_position_offset=(-self.control_size/40,self.control_size/50, self.control_size/30)
         )
 
         pos_offset = (self.control_size/30) + pos[2] #type:ignore
@@ -123,13 +123,13 @@ class Brow:
                 name=g.descriptor,
                 parent=master_ctrl.ctrl,
                 transform=g.name,
-                size=self.control_size/80,
+                size=self.control_size/120,
                 control_shape='round_square',
                 direction="y",
                 color_type=self.main_color,
                 sdk_offset=False,
                 shape_rotation_offset=(90,0,0),
-                shape_position_offset=(0,self.control_size/50,0)
+                shape_position_offset=(-self.control_size/40,self.control_size/50,0)
             )
             macro_controls.append(ctrl)
 

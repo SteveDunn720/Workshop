@@ -20,6 +20,7 @@ from . import tongue
 from . import nl_fold
 from . import brow
 from . import cheek
+from . import ear
 
 from .root import Root
 from .biped_limb import Limb
@@ -42,7 +43,7 @@ from .tongue import Tongue
 from .nl_fold import NL_Fold
 from .brow import Brow
 from .cheek import Cheek
-
+from .ear import Ear
 
 
 
@@ -90,4 +91,6 @@ __all__ = [
 "Brow",
 "cheek",
 "Cheek",
+"ear",
+"Ear",
 ]

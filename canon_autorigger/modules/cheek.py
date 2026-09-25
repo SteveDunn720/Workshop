@@ -96,7 +96,8 @@ class Cheek:
             control_shape=self.cheekbone_shape,
             direction="y",
             color_type=self.main_color,
-            sdk_offset=True
+            sdk_offset=True,
+            shape_rotation_offset=(90,0,0)
         )
 
         module_space(control=self.cheekbone_ctrl, space_list=self.cheekbone_space)

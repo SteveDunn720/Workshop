@@ -38,6 +38,7 @@ class cannon_guide_config:
     nl:list[GuideInfo]
     brow:list[GuideInfo]
     cheek:dict[str, list[GuideInfo]]
+    ear:dict[str,GuideInfo]
 
     primary_geo:str
 
@@ -78,6 +79,7 @@ def read_guides(rig_name:str='Canon')->cannon_guide_config:
     mouth = {}
     nose = {}
     cheek = {}
+    ear = {}
     for side in ['L', 'R']:
         leg[side] = [read_guide(f'upperleg_{side}_guide'), read_guide(f'knee_{side}_guide'), read_guide(f'foot_{side}_guide')]
         arm[side] = [read_guide(f'shoulder_{side}_guide'), read_guide(f'elbow_{side}_guide'), read_guide(f'hand_{side}_guide')]
@@ -103,6 +105,10 @@ def read_guides(rig_name:str='Canon')->cannon_guide_config:
         nose[f'{side}_Outer'] = read_guide(f'nose_NostrilOuter_{side}_guide')
         nose[f'{side}_UpperCorner'] = read_guide(f'nose_UpperCorner_{side}_guide')
         cheek[f'{side}'] = [read_guide(f'cheek_puff_{side}_guide'), read_guide(f'cheek_bone_{side}_guide')]
+        ear[f'{side}_root'] = read_guide(f'ear_root_{side}_guide')
+        ear[f'{side}_lower'] = read_guide(f'ear_lower_{side}_guide')
+        ear[f'{side}_upper'] = read_guide(f'ear_upper_{side}_guide')
+        ear[f'{side}_outer'] = read_guide(f'ear_outer_{side}_guide')
 
     #face_guides
 
@@ -116,6 +122,7 @@ def read_guides(rig_name:str='Canon')->cannon_guide_config:
     tongue = read_guide('tongue_M_guide')
     nl = [read_guide('nl_L_guide'), read_guide('nl_R_guide')]
     brow = [read_guide('brow_L_guides'), read_guide('brow_R_guides')]
+
 
 
     #geo temp logic, need to decide later how this will work
@@ -144,6 +151,7 @@ def read_guides(rig_name:str='Canon')->cannon_guide_config:
         trap_correctives=trap_cor,
         necktrap_correctives=necktrap_cor,
         full_joint_correctives=True,
+        
         face=face,
         jaw=jaw,
         mouth=mouth,
@@ -153,6 +161,7 @@ def read_guides(rig_name:str='Canon')->cannon_guide_config:
         nl=nl,
         brow=brow,
         cheek=cheek,
+        ear=ear,
 
         primary_geo=primary_mesh,
     )
