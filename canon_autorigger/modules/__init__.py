@@ -21,6 +21,7 @@ from . import nl_fold
 from . import brow
 from . import cheek
 from . import ear
+from . import arbit as arbit
 
 from .root import Root
 from .biped_limb import Limb
@@ -44,6 +45,7 @@ from .nl_fold import NL_Fold
 from .brow import Brow
 from .cheek import Cheek
 from .ear import Ear
+from .arbit import Arbit
 
 
 
@@ -93,4 +95,48 @@ __all__ = [
 "Cheek",
 "ear",
 "Ear",
+"arbit",
+"Arbit",
 ]
+
+MODULE_CLASSES = [
+    Root,
+    Limb,
+    Hip,
+    Foot,
+    Spine,
+    Clav,
+    Hand,
+    Chain,
+    Metacarpal,
+    Neck,
+    Head,
+    Ik_correctives,
+    Face,
+    Jaw,
+    Mouth,
+    Nose,
+    Arch,
+    Tongue,
+    NL_Fold,
+    Brow,
+    Cheek,
+    Ear,
+    Arbit,
+]
+
+
+MODULE_REGISTRY = {
+    cls.MODULE_NAME: cls
+    for cls in MODULE_CLASSES
+    if hasattr(cls, "MODULE_NAME")
+}
+
+
+def get_module_class(module: str):
+    try:
+        return MODULE_REGISTRY[module]
+    except KeyError:
+        raise ValueError(
+            f"Unknown rig module: {module}"
+        )

@@ -7,6 +7,11 @@ from Workshop.joint import create_joint
 
 from .module_initialize import module_prep, module_space
 
+from Workshop.canon_autorigger.module_schema import (
+    ModuleSetting,
+    ModuleRelationship,
+)
+
 
 @dataclass
 class module_info:
@@ -14,11 +19,47 @@ class module_info:
     joint:str
 
 class Arbit:
+
+    MODULE_NAME = "arbit"
+    GUIDE_COUNT = 1
+
+    SETTINGS = [
+        ModuleSetting(
+            name="control_size",
+            setting_type="float",
+            default=1.0,
+        ),
+        ModuleSetting(
+            name="control_color",
+            setting_type="color",
+            default="MISC",
+        ),
+        ModuleSetting(
+            name="control_shape",
+            setting_type="control_shape",
+            default="circle",
+        ),
+    ]
+
+    RELATIONSHIPS = [
+        ModuleRelationship(
+            name="joint_parent",
+            relationship_type="joint",
+            default="auto",
+        ),
+        ModuleRelationship(
+            name="control_space",
+            relationship_type="control_list",
+            default="auto",
+        ),
+    ]
+
+
     def __init__(
         self,
         part: str = "arbit",
         side: str = "M",
-        parent: str = "components",
+        parent: str = "rig",
         control_parent: str | None = None,
         control_size: float = 1.0,
         guides: list = [],
@@ -38,6 +79,29 @@ class Arbit:
         self.control_space = control_space
         self.control_color = control_color
         self.control_shape = control_shape
+
+
+    @classmethod
+    def preview(
+        cls,
+        part: str,
+        side: str,
+    ) -> dict:
+
+        control = f"{part}_{side}_ctrl"
+        joint = f"def_{part}_{side}_jnt"
+
+        return {
+            "controls": [
+                control,
+            ],
+            "joints": [
+                joint,
+            ],
+            "output_control": control,
+            "output_joint": joint,
+        }
+
 
     # -------------------
     # Build steps

@@ -8,6 +8,9 @@ from Workshop.joint import create_joint
 from Workshop.transform.matrix import set_local_matrix
 from Workshop.transform.utils import create_transform, match_location, match_transform
 from Workshop.transform.curve import create_line_curve, style_curve, curve_cvs
+from .module import get_modules
+
+GUIDE_TAG = "isGuide_TAG"
 
 @dataclass
 class GuideInfo:
@@ -15,13 +18,14 @@ class GuideInfo:
     pos: tuple[float, float, float]
     rot: tuple[float, float, float]
     guide_type: str
+
     extra_channels: list[str] = field(default_factory=list)
     descriptor: str = ""
-    guide_parent:str = ""
-    component:str = ""
-    side:str = ""
+    side: str = ""
 
-
+    modules: list = field(
+        default_factory=list
+    )
 @dataclass
 class SplineGuideInfo:
     curve:GuideInfo
@@ -123,41 +127,83 @@ def align_guides(
     return guide_01
 
 
-def create_guide_from_position(pos, guide_name, parent, component_type:str | None = None)->GuideInfo:
-    guide = create_joint(name=f'{guide_name}_guide', connect=False, parent=parent, suffix=False)
+def create_guide_from_position(
+    pos,
+    guide_name,
+    parent=None,
+    component_type: str | None = None,
+) -> GuideInfo:
+
+    guide = create_joint(
+        name=f"{guide_name}_guide",
+        connect=False,
+        parent=parent,
+        suffix=False,
+    )
 
     if isinstance(pos, str):
         if not cmds.objExists(pos):
-            print(f'{pos} does not exist')
+            print(f"{pos} does not exist")
             return None
-        match_location(transform=guide, target_transform=pos)
+
+        match_location(
+            transform=guide,
+            target_transform=pos,
+        )
+
     elif isinstance(pos, (list, tuple)):
-        cmds.xform(guide, query=False, worldSpace=True, translation=pos)
+        cmds.xform(
+            guide,
+            worldSpace=True,
+            translation=pos,
+        )
+
     elif isinstance(pos, MMatrix):
-        set_local_matrix(transform=guide, matrix=pos, use_joint_orient=False, )
+        set_local_matrix(
+            transform=guide,
+            matrix=pos,
+            use_joint_orient=False,
+        )
+
     else:
-        print(f'{pos} is incompatible')
+        print(f"{pos} is incompatible")
         return None
-    return_pos = cmds.xform(guide, query=True, translation=True, worldSpace=True)
-    return_rot = cmds.xform(guide, query=True, rotation=True, worldSpace=True)
     
-    info = GuideInfo(name=guide, pos=return_pos, rot=return_rot, guide_type='joint', extra_channels=[], descriptor=guide_name) #type:ignore
+    
+
+    return_pos = cmds.xform(
+        guide,
+        query=True,
+        translation=True,
+        worldSpace=True,
+    )
+
+    return_rot = cmds.xform(
+        guide,
+        query=True,
+        rotation=True,
+        worldSpace=True,
+    )
+
     add_guide_metadata(
         guide=guide,
         descriptor=guide_name,
         guide_type="joint",
-        guide_parent=parent,
-        component=component_type
     )
-    return info
+
+    set_guide_tag(guide)
+
+    return GuideInfo(
+        name=guide,
+        pos=tuple(return_pos),
+        rot=tuple(return_rot),
+        guide_type="joint",
+        descriptor=guide_name,
+    )
 
 
 def read_guide(guide: str) -> GuideInfo:
-    #Create GuideInfo from an existing Maya guide
-
-    attrs = ['descriptor_TAG', 'guidetype_TAG', 'guideparent_TAG', 'component_TAG']
-    
-
+    """Create GuideInfo from an existing Maya guide."""
 
     if not cmds.objExists(guide):
         raise ValueError(f"Guide does not exist: {guide}")
@@ -176,71 +222,76 @@ def read_guide(guide: str) -> GuideInfo:
         rotation=True,
     )
 
-    node_type = cmds.nodeType(guide)
+    # -------------------
+    # Guide type
+    # -------------------
 
-    if cmds.attributeQuery(attrs[1], node=guide, exists=True):
-        guide_type = cmds.getAttr(f'{guide}.{attrs[1]}')
+    if cmds.attributeQuery(
+        "guidetype_TAG",
+        node=guide,
+        exists=True,
+    ):
+        guide_type = cmds.getAttr(
+            f"{guide}.guidetype_TAG"
+        )
+
     else:
+        node_type = cmds.nodeType(guide)
+
         if node_type == "joint":
             guide_type = "joint"
+
         elif node_type == "transform":
-            shapes = cmds.listRelatives(guide, shapes=True) or []
+            shapes = cmds.listRelatives(
+                guide,
+                shapes=True,
+            ) or []
 
             if shapes and cmds.nodeType(shapes[0]) == "nurbsCurve":
                 guide_type = "curve"
             else:
                 guide_type = "transform"
+
         else:
-            guide_type = node_type[0]
-        cmds.addAttr(
-            guide,
-            longName=attrs[1],
-            dataType="string",
+            guide_type = node_type
+
+        add_guide_metadata(
+            guide=guide,
+            descriptor=guide.removesuffix("_guide"),
+            guide_type=guide_type,
         )
 
-        cmds.setAttr(
-            f"{guide}.{attrs[1]}",
-            guide_type,
-            type="string",
-        )
-    
+    # -------------------
+    # Descriptor
+    # -------------------
+
     descriptor = guide.removesuffix("_guide")
+
+    # -------------------
+    # Extra channels
+    # -------------------
+
     extra_channels = []
 
-    if cmds.attributeQuery("guideExtraChannels", node=guide, exists=True):
-        channel_string = cmds.getAttr(f"{guide}.guideExtraChannels") or ""
+    if cmds.attributeQuery(
+        "guideExtraChannels",
+        node=guide,
+        exists=True,
+    ):
+        channel_string = (
+            cmds.getAttr(f"{guide}.guideExtraChannels")
+            or ""
+        )
+
         extra_channels = [
             channel
             for channel in channel_string.split(",")
             if channel
         ]
 
-    if cmds.attributeQuery(attrs[2], node=guide, exists=True):
-        parent = cmds.getAttr(f'{guide}.{attrs[2]}')
-    else:
-        parent = cmds.listRelatives(guide, parent=True)[0]
-        cmds.addAttr(
-            guide,
-            longName=attrs[2],
-            dataType="string",
-        )
-
-        cmds.setAttr(
-            f"{guide}.{attrs[2]}",
-            parent,
-            type="string",
-        )
-
-    if cmds.attributeQuery(attrs[3], node=guide, exists=True):
-        comp = cmds.getAttr(f'{guide}.{attrs[3]}')
-    else:
-        comp = None
-        cmds.addAttr(
-            guide,
-            longName=attrs[3],
-            dataType="string",
-        )
-        
+    # -------------------
+    # Side
+    # -------------------
 
     if "_L_" in guide:
         side = "L"
@@ -249,47 +300,44 @@ def read_guide(guide: str) -> GuideInfo:
     elif "_M_" in guide:
         side = "M"
     else:
-        side = None
-    
+        side = ""
 
     return GuideInfo(
         name=guide,
-        pos=tuple(pos), #type:ignore
-        rot=tuple(rot), #type:ignore
-        guide_type=guide_type, #type:ignore
+        pos=tuple(pos),
+        rot=tuple(rot),
+        guide_type=guide_type,
         extra_channels=extra_channels,
         descriptor=descriptor,
-        guide_parent = parent, 
-        component=comp, #type:ignore
-        side=side #type:ignore
+        side=side,
+        modules=get_modules(guide),
     )
 
 def add_guide_metadata(
     guide: str,
     descriptor: str,
     guide_type: str,
-    guide_parent: str, 
-    component: str | None
-
 ) -> None:
     """Store guide identification data directly on a Maya node."""
 
-    attrs = ['descriptor_TAG', 'guidetype_TAG', 'guideparent_TAG', 'component_TAG']
-    values = [descriptor, guide_type, guide_parent, component]
+    attrs = {
+        "descriptor_TAG": descriptor,
+        "guidetype_TAG": guide_type,
+    }
 
-    for i, attr, in enumerate(attrs):
-        if values[i]:
+    for attr, value in attrs.items():
+        if not cmds.attributeQuery(attr, node=guide, exists=True):
             cmds.addAttr(
                 guide,
                 longName=attr,
                 dataType="string",
             )
 
-            cmds.setAttr(
-                f"{guide}.{attr}",
-                values[i],
-                type="string",
-            )
+        cmds.setAttr(
+            f"{guide}.{attr}",
+            value,
+            type="string",
+        )
 
 
 def create_spline_guide(parent:str, lower_name:str='lower', upper_name:str='upper', curve_name:str='spline', side:str='M', position:list=[]):
@@ -462,7 +510,7 @@ def create_midpoint_guide(
             query=True,
             worldSpace=True,
             translation=True,
-        )
+        )  #type:ignore
     )
 
     midpoint_guide.rot = tuple(
@@ -471,7 +519,97 @@ def create_midpoint_guide(
             query=True,
             worldSpace=True,
             rotation=True,
-        )
+        ) #type:ignore
     )
 
     return midpoint_guide
+
+
+def is_guide(node: str) -> bool:
+    """
+    Return whether a node is explicitly marked as a Workshop guide.
+    """
+
+    if not cmds.objExists(node):
+        return False
+
+    if not cmds.attributeQuery(
+        GUIDE_TAG,
+        node=node,
+        exists=True,
+    ):
+        return False
+
+    return bool(
+        cmds.getAttr(f"{node}.{GUIDE_TAG}")
+    )
+
+
+def set_guide_tag(
+    node: str,
+    state: bool = True,
+) -> None:
+    """
+    Explicitly mark or unmark a node as a Workshop guide.
+    """
+
+    if not cmds.objExists(node):
+        raise ValueError(
+            f"Node does not exist: {node}"
+        )
+
+    if not cmds.attributeQuery(
+        GUIDE_TAG,
+        node=node,
+        exists=True,
+    ):
+        cmds.addAttr(
+            node,
+            longName=GUIDE_TAG,
+            attributeType="bool",
+            defaultValue=state,
+        )
+
+    cmds.setAttr(
+        f"{node}.{GUIDE_TAG}",
+        state,
+    )
+
+
+def tag_existing_joint_guides(
+    root: str = "root_M_guide",
+) -> list[str]:
+    """
+    Add the explicit guide tag to existing joint guides.
+
+    Intended as a migration utility for older guide scenes.
+    """
+
+    if not cmds.objExists(root):
+        raise ValueError(
+            f"Root does not exist: {root}"
+        )
+
+    descendants = cmds.listRelatives(
+        root,
+        allDescendents=True,
+        fullPath=False,
+    ) or []
+
+    nodes = [root] + descendants
+
+    tagged = []
+
+    for node in nodes:
+
+        if cmds.nodeType(node) not in ("joint", "curve"):
+            continue
+
+        if not node.endswith("_guide"):
+            continue
+
+        set_guide_tag(node)
+        tagged.append(node)
+
+    return tagged
+
