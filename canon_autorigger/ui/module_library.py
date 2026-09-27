@@ -131,11 +131,14 @@ class ModuleLibrary(QtWidgets.QDialog):
         self.current_edit_part = None
         self.current_edit_guide = None
 
+        self.dirty_settings: set[str] = set()
+
         self._build_ui()
         self._connect_signals()
 
         self.refresh_module_ui()
         self.refresh_scene_guides()
+        self.dirty_settings: set[str] = set()
 
     # --------------------------------------------------
     # UI
@@ -256,7 +259,7 @@ class ModuleLibrary(QtWidgets.QDialog):
 
         self.module_layout.addRow(
             self.add_button
-)
+        )
 
         # ==================================================
         # SCENE GUIDES
@@ -378,6 +381,15 @@ class ModuleLibrary(QtWidgets.QDialog):
     # --------------------------------------------------
     # CURRENT MODULE
     # --------------------------------------------------
+
+    def mark_setting_dirty(
+        self,
+        setting_name: str,
+    ) -> None:
+
+        self.dirty_settings.add(
+            setting_name
+        )
 
     def get_selected_guides(
         self,
@@ -524,6 +536,12 @@ class ModuleLibrary(QtWidgets.QDialog):
         self.settings_layout.addRow(
             self.apply_settings_button
         )
+        self.settings_layout.addRow(
+            self.apply_settings_button
+        )
+
+        # Ignore any signals fired while populating the UI.
+        self.dirty_settings.clear()
 
     def apply_selected_guide_settings(
         self,
@@ -546,6 +564,14 @@ class ModuleLibrary(QtWidgets.QDialog):
 
             return
 
+        if not self.dirty_settings:
+
+            print(
+                "No settings changed."
+            )
+
+            return
+
         settings = self.get_setting_values()
 
         updated = 0
@@ -555,18 +581,19 @@ class ModuleLibrary(QtWidgets.QDialog):
             if not instance.guides:
                 continue
 
-            # First guide owns the settings for
-            # this module instance.
             owner_guide = instance.guides[0]
 
-            for setting_name, value in settings.items():
+            for setting_name in self.dirty_settings:
+
+                if setting_name not in settings:
+                    continue
 
                 set_module_setting(
                     guide=owner_guide,
                     module=instance.module,
                     part=instance.part,
                     setting=setting_name,
-                    value=value,
+                    value=settings[setting_name],
                 )
 
             updated += 1
@@ -577,14 +604,26 @@ class ModuleLibrary(QtWidgets.QDialog):
             f"module instance(s)"
         )
 
-        # Reload the primary edited module.
-        if self.current_edit_guide:
+        print(
+            "Changed settings:",
+            sorted(self.dirty_settings),
+        )
+
+        guide = self.current_edit_guide
+        module = self.current_edit_module
+        part = self.current_edit_part
+
+        if guide and module and part:
 
             self.load_guide_settings(
-                guide=self.current_edit_guide,
-                module=self.current_edit_module,
-                part=self.current_edit_part,
+                guide=guide,
+                module=module,
+                part=part,
             )
+
+        else:
+
+            self.dirty_settings.clear()
 
     def get_selected_module_instances(
         self,
@@ -695,8 +734,11 @@ class ModuleLibrary(QtWidgets.QDialog):
         self,
     ) -> dict:
 
-        module_class = (
-            self.get_current_module_class()
+        if self.current_edit_module is None:
+            return {}
+
+        module_class = get_module_class(
+            self.current_edit_module
         )
 
         values = {}
@@ -727,6 +769,7 @@ class ModuleLibrary(QtWidgets.QDialog):
                 values[setting.name] = (
                     widget.currentText()
                 )
+
             elif setting.setting_type == "string":
 
                 values[setting.name] = (
@@ -771,6 +814,11 @@ class ModuleLibrary(QtWidgets.QDialog):
                     float(setting.default)
                 )
 
+            widget.valueChanged.connect(
+                lambda _value, name=setting.name:
+                self.mark_setting_dirty(name)
+            )
+
             return widget
 
         # --------------------------------------------------
@@ -785,12 +833,16 @@ class ModuleLibrary(QtWidgets.QDialog):
                 bool(setting.default)
             )
 
+            widget.toggled.connect(
+                lambda _value, name=setting.name:
+                self.mark_setting_dirty(name)
+            )
+
             return widget
 
         # --------------------------------------------------
-        # String
+        # STRING
         # --------------------------------------------------
-
 
         if setting.setting_type == "string":
 
@@ -800,6 +852,12 @@ class ModuleLibrary(QtWidgets.QDialog):
                 widget.setText(
                     str(setting.default)
                 )
+
+            # textEdited only fires when the user edits it.
+            widget.textEdited.connect(
+                lambda _value, name=setting.name:
+                self.mark_setting_dirty(name)
+            )
 
             return widget
 
@@ -821,7 +879,6 @@ class ModuleLibrary(QtWidgets.QDialog):
                     shape_info.name
                 )
 
-            # Set schema default
             if setting.default is not None:
 
                 index = widget.findText(
@@ -832,6 +889,11 @@ class ModuleLibrary(QtWidgets.QDialog):
                     widget.setCurrentIndex(
                         index
                     )
+
+            widget.currentIndexChanged.connect(
+                lambda _index, name=setting.name:
+                self.mark_setting_dirty(name)
+            )
 
             return widget
 
