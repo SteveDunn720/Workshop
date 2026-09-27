@@ -236,3 +236,18 @@ def get_mesh_shells(
         )
 
     return shells
+
+
+def get_selected_mesh() -> str | None:
+    """Get the first selected polygon mesh transform."""
+
+    selected = cmds.ls(
+        selection=True,
+        long=False,
+    ) or []
+
+    for obj in selected:
+        if is_mesh(obj):
+            return get_mesh_transform(obj)
+
+    return None

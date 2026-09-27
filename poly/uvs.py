@@ -731,3 +731,67 @@ def get_uv_shells(
         )
 
     return shells
+
+
+def get_used_udims(
+    mesh: str,
+    uv_set: str,
+) -> list[int]:
+    """Get all UDIM tiles containing UVs in a UV set."""
+
+    validate_uv_set(
+        mesh=mesh,
+        uv_set=uv_set,
+    )
+
+    uv_count = cmds.polyEvaluate(
+        mesh,
+        uv=True,
+        uvSetName=uv_set,
+    ) or 0
+
+    current_uv_set = get_current_uv_set(
+        mesh=mesh,
+    )
+
+    udims: set[int] = set()
+
+    try:
+        set_current_uv_set(
+            mesh=mesh,
+            uv_set=uv_set,
+        )
+
+        for uv_index in range(uv_count):
+
+            uv = f"{mesh}.map[{uv_index}]"
+
+            position = cmds.polyEditUV(
+                uv,
+                query=True,
+            )
+
+            if not position:
+                continue
+
+            u, v = position
+
+            u_tile = int(u)
+            v_tile = int(v)
+
+            udim = (
+                1001
+                + u_tile
+                + (v_tile * 10)
+            )
+
+            udims.add(udim)
+
+    finally:
+        if current_uv_set is not None:
+            set_current_uv_set(
+                mesh=mesh,
+                uv_set=current_uv_set,
+            )
+
+    return sorted(udims)

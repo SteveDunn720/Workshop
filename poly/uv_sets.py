@@ -2,6 +2,8 @@ import maya.cmds as cmds
 
 from Workshop.poly.convert import to_border_edges, uv_shell_to_faces
 
+POLYGROUP_UV_PREFIX = "PG_"
+
 try:
     from PySide6 import QtCore, QtGui, QtWidgets
     from shiboken6 import wrapInstance
@@ -376,4 +378,70 @@ def uv_set_exists(
 
     return uv_set in get_uv_sets(
         mesh=mesh,
+    )
+
+
+def get_polygroup_uv_set_name(
+    name: str,
+) -> str:
+    """Generate a UV set name for a polygroup layer."""
+
+    if name.startswith(POLYGROUP_UV_PREFIX):
+        return name
+
+    return f"{POLYGROUP_UV_PREFIX}{name}"
+
+
+def get_polygroup_uv_sets(
+    mesh: str,
+) -> list[str]:
+    """Get all polygroup UV sets on a mesh."""
+
+    return [
+        uv_set
+        for uv_set in get_uv_sets(mesh=mesh)
+        if uv_set.startswith(
+            POLYGROUP_UV_PREFIX
+        )
+    ]
+
+
+def get_polygroup_layer_name(
+    uv_set: str,
+) -> str:
+    """Get the layer name from a polygroup UV set."""
+
+    if not uv_set.startswith(
+        POLYGROUP_UV_PREFIX
+    ):
+        raise ValueError(
+            f"UV set '{uv_set}' is not "
+            "a polygroup UV set."
+        )
+
+    return uv_set[
+        len(POLYGROUP_UV_PREFIX):
+    ]
+
+
+def set_primary_uv_set(
+    mesh: str,
+) -> None:
+    """Set the mesh to its primary UV set."""
+
+    uv_sets = get_uv_sets(
+        mesh=mesh,
+    )
+
+    if not uv_sets:
+        return
+
+    if PRIMARY_UV_SET in uv_sets:
+        uv_set = PRIMARY_UV_SET
+    else:
+        uv_set = uv_sets[0]
+
+    set_current_uv_set(
+        mesh=mesh,
+        uv_set=uv_set,
     )

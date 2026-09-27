@@ -8,9 +8,9 @@ from Workshop.poly.convert import (
     uv_shell_to_faces,
     uv_shell_to_verts,
 )
-from Workshop.poly.uvs import faces_to_uv_shell, faces_to_uvs, fit_uvs_to_udim, get_uv_shell, get_uv_shell_count, get_uv_shell_from_id, get_uv_shell_id, get_uv_shells, get_uvs_in_udim, move_uv_shell_to_udim, sew_uv_edges
+from Workshop.poly.uvs import faces_to_uv_shell, faces_to_uvs, fit_uvs_to_udim, get_used_udims, get_uv_shell, get_uv_shell_count, get_uv_shell_from_id, get_uv_shell_id, get_uv_shells, get_uvs_in_udim, move_uv_shell_to_udim, sew_uv_edges
 from Workshop.poly.meshes import get_mesh_shells, is_mesh
-from Workshop.poly.uv_sets import copy_uv_set, create_uv_set
+from Workshop.poly.uv_sets import copy_uv_set, create_uv_set, get_uv_sets
 from Workshop.poly.uv_sets import (
     create_uv_set,
     validate_uv_set,
@@ -20,6 +20,7 @@ from Workshop.color.maya import set_faces_color
 from Workshop.color.maya import set_color_display as set_mesh_color_display
 from Workshop.color.core import random_color
 
+POLYGROUP_UV_PREFIX = "PG_"
 
 @dataclass
 class PolyGroup:
@@ -121,6 +122,8 @@ class PolyGroupLayer:
             mesh=self.mesh,
             enabled=enabled,
         )
+
+
 
 def initialize_polygroup_layer(
     mesh: str,
@@ -254,13 +257,15 @@ def initialize_polygroup_sublayer(
 def initialize_polygroup(
     layer: PolyGroupLayer | PolyGroupSubLayer,
     name: str | None = None,
+    index: int | None = None,
     color: tuple[float, float, float] | None = None,
 ) -> PolyGroup:
     """Initialize a polygroup."""
 
-    index = get_next_polygroup_index(
-        layer=layer,
-    )
+    if index is None:
+        index = get_next_polygroup_index(
+            layer=layer,
+        )
 
     if name is None:
         name = generate_polygroup_name(
@@ -354,7 +359,9 @@ def generate_polygroups_from_uv_shells(
         uv_set=source_uv_set,
     )
 
-    polygroup_uv_set = f"{name}_UV"
+    polygroup_uv_set = get_polygroup_uv_set_name(
+        name=name,
+    )
 
     copy_uv_set(
         mesh=mesh,
@@ -396,7 +403,7 @@ def create_polygroup_from_selection(
     name: str | None = None,
     color: tuple[float, float, float] | None = None,
 ) -> PolyGroup:
-    """Create a polygroup from the currently selected faces."""
+    """Create a polygroup from the selected faces."""
 
     faces = get_selected_faces()
 
@@ -405,6 +412,7 @@ def create_polygroup_from_selection(
             "No polygon faces selected."
         )
 
+    # Make the selected region its own clean UV shell.
     faces_to_uv_shell(
         faces=faces,
         uv_set=layer.uv_set,
@@ -412,8 +420,10 @@ def create_polygroup_from_selection(
         sew_interior=True,
     )
 
+    # We already know the membership:
+    # exactly the faces the user selected.
     uvs = faces_to_uvs(
-        faces,
+        faces=faces,
         uv_set=layer.uv_set,
     )
 
@@ -422,11 +432,6 @@ def create_polygroup_from_selection(
             "Could not find UVs for selected faces."
         )
 
-    shell_uvs = get_uv_shell(
-        uv=uvs[0],
-        uv_set=layer.uv_set,
-    )
-
     polygroup = initialize_polygroup(
         layer=layer,
         name=name,
@@ -434,10 +439,10 @@ def create_polygroup_from_selection(
     )
 
     fit_uvs_to_udim(
-    uvs=shell_uvs,
-    udim=polygroup.udim,
-    uv_set=layer.uv_set,
-)
+        uvs=uvs,
+        udim=polygroup.udim,
+        uv_set=layer.uv_set,
+    )
 
     polygroup.apply_color()
 
@@ -626,3 +631,185 @@ def delete_polygroup(
         target=default,
         source=polygroup,
     )
+
+
+def get_polygroup_uv_set_name(
+    name: str,
+) -> str:
+    """Generate a UV set name for a polygroup layer."""
+
+    return f"{POLYGROUP_UV_PREFIX}{name}"
+
+def get_polygroup_uv_sets(
+    mesh: str,
+) -> list[str]:
+    """Get UV sets belonging to the polygroup system."""
+
+    return [
+        uv_set
+        for uv_set in get_uv_sets(mesh=mesh)
+        if uv_set.startswith(POLYGROUP_UV_PREFIX)
+    ]
+
+def get_polygroup_layer_name(
+    uv_set: str,
+) -> str:
+    """Get the layer name encoded in a polygroup UV set."""
+
+    if not uv_set.startswith(POLYGROUP_UV_PREFIX):
+        raise ValueError(
+            f"'{uv_set}' is not a polygroup UV set."
+        )
+
+    return uv_set[len(POLYGROUP_UV_PREFIX):]
+
+
+def get_polygroup_index_from_udim(
+    udim: int,
+) -> int:
+    """Get a polygroup index from its UDIM."""
+
+    if udim < 1001:
+        raise ValueError(
+            f"Invalid UDIM: {udim}"
+        )
+
+    return udim - 1001
+
+
+def read_polygroup_layer_from_scene(
+    mesh: str,
+    uv_set: str,
+) -> PolyGroupLayer:
+    """Reconstruct a PolyGroupLayer from its UV set."""
+
+    layer_name = get_polygroup_layer_name(
+        uv_set=uv_set,
+    )
+
+    layer = PolyGroupLayer(
+        name=layer_name,
+        mesh=mesh,
+        uv_set=uv_set,
+    )
+
+    used_udims = get_used_udims(
+        mesh=mesh,
+        uv_set=uv_set,
+    )
+
+    for udim in used_udims:
+
+        index = get_polygroup_index_from_udim(
+            udim=udim,
+        )
+
+        polygroup = PolyGroup(
+            name=f"polygroup_{index:02d}",
+            index=index,
+            mesh=mesh,
+            uv_set=uv_set,
+            color=random_color(),
+        )
+
+        layer.polygroups.append(
+            polygroup
+        )
+
+    return layer
+
+
+def get_polygroup_layers_from_scene(
+    mesh: str,
+) -> list[PolyGroupLayer]:
+    """Discover all polygroup layers on a mesh."""
+
+    layers = []
+
+    uv_sets = get_polygroup_uv_sets(
+        mesh=mesh,
+    )
+
+    for uv_set in uv_sets:
+
+        layer = read_polygroup_layer_from_scene(
+            mesh=mesh,
+            uv_set=uv_set,
+        )
+
+        layers.append(layer)
+
+    return layers
+
+
+def fix_polygroup_shells(
+    layer: PolyGroupLayer | PolyGroupSubLayer,
+) -> None:
+    """Rebuild and refit every polygroup in a layer."""
+
+    # Capture membership BEFORE changing any UVs.
+    polygroup_faces = [
+        (
+            polygroup,
+            polygroup.get_faces(),
+        )
+        for polygroup in layer.polygroups
+    ]
+
+    for polygroup, faces in polygroup_faces:
+
+        if not faces:
+            continue
+
+        # Rebuild the UV boundaries for this polygroup.
+        faces_to_uv_shell(
+            faces=faces,
+            uv_set=layer.uv_set,
+            create_uv_set_if_missing=False,
+            sew_interior=True,
+        )
+
+        # Get exactly the UVs belonging to these faces.
+        uvs = faces_to_uvs(
+            faces=faces,
+            uv_set=layer.uv_set,
+        )
+
+        if not uvs:
+            continue
+
+        # Force all of them back inside the group's tile.
+        fit_uvs_to_udim(
+            uvs=uvs,
+            udim=polygroup.udim,
+            uv_set=layer.uv_set,
+        )
+
+
+def create_polygroup_layer(
+    mesh: str,
+    name: str = "polygroup_layer",
+) -> PolyGroupLayer:
+    """Create a new blank polygroup layer."""
+
+    uv_set = get_polygroup_uv_set_name(
+        name=name,
+    )
+
+    create_uv_set(
+        mesh=mesh,
+        uv_set=uv_set,
+        initialize=True,
+    )
+
+    layer = PolyGroupLayer(
+        name=name,
+        mesh=mesh,
+        uv_set=uv_set,
+    )
+
+    initialize_default_polygroup(
+        layer=layer,
+    )
+
+    return layer
