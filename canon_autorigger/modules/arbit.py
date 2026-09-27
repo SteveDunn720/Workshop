@@ -4,12 +4,14 @@ from Workshop.control.core import Control
 from Workshop.transform.constraint import constraint
 from Workshop.control import create_control
 from Workshop.joint import create_joint
+from Workshop.guide.core import read_guide
 
 from .module_initialize import module_prep, module_space
 
 from Workshop.canon_autorigger.module_schema import (
     ModuleSetting,
     ModuleRelationship,
+    ModuleGuide,
 )
 
 
@@ -21,9 +23,15 @@ class module_info:
 class Arbit:
 
     MODULE_NAME = "arbit"
-    GUIDE_COUNT = 1
+    DISPLAY_NAME = "Arbit"
 
-    SETTINGS = [
+    GUIDES = (
+        ModuleGuide(
+            name="arbit",
+        ),
+    )
+
+    SETTINGS = (
         ModuleSetting(
             name="control_size",
             setting_type="float",
@@ -31,7 +39,7 @@ class Arbit:
         ),
         ModuleSetting(
             name="control_color",
-            setting_type="color",
+            setting_type="string",
             default="MISC",
         ),
         ModuleSetting(
@@ -39,9 +47,9 @@ class Arbit:
             setting_type="control_shape",
             default="circle",
         ),
-    ]
+    )
 
-    RELATIONSHIPS = [
+    RELATIONSHIPS = (
         ModuleRelationship(
             name="joint_parent",
             relationship_type="joint",
@@ -52,7 +60,7 @@ class Arbit:
             relationship_type="control_list",
             default="auto",
         ),
-    ]
+    )
 
 
     def __init__(
@@ -86,22 +94,31 @@ class Arbit:
         cls,
         part: str,
         side: str,
+        guides: list[str],
+        settings: dict,
     ) -> dict:
 
-        control = f"{part}_{side}_ctrl"
-        joint = f"def_{part}_{side}_jnt"
+        if not guides:
+            return {
+                "controls": [],
+                "joints": [],
+                "output_control": None,
+                "output_joint": None,
+            }
+
+        guide = read_guide(
+            guides[0]
+        )
+
+        control = f"{guide.descriptor}_ctrl"
+        joint = f"def_{guide.descriptor}_jnt"
 
         return {
-            "controls": [
-                control,
-            ],
-            "joints": [
-                joint,
-            ],
+            "controls": [control],
+            "joints": [joint],
             "output_control": control,
             "output_joint": joint,
         }
-
 
     # -------------------
     # Build steps
@@ -117,7 +134,7 @@ class Arbit:
 
         #controls
         self.arbit_ctrl = create_control(
-            name=f'{self.part}_{self.side}',
+            name=self.guides[0].descriptor,
             parent=self.control_grp,
             transform=self.guides[0].name,
             size=self.control_size,
@@ -130,7 +147,7 @@ class Arbit:
 
         #joints
 
-        self.arbit_joint = create_joint(name=f'def_{self.part}_{self.side}', transform=self.arbit_ctrl.ctrl, connect=True, parent=self.joint_parent)
+        self.arbit_joint = create_joint(name=f'def_{self.guides[0].descriptor}', transform=self.arbit_ctrl.ctrl, connect=True, parent=self.joint_parent)
 
         constraint(drivers=[self.arbit_ctrl.ctrl], driven=self.arbit_joint, constraint_type='parent', parent=self.guts)
 

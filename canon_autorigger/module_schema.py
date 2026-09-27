@@ -17,6 +17,23 @@ class ModuleRelationship:
     relationship_type: str
     default: Any = None
 
+@dataclass
+class ModuleGuide:
+    name: str
+    parent: str | None = None
+    position: tuple[float, float, float] = (0.0, 0.0, 0.0)
+    rotation: tuple[float, float, float] = (0.0, 0.0, 0.0)
+    guide_type: str = "joint"
+
+@dataclass
+class ModuleGuideArray:
+    name: str
+    default_count: int = 3
+    minimum_count: int = 1
+    spacing: tuple[float, float, float] = (0.0, 5.0, 0.0)
+    rotation: tuple[float, float, float] = (0.0, 0.0, 0.0)
+    guide_type: str = "joint"
+    parented: bool = True
 
 def get_setting(
     module_class,
