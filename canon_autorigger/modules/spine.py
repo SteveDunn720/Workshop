@@ -97,7 +97,7 @@ class Spine:
         cmds.delete(aim)
 
 
-    def spine_build(self):
+    def build(self):
 
         #modeule prep work
         prep = module_prep(part=self.part, parent=self.parent, side=self.side, fkik=True, gut=True)

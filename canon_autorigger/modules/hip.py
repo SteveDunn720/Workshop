@@ -40,7 +40,7 @@ class Hip:
     # Build steps
     # -------------------
 
-    def hip_build(self) ->module_info:
+    def build(self) ->module_info:
         prep = module_prep(part=self.part, parent=self.parent, side=self.side, fkik=False)
         self.main_grp = prep.main_grp
         self.control_grp = prep.control_grp

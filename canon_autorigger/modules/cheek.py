@@ -57,7 +57,7 @@ class Cheek:
     # Build steps
     # -------------------
 
-    def cheek_build(self)->module_info:
+    def build(self)->module_info:
 
         #modeule prep work
         prep = module_prep(part=self.part, parent=self.parent, side=self.side, fkik=False, gut=True)

@@ -49,7 +49,7 @@ class Roll:
     # Build steps
     # -------------------
 
-    def roll_build(self):
+    def build(self):
         roll_tforms = []
         roll_group = create_transform(name=f'roll_{self.side}_grp', transform=self.guides.true_ball.name,)
         roll_tforms.append(roll_group)

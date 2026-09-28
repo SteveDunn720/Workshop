@@ -145,7 +145,7 @@ class Foot:
             compress_condition.out_color.r.connect_to(translate_attr)
         
 
-    def foot_build(self):
+    def build(self):
         prep = module_prep(part=self.part, parent=self.parent, side=self.side, fkik=True)
         self.main_grp = prep.main_grp
         self.control_grp = prep.control_grp
@@ -263,7 +263,7 @@ class Foot:
         cmds.parent(roll_ik.handle, self.guts)
 
         roll = Roll(part='roll', control_size=self.control_size, side=self.side, joints= [f'foot_{self.side}', f'ball_{self.side}'], guides=self.feet_guides, control_parent=self.ik_foot.ctrl)
-        roll_info = roll.roll_build()
+        roll_info = roll.build()
 
         #self.build_compressible_ik_length(name=f'{self.part}_{self.side}_roll', root_reference=roll_info.roll_ctrl.top, ik_control=roll_info.down_driver, down_axis='X', length_joint=self.ik_roll_joints[1])
 

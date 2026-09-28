@@ -37,23 +37,23 @@ def build(rig_name:str, config:rig_config):
 
 
     root = modules.Root(control_size=canon.scene_size, joint_parent=canon.joints, parent=canon.rig, guides=[guides.root])
-    root_info = root.root_build()
+    root_info = root.build()
 
 
 
     #middle modules
 
     hip = modules.Hip(control_size=canon.scene_size, parent=canon.rig, joint_parent=root_info.joint, control_space=[root_info.offset_control.ctrl], guides=[guides.hip])
-    hipinfo = hip.hip_build()
+    hipinfo = hip.build()
 
     spine = modules.Spine(control_size=canon.scene_size, parent=canon.rig, joint_parent=hipinfo.hip_joint, guides=guides.spine, root_hook=[hipinfo.cog_control, hipinfo.hip_control], control_space=[hipinfo.cog_control.ctrl])
-    spineinfo = spine.spine_build()
+    spineinfo = spine.build()
 
     neck = modules.Neck(control_size=canon.scene_size, parent=canon.rig, joint_parent=spineinfo.bind_joints[-1], guides=guides.neck, control_space=[spineinfo.chest_off.ctrl])
-    neckinfo = neck.neck_build()
+    neckinfo = neck.build()
 
     head = modules.Head(control_size=canon.scene_size, parent=canon.rig, joint_parent=neckinfo.joint[-1], guides=guides.head, control_space=[neckinfo.control[-1].ctrl])
-    headinfo = head.head_build()
+    headinfo = head.build()
      
 
 
@@ -63,25 +63,25 @@ def build(rig_name:str, config:rig_config):
     for side in ["L", "R"]:
     
         leg = modules.Limb(part='leg', control_size=canon.scene_size, parent=canon.rig, joint_parent=hipinfo.hip_joint, side=side, guides=guides.leg[side],ik_end_control = False, fk_control_space=[hipinfo.hip_control.ctrl], ik_root_control_space=[ hipinfo.hip_control.ctrl, root_info.root_control.ctrl,], ik_pv_control_space=[root_info.root_control.ctrl, hipinfo.hip_control.ctrl], ik_end_control_space=[root_info.root_control.ctrl, hipinfo.hip_control.ctrl], ikfk_blend=0, ik_length=True, fk_shape_twist=90)
-        leg_info = leg.limb_build()
+        leg_info = leg.build()
 
         footguide = generate_foot_guides(side=side, parent=None)
         foot = modules.Foot(part='feet', control_size=canon.scene_size, parent=canon.rig, side=side, joint_parent=leg_info.bind_joints[-1] ,  guides= guides.foot[side], fk_control_space=[leg_info.fk_controls[-1].ctrl], ik_control_space=[root_info.offset_control.ctrl, hipinfo.hip_control.ctrl, ], ik_hook=leg_info.end_ik_hook, feet_guides=footguide, fkik_switch_attr=leg_info.fk_ik_switch, leg_info=leg_info)
-        foot_info = foot.foot_build()
+        foot_info = foot.build()
 
 
         clav = modules.Clav(part='clav', side=side, control_size=canon.scene_size, parent=canon.rig, joint_parent=spineinfo.bind_joints[-1], guides=guides.clav[side], control_space=[spineinfo.chest_off.ctrl, spineinfo.switch_joints[-1]])
-        clav_info = clav.clav_build()
+        clav_info = clav.build()
 
         arm = modules.Limb(part='arm', control_size=canon.scene_size, parent=canon.rig, joint_parent=clav_info.joint, side=side, guides=guides.arm[side],ik_end_control = False, fk_control_space=[clav_info.control.ctrl], ik_root_control_space=[clav_info.control.ctrl, hipinfo.hip_control.ctrl, root_info.root_control.ctrl, spineinfo.switch_joints[-1],], ik_pv_control_space=[ hipinfo.hip_control.ctrl, root_info.root_control.ctrl, spineinfo.switch_joints[-1], clav_info.control.ctrl,], ik_end_control_space=[ hipinfo.hip_control.ctrl, root_info.root_control.ctrl, spineinfo.switch_joints[-1], clav_info.control.ctrl,], ikfk_blend=1, ik_length=True)
-        arm_info = arm.limb_build()
+        arm_info = arm.build()
 
         hand = modules.Hand(part='hand', control_size=canon.scene_size, joint_parent=arm_info.bind_joints[-1],  parent=canon.rig, side=side, guides=guides.arm[side][-1], fk_control_space=[arm_info.fk_controls[-1].ctrl], ik_control_space=[root_info.root_control.ctrl, hipinfo.hip_control.ctrl, spineinfo.switch_joints[-1], clav_info.control.ctrl,], ik_hook=arm_info.end_ik_hook, fkik_switch_attr=arm_info.fk_ik_switch)
-        hand_info = hand.hand_build()
+        hand_info = hand.build()
 
         
         metacarpal = modules.Metacarpal(part='metacarpal', joint_parent=hand_info.joint , control_size=canon.scene_size, parent=canon.rig, side=side, guides=guides.metacarpal[side], control_space=[hand_info.switch],)
-        metacarpal_info = metacarpal.metacarpal_build()
+        metacarpal_info = metacarpal.build()
 
         for i, fingers in enumerate(['index', 'middle', 'ring', 'pinky', 'thumb']):
             if fingers == 'thumb':
@@ -92,51 +92,51 @@ def build(rig_name:str, config:rig_config):
                 jnt_par = metacarpal_info.joint[i]
 
             finger = modules.Chain(part=fingers, control_size=canon.scene_size, joint_parent=jnt_par, parent=canon.rig, side=side, guides=guides.fingers[f'{fingers}_{side}'], control_space=parent)
-            finger.chain_build()
+            finger.build()
 
 
 
         if guides.full_joint_correctives:
             pec = modules.Ik_correctives(part="pec", control_size=canon.scene_size, joint_parent=spineinfo.bind_joints[-1], parent=canon.rig, side=side, guides=guides.pec_correctives[side], end_ik_space=[arm_info.switch_joints[0]], root_ik_space=[spineinfo.chest_off.ctrl], divisions=1) #type:ignore
-            pec.ik_correctives_build()
+            pec.build()
             trap = modules.Ik_correctives(part="trap", control_size=canon.scene_size, joint_parent=spineinfo.bind_joints[-1], parent=canon.rig, side=side, guides=guides.trap_correctives[side], end_ik_space=[arm_info.switch_joints[0]], root_ik_space=[spineinfo.chest_off.ctrl], divisions=1) #type:ignore
-            trap.ik_correctives_build()
+            trap.build()
             necktrap = modules.Ik_correctives(part="necktrap", control_size=canon.scene_size, joint_parent=spineinfo.bind_joints[-1], parent=canon.rig, side=side, guides=guides.necktrap_correctives[side], end_ik_space=[arm_info.switch_joints[0]], root_ik_space=[spineinfo.chest_off.ctrl], divisions=1) #type:ignore
-            necktrap.ik_correctives_build()
+            necktrap.build()
 
     #face modules
 
     face = modules.Face(control_size=canon.scene_size, parent=canon.rig, joint_parent=headinfo.joint, guides=guides.face, control_space=[headinfo.control.ctrl])
-    faceinfo = face.face_build()
+    faceinfo = face.build()
 
     jaw = modules.Jaw(control_size=canon.scene_size, parent=canon.rig, joint_parent=faceinfo.lower_joint, guides=guides.jaw, control_space=[faceinfo.lower_control], larynx_follow_space=headinfo.control.ctrl, mid_face=faceinfo.submid_control)
-    jawinfo = jaw.jaw_build()
+    jawinfo = jaw.build()
 
     mouth = modules.Mouth(control_size=canon.scene_size, parent=canon.rig, joint_parent=faceinfo.lower_joint, guides=guides.mouth, jaw=jawinfo.jaw,  control_space=[faceinfo.lower_control], muppet=faceinfo.muppet_control, )
-    mouthinfo = mouth.mouth_build()
+    mouthinfo = mouth.build()
 
     arch = modules.Arch(part='maxillary', control_size=canon.scene_size, parent=canon.rig, joint_parent=faceinfo.lower_joint, guides=[guides.teeth[0], guides.teeth[1]], control_space=[faceinfo.muppet_control], driver=faceinfo.muppet_control, divisions = 2)
-    maxillaryinfo = arch.arch_build()
+    maxillaryinfo = arch.build()
     arch = modules.Arch(part='mandibular', control_size=canon.scene_size, parent=canon.rig, joint_parent=faceinfo.lower_joint, guides=[guides.teeth[2], guides.teeth[3]], control_space=[jawinfo.jaw], driver=jawinfo.jaw, divisions = 2)
-    mandibularinfo = arch.arch_build()
+    mandibularinfo = arch.build()
     tongue = modules.Tongue(control_size=canon.scene_size, parent=canon.rig, joint_parent=faceinfo.lower_joint, guides=[guides.tongue], control_space=[jawinfo.jaw])
-    tongueinfo = tongue.tongue_build()
+    tongueinfo = tongue.build()
 
     nose = modules.Nose(control_size=canon.scene_size, parent=canon.rig, joint_parent=faceinfo.mid_joint, guides=guides.nose,  control_space=[faceinfo.muppet_control], mouth=mouthinfo.master, jaw=jawinfo.jaw, head=headinfo.control, bridge_space=[faceinfo.upper_control])
-    noseinfo = nose.nose_build()
+    noseinfo = nose.build()
 
     for side in ["L", "R"]:
         nl_fold = modules.NL_Fold(control_size=canon.scene_size, side=side, parent=canon.rig, joint_parent=faceinfo.lower_joint, guides=[guides.nl[0]], control_space=[faceinfo.lower_control], upper_driver=noseinfo.control, lower_driver=mouthinfo.macro[f'upper_corner_{side}'], corner=mouthinfo.corner_controls[side] )
-        nl_foldinfo = nl_fold.nl_fold_build()
+        nl_foldinfo = nl_fold.build()
 
         brow = modules.Brow(control_size=canon.scene_size, side=side, parent=canon.rig, joint_parent=faceinfo.top_joint, guides=[guides.brow[0]], control_space=[faceinfo.top_control], )
-        browinfo = brow.brow_build()
+        browinfo = brow.build()
 
         cheek = modules.Cheek(control_size=canon.scene_size, side=side, parent=canon.rig, joint_parent=faceinfo.mid_joint, guides=guides.cheek[side], puff_space=[faceinfo.lower_control], cheekbone_space=[faceinfo.upper_control], driver=jawinfo.jaw, head_space=headinfo.control)
-        cheekinfo = cheek.cheek_build()
+        cheekinfo = cheek.build()
 
         ear = modules.Ear(control_size=canon.scene_size, side=side, parent=canon.rig, joint_parent=faceinfo.mid_joint, guides=guides.ear, main_space=[faceinfo.lower_control], driver=jawinfo.jaw, head_space=headinfo.control)
-        earinfo = ear.ear_build()
+        earinfo = ear.build()
             
     
       

@@ -164,7 +164,7 @@ class Limb:
 
 
 
-    def limb_build(self):
+    def build(self):
 
         #module prep
 

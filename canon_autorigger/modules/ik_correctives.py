@@ -56,7 +56,7 @@ class Ik_correctives:
     # Build steps
     # -------------------
 
-    def ik_correctives_build(self):
+    def build(self):
 
         #modeule prep work
         prep = module_prep(part=self.part, parent=self.parent, side=self.side, fkik=False, gut=True)

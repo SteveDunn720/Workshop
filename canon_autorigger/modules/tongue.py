@@ -68,7 +68,7 @@ class Tongue:
     
             cmds.delete(aim)
 
-    def tongue_build(self):
+    def build(self):
 
         #modeule prep work
         prep = module_prep(part=self.part, parent=self.parent, side=self.side, fkik=False, gut=True)
