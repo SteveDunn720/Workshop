@@ -3,7 +3,7 @@ from __future__ import annotations
 import maya.OpenMayaUI as omui
 import maya.cmds as cmds
 
-from Workshop.guide.module import get_module_settings, get_modules, set_module_setting
+from Workshop.guide.module import get_module_relationships, get_module_settings, get_modules, set_module_setting, set_module_relationship
 from Workshop.guide.resolver import resolve_module_instances
 
 try:
@@ -51,6 +51,364 @@ def maya_main_window() -> QtWidgets.QWidget:
         int(main_window_pointer),
         QtWidgets.QWidget,
     )
+
+
+class ControlSpaceWidget(QtWidgets.QWidget):
+    """Editor for an ordered list of control spaces."""
+
+    changed = Signal()
+
+    def __init__(
+        self,
+        available_controls: list[str],
+        parent: QtWidgets.QWidget | None = None,
+    ) -> None:
+
+        super().__init__(parent)
+
+        self.available_controls = available_controls
+
+        # --------------------------------------------------
+        # LAYOUT
+        # --------------------------------------------------
+
+        layout = QtWidgets.QVBoxLayout(self)
+
+        layout.setContentsMargins(
+            0,
+            0,
+            0,
+            0,
+        )
+
+        layout.setSpacing(4)
+
+        # --------------------------------------------------
+        # AUTO
+        # --------------------------------------------------
+
+        self.auto_checkbox = QtWidgets.QCheckBox(
+            "Auto"
+        )
+
+        self.auto_checkbox.setChecked(True)
+
+        layout.addWidget(
+            self.auto_checkbox
+        )
+
+        # --------------------------------------------------
+        # SPACE LIST
+        # --------------------------------------------------
+
+        self.space_list = QtWidgets.QListWidget()
+
+        self.space_list.setSelectionMode(
+            QtWidgets.QAbstractItemView.SingleSelection
+        )
+
+        self.space_list.setMinimumHeight(70)
+
+        layout.addWidget(
+            self.space_list
+        )
+
+        # --------------------------------------------------
+        # ADD ROW
+        # --------------------------------------------------
+
+        add_layout = QtWidgets.QHBoxLayout()
+
+        add_layout.setContentsMargins(
+            0,
+            0,
+            0,
+            0,
+        )
+
+        self.space_combo = QtWidgets.QComboBox()
+
+        self.space_combo.addItems(
+            self.available_controls
+        )
+
+        self.add_button = QtWidgets.QPushButton(
+            "+"
+        )
+
+        self.add_button.setFixedWidth(28)
+
+        add_layout.addWidget(
+            self.space_combo
+        )
+
+        add_layout.addWidget(
+            self.add_button
+        )
+
+        layout.addLayout(
+            add_layout
+        )
+
+        # --------------------------------------------------
+        # EDIT ROW
+        # --------------------------------------------------
+
+        edit_layout = QtWidgets.QHBoxLayout()
+
+        edit_layout.setContentsMargins(
+            0,
+            0,
+            0,
+            0,
+        )
+
+        self.remove_button = QtWidgets.QPushButton(
+            "-"
+        )
+
+        self.up_button = QtWidgets.QPushButton(
+            "↑"
+        )
+
+        self.down_button = QtWidgets.QPushButton(
+            "↓"
+        )
+
+        edit_layout.addWidget(
+            self.remove_button
+        )
+
+        edit_layout.addWidget(
+            self.up_button
+        )
+
+        edit_layout.addWidget(
+            self.down_button
+        )
+
+        layout.addLayout(
+            edit_layout
+        )
+
+        # --------------------------------------------------
+        # SIGNALS
+        # --------------------------------------------------
+
+        self.auto_checkbox.toggled.connect(
+            self._auto_changed
+        )
+
+        self.add_button.clicked.connect(
+            self._add_space
+        )
+
+        self.remove_button.clicked.connect(
+            self._remove_space
+        )
+
+        self.up_button.clicked.connect(
+            self._move_up
+        )
+
+        self.down_button.clicked.connect(
+            self._move_down
+        )
+
+        self._update_enabled_state()
+
+    # --------------------------------------------------
+    # VALUE
+    # --------------------------------------------------
+
+    def value(self) -> str | list[str]:
+
+        if self.auto_checkbox.isChecked():
+            return "auto"
+
+        return [
+            self.space_list.item(index).text()
+            for index in range(
+                self.space_list.count()
+            )
+        ]
+
+    def set_value(
+        self,
+        value: str | list[str] | None,
+    ) -> None:
+
+        self.space_list.clear()
+
+        if (
+            value is None
+            or value == "auto"
+        ):
+
+            self.auto_checkbox.setChecked(
+                True
+            )
+
+            self._update_enabled_state()
+
+            return
+
+        self.auto_checkbox.setChecked(
+            False
+        )
+
+        if isinstance(value, str):
+            value = [value]
+
+        for control in value:
+
+            self.space_list.addItem(
+                control
+            )
+
+        self._update_enabled_state()
+
+    # --------------------------------------------------
+    # AUTO
+    # --------------------------------------------------
+
+    def _auto_changed(
+        self,
+        _state: bool,
+    ) -> None:
+
+        self._update_enabled_state()
+
+        self.changed.emit()
+
+    def _update_enabled_state(
+        self,
+    ) -> None:
+
+        enabled = not self.auto_checkbox.isChecked()
+
+        self.space_list.setEnabled(
+            enabled
+        )
+
+        self.space_combo.setEnabled(
+            enabled
+        )
+
+        self.add_button.setEnabled(
+            enabled
+        )
+
+        self.remove_button.setEnabled(
+            enabled
+        )
+
+        self.up_button.setEnabled(
+            enabled
+        )
+
+        self.down_button.setEnabled(
+            enabled
+        )
+
+    # --------------------------------------------------
+    # ADD / REMOVE
+    # --------------------------------------------------
+
+    def _add_space(
+        self,
+    ) -> None:
+
+        control = self.space_combo.currentText()
+
+        if not control:
+            return
+
+        existing = [
+            self.space_list.item(index).text()
+            for index in range(
+                self.space_list.count()
+            )
+        ]
+
+        if control in existing:
+            return
+
+        self.space_list.addItem(
+            control
+        )
+
+        self.changed.emit()
+
+    def _remove_space(
+        self,
+    ) -> None:
+
+        row = self.space_list.currentRow()
+
+        if row < 0:
+            return
+
+        self.space_list.takeItem(
+            row
+        )
+
+        self.changed.emit()
+
+    # --------------------------------------------------
+    # ORDER
+    # --------------------------------------------------
+
+    def _move_up(
+        self,
+    ) -> None:
+
+        row = self.space_list.currentRow()
+
+        if row <= 0:
+            return
+
+        item = self.space_list.takeItem(
+            row
+        )
+
+        self.space_list.insertItem(
+            row - 1,
+            item
+        )
+
+        self.space_list.setCurrentRow(
+            row - 1
+        )
+
+        self.changed.emit()
+
+    def _move_down(
+        self,
+    ) -> None:
+
+        row = self.space_list.currentRow()
+
+        if (
+            row < 0
+            or row >= self.space_list.count() - 1
+        ):
+            return
+
+        item = self.space_list.takeItem(
+            row
+        )
+
+        self.space_list.insertItem(
+            row + 1,
+            item
+        )
+
+        self.space_list.setCurrentRow(
+            row + 1
+        )
+
+        self.changed.emit()
 
 
 class CollapsibleSection(QtWidgets.QWidget):
@@ -132,13 +490,13 @@ class ModuleLibrary(QtWidgets.QDialog):
         self.current_edit_guide = None
 
         self.dirty_settings: set[str] = set()
+        self.dirty_relationships: set[str] = set()
 
         self._build_ui()
         self._connect_signals()
 
         self.refresh_module_ui()
         self.refresh_scene_guides()
-        self.dirty_settings: set[str] = set()
 
     # --------------------------------------------------
     # UI
@@ -332,8 +690,51 @@ class ModuleLibrary(QtWidgets.QDialog):
             self.settings_section
         )
 
-        self.settings_layout = QtWidgets.QFormLayout(
+        # --------------------------------------------------
+        # SETTINGS SECTION LAYOUT
+        # --------------------------------------------------
+
+        settings_container_layout = QtWidgets.QVBoxLayout(
             self.settings_section.content
+        )
+
+        settings_container_layout.setContentsMargins(
+            0,
+            0,
+            0,
+            0,
+        )
+
+        settings_container_layout.setSpacing(0)
+
+        # --------------------------------------------------
+        # SCROLL AREA
+        # --------------------------------------------------
+
+        self.settings_scroll_area = QtWidgets.QScrollArea()
+
+        self.settings_scroll_area.setWidgetResizable(
+            True
+        )
+
+        self.settings_scroll_area.setFrameShape(
+            QtWidgets.QFrame.NoFrame
+        )
+
+        # Give Settings a useful amount of room,
+        # but allow the dialog to remain compact.
+        self.settings_scroll_area.setMinimumHeight(
+            200
+        )
+
+        # --------------------------------------------------
+        # SCROLL CONTENT
+        # --------------------------------------------------
+
+        self.settings_scroll_content = QtWidgets.QWidget()
+
+        self.settings_layout = QtWidgets.QFormLayout(
+            self.settings_scroll_content
         )
 
         self.settings_layout.setContentsMargins(
@@ -347,9 +748,39 @@ class ModuleLibrary(QtWidgets.QDialog):
             4
         )
 
-        # Stores:
+        self.settings_scroll_area.setWidget(
+            self.settings_scroll_content
+        )
+
+        settings_container_layout.addWidget(
+            self.settings_scroll_area
+        )
+
+        # --------------------------------------------------
+        # APPLY
+        # --------------------------------------------------
+
+        self.apply_settings_button = QtWidgets.QPushButton(
+            "Apply Changes"
+        )
+
+        self.apply_settings_button.setMinimumHeight(
+            28
+        )
+
+        settings_container_layout.addWidget(
+            self.apply_settings_button
+        )
+
+        # --------------------------------------------------
+        # WIDGET STORAGE
+        # --------------------------------------------------
+
         # setting name -> Qt widget
         self.setting_widgets = {}
+
+        # relationship name -> Qt widget
+        self.relationship_widgets = {}
 
         # ==================================================
         # SPACER
@@ -378,9 +809,188 @@ class ModuleLibrary(QtWidgets.QDialog):
             self.guide_selection_changed
         )
 
+        self.apply_settings_button.clicked.connect(
+            self.apply_selected_guide_settings
+        )
+
     # --------------------------------------------------
     # CURRENT MODULE
     # --------------------------------------------------
+
+    def get_selected_module_instances(
+        self,
+    ) -> list:
+
+        selected_guides = set(
+            self.get_selected_guides()
+        )
+
+        if not selected_guides:
+            return []
+
+        instances = resolve_module_instances()
+
+        selected_instances = []
+
+        for instance in instances:
+
+            if any(
+                guide in selected_guides
+                for guide in instance.guides
+            ):
+
+                selected_instances.append(
+                    instance
+                )
+
+        return selected_instances
+    def mark_relationship_dirty(
+        self,
+        relationship_name: str,
+    ) -> None:
+
+        self.dirty_relationships.add(
+            relationship_name
+        )
+    def get_previous_module_instances(
+        self,
+        guide: str,
+        module: str,
+        part: str,
+    ) -> list:
+
+        instances = resolve_module_instances()
+
+        previous_instances = []
+
+        for instance in instances:
+
+            # Stop when we reach the module
+            # currently being edited.
+            if (
+                instance.module == module
+                and instance.part == part
+                and guide in instance.guides
+            ):
+                break
+
+            previous_instances.append(
+                instance
+            )
+
+        return previous_instances
+
+    def get_available_relationship_targets(
+        self,
+        guide: str,
+        module: str,
+        part: str,
+    ) -> dict:
+
+        instances = self.get_previous_module_instances(
+            guide=guide,
+            module=module,
+            part=part,
+        )
+
+        joints = []
+        controls = []
+
+        for instance in instances:
+
+            module_class = get_module_class(
+                instance.module
+            )
+
+            settings = {}
+
+            for setting in module_class.SETTINGS:
+
+                settings[setting.name] = (
+                    instance.settings.get(
+                        setting.name,
+                        setting.default,
+                    )
+                )
+
+            preview = module_class.preview(
+                part=instance.part,
+                side=instance.side,
+                guides=instance.guides,
+                settings=settings,
+            )
+
+            joints.extend(
+                preview.get(
+                    "joints",
+                    [],
+                )
+            )
+
+            controls.extend(
+                preview.get(
+                    "controls",
+                    [],
+                )
+            )
+
+        return {
+            "joints": joints,
+            "controls": controls,
+        }
+
+    def clear_relationships_ui(
+        self,
+    ) -> None:
+
+        self.relationship_widgets.clear()
+
+    def create_relationship_widget(
+        self,
+        relationship,
+        targets: dict,
+    ) -> QtWidgets.QWidget | None:
+
+        if relationship.relationship_type == "joint":
+
+            widget = QtWidgets.QComboBox()
+
+            widget.addItem("auto")
+
+            widget.addItems(
+                targets.get(
+                    "joints",
+                    [],
+                )
+            )
+
+            widget.currentIndexChanged.connect(
+                lambda _index, name=relationship.name:
+                self.mark_relationship_dirty(name)
+            )
+
+            return widget
+
+        # --------------------------------------------------
+        # CONTROL SPACE
+        # --------------------------------------------------
+
+        if relationship.relationship_type == "control_space":
+
+            widget = ControlSpaceWidget(
+                available_controls=targets.get(
+                    "controls",
+                    [],
+                )
+            )
+
+            widget.changed.connect(
+                lambda name=relationship.name:
+                self.mark_relationship_dirty(name)
+            )
+
+            return widget
+
 
     def mark_setting_dirty(
         self,
@@ -418,6 +1028,7 @@ class ModuleLibrary(QtWidgets.QDialog):
         if not guides:
 
             self.clear_settings_ui()
+            self.clear_relationships_ui()
 
             self.current_edit_guide = None
             self.current_edit_module = None
@@ -444,6 +1055,182 @@ class ModuleLibrary(QtWidgets.QDialog):
             part=module_info.part,
         )
 
+    def apply_selected_guide_settings(
+        self,
+    ) -> None:
+
+        instances = self.get_compatible_selected_instances()
+
+        if not instances:
+
+            QtWidgets.QMessageBox.warning(
+                self,
+                "No Compatible Modules",
+                "No compatible module instances are selected.",
+            )
+
+            return
+
+        # --------------------------------------------------
+        # NOTHING CHANGED
+        # --------------------------------------------------
+
+        if (
+            not self.dirty_settings
+            and not self.dirty_relationships
+        ):
+
+            print("No settings changed.")
+            return
+
+        # --------------------------------------------------
+        # CURRENT UI VALUES
+        # --------------------------------------------------
+
+        settings = self.get_setting_values()
+
+        relationships = self.get_relationship_values()
+
+        updated = 0
+
+        # --------------------------------------------------
+        # APPLY TO SELECTED MODULE INSTANCES
+        # --------------------------------------------------
+
+        for instance in instances:
+
+            if not instance.guides:
+                continue
+
+            # The first guide currently acts as the owner
+            # of the module's stored data.
+            owner_guide = instance.guides[0]
+
+            # ----------------------------------------------
+            # SETTINGS
+            # ----------------------------------------------
+
+            for setting_name in self.dirty_settings:
+
+                if setting_name not in settings:
+                    continue
+
+                set_module_setting(
+                    guide=owner_guide,
+                    module=instance.module,
+                    part=instance.part,
+                    setting=setting_name,
+                    value=settings[setting_name],
+                )
+
+            # ----------------------------------------------
+            # RELATIONSHIPS
+            # ----------------------------------------------
+
+            for relationship_name in self.dirty_relationships:
+
+                if relationship_name not in relationships:
+                    continue
+
+                set_module_relationship(
+                    guide=owner_guide,
+                    module=instance.module,
+                    part=instance.part,
+                    relationship=relationship_name,
+                    value=relationships[
+                        relationship_name
+                    ],
+                )
+
+            updated += 1
+
+        # --------------------------------------------------
+        # REPORT
+        # --------------------------------------------------
+
+        print(
+            f"Updated {updated} "
+            f"{self.current_edit_module} "
+            "module instance(s)"
+        )
+
+        if self.dirty_settings:
+
+            print(
+                "Changed settings:",
+                sorted(self.dirty_settings),
+            )
+
+        if self.dirty_relationships:
+
+            print(
+                "Changed relationships:",
+                sorted(
+                    self.dirty_relationships
+                ),
+            )
+
+        # --------------------------------------------------
+        # RELOAD UI
+        # --------------------------------------------------
+
+        guide = self.current_edit_guide
+        module = self.current_edit_module
+        part = self.current_edit_part
+
+        if (
+            guide
+            and module
+            and part
+        ):
+
+            self.load_guide_settings(
+                guide=guide,
+                module=module,
+                part=part,
+            )
+
+        else:
+
+            self.dirty_settings.clear()
+            self.dirty_relationships.clear()
+
+    def get_relationship_values(
+        self,
+    ) -> dict:
+
+        if self.current_edit_module is None:
+            return {}
+
+        module_class = get_module_class(
+            self.current_edit_module
+        )
+
+        values = {}
+
+        for relationship in module_class.RELATIONSHIPS:
+
+            widget = self.relationship_widgets.get(
+                relationship.name
+            )
+
+            if widget is None:
+                continue
+
+            if relationship.relationship_type == "joint":
+
+                values[relationship.name] = (
+                    widget.currentText()
+                )
+
+            elif relationship.relationship_type == "control_space":
+
+                values[relationship.name] = (
+                    widget.value()
+                )
+
+        return values
+
     def load_guide_settings(
         self,
         guide: str,
@@ -456,6 +1243,7 @@ class ModuleLibrary(QtWidgets.QDialog):
         self.current_edit_part = part
 
         self.clear_settings_ui()
+
         selected_instances = (
             self.get_compatible_selected_instances()
         )
@@ -474,6 +1262,11 @@ class ModuleLibrary(QtWidgets.QDialog):
         module_class = get_module_class(
             module
         )
+
+        # --------------------------------------------------
+        # SELECTION
+        # --------------------------------------------------
+
         self.settings_layout.addRow(
             "Selection",
             QtWidgets.QLabel(
@@ -481,11 +1274,87 @@ class ModuleLibrary(QtWidgets.QDialog):
             ),
         )
 
+        # --------------------------------------------------
+        # STORED DATA
+        # --------------------------------------------------
+
         stored_settings = get_module_settings(
             guide,
             module=module,
             part=part,
         )
+
+        stored_relationships = (
+            get_module_relationships(
+                guide,
+                module=module,
+                part=part,
+            )
+        )
+
+        targets = (
+            self.get_available_relationship_targets(
+                guide=guide,
+                module=module,
+                part=part,
+            )
+        )
+
+        # --------------------------------------------------
+        # RELATIONSHIPS
+        # --------------------------------------------------
+
+        for relationship in module_class.RELATIONSHIPS:
+
+            widget = self.create_relationship_widget(
+                relationship=relationship,
+                targets=targets,
+            )
+
+            if widget is None:
+                continue
+
+            value = stored_relationships.get(
+                relationship.name,
+                relationship.default,
+            )
+
+            # ----------------------------------------------
+            # CONTROL SPACE
+            # ----------------------------------------------
+
+            if relationship.relationship_type == "control_space":
+
+                widget.set_value(
+                    value
+                )
+
+            # ----------------------------------------------
+            # STANDARD COMBO RELATIONSHIPS
+            # ----------------------------------------------
+
+            elif value is not None:
+
+                widget.setCurrentText(
+                    str(value)
+                )
+
+            self.relationship_widgets[
+                relationship.name
+            ] = widget
+
+            label = self.format_setting_name(
+                relationship.name
+            )
+
+            self.settings_layout.addRow(
+                label,
+                widget,
+            )
+
+        # --------------------------------------------------
+        # SETTINGS
+        # --------------------------------------------------
 
         for setting in module_class.SETTINGS:
 
@@ -519,14 +1388,17 @@ class ModuleLibrary(QtWidgets.QDialog):
                 label,
                 widget,
             )
-        self.apply_settings_button = (
-            QtWidgets.QPushButton(
-                "Apply Changes"
-            )
+
+        # --------------------------------------------------
+        # APPLY
+        # --------------------------------------------------
+
+        self.apply_settings_button = QtWidgets.QPushButton(
+            "Apply Changes"
         )
 
         self.apply_settings_button.setMinimumHeight(
-            26
+            28
         )
 
         self.apply_settings_button.clicked.connect(
@@ -536,121 +1408,14 @@ class ModuleLibrary(QtWidgets.QDialog):
         self.settings_layout.addRow(
             self.apply_settings_button
         )
-        self.settings_layout.addRow(
-            self.apply_settings_button
-        )
 
-        # Ignore any signals fired while populating the UI.
+        # --------------------------------------------------
+        # RESET DIRTY STATE
+        # --------------------------------------------------
+
         self.dirty_settings.clear()
+        self.dirty_relationships.clear()
 
-    def apply_selected_guide_settings(
-        self,
-    ) -> None:
-
-        instances = (
-            self.get_compatible_selected_instances()
-        )
-
-        if not instances:
-
-            QtWidgets.QMessageBox.warning(
-                self,
-                "No Compatible Modules",
-                (
-                    "None of the selected guides belong "
-                    "to the module type currently being edited."
-                ),
-            )
-
-            return
-
-        if not self.dirty_settings:
-
-            print(
-                "No settings changed."
-            )
-
-            return
-
-        settings = self.get_setting_values()
-
-        updated = 0
-
-        for instance in instances:
-
-            if not instance.guides:
-                continue
-
-            owner_guide = instance.guides[0]
-
-            for setting_name in self.dirty_settings:
-
-                if setting_name not in settings:
-                    continue
-
-                set_module_setting(
-                    guide=owner_guide,
-                    module=instance.module,
-                    part=instance.part,
-                    setting=setting_name,
-                    value=settings[setting_name],
-                )
-
-            updated += 1
-
-        print(
-            f"Updated {updated} "
-            f"{self.current_edit_module} "
-            f"module instance(s)"
-        )
-
-        print(
-            "Changed settings:",
-            sorted(self.dirty_settings),
-        )
-
-        guide = self.current_edit_guide
-        module = self.current_edit_module
-        part = self.current_edit_part
-
-        if guide and module and part:
-
-            self.load_guide_settings(
-                guide=guide,
-                module=module,
-                part=part,
-            )
-
-        else:
-
-            self.dirty_settings.clear()
-
-    def get_selected_module_instances(
-        self,
-    ) -> list:
-
-        selected_guides = set(
-            self.get_selected_guides()
-        )
-
-        if not selected_guides:
-            return []
-
-        instances = resolve_module_instances()
-
-        selected_instances = []
-
-        for instance in instances:
-
-            if any(
-                guide in selected_guides
-                for guide in instance.guides
-            ):
-                selected_instances.append(
-                    instance
-                )
-
-        return selected_instances
 
     def get_compatible_selected_instances(
         self,
@@ -904,6 +1669,7 @@ class ModuleLibrary(QtWidgets.QDialog):
     ) -> None:
 
         self.clear_settings_ui()
+        self.clear_relationships_ui()
 
         module_class = (
             self.get_current_module_class()

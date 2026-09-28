@@ -57,7 +57,7 @@ class Arbit:
         ),
         ModuleRelationship(
             name="control_space",
-            relationship_type="control_list",
+            relationship_type="control_space",
             default="auto",
         ),
     )
