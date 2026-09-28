@@ -191,6 +191,8 @@ class Foot:
             self.controls.append(ctrl.ctrl)
             jnt_par = fk_jnt
             ctrl_par = ctrl.ctrl
+
+        constraint(drivers=[self.fk_controls[0].ctrl], driven=self.leg_info.fk_hook)
             
             
 
@@ -198,6 +200,7 @@ class Foot:
         self.ik_controls = []
         module_space(space_list=self.fk_control_space, control=self.fk_controls[0])
         jnt_par = self.guts
+        
 
         #IK_build 
         for i,jnt in enumerate(self.guides):

@@ -32,6 +32,7 @@ class Hand:
         ik_control_space:list = [],
         ik_hook:list=[],
         fkik_switch_attr:str = '',
+        fk_hook:str = ''
         
 
     ):
@@ -49,6 +50,7 @@ class Hand:
         self.main_control_color = 'Left' if self.side == 'L' else 'Right'
         self.sub_control_color = 'SubLeft' if self.side == 'L' else 'SubRight'
         self.joint_parent = joint_parent
+        self.fk_hook = fk_hook
 
     # -------------------
     # Build steps
@@ -88,6 +90,7 @@ class Hand:
         )
 
         fk_jnt = create_joint(name=f'FK_{self.part}_{self.side}', transform=ctrl.ctrl, parent=jnt_par, bind_set= False, ue_set=False,)
+        constraint(drivers=[ctrl.ctrl], driven=self.fk_hook)
         self.fk_joints.append(fk_jnt)
         self.fk_controls.append(ctrl)
         self.controls.append(ctrl.ctrl)

@@ -2,18 +2,19 @@ from attr import dataclass
 
 import maya.cmds as cmds
 
-from ..ik import create_IK_rotate_plane, create_IK_single_chain, IK_data
 from Workshop.control.core import create_control
 from Workshop.joint import create_joint
-from Workshop.maya_api.node import ConditionNode, MultiplyDivideNode, ReverseNode, DistanceBetweenNode, BlendTwoAttrNode, SumNode
 from Workshop.transform.utils import create_transform
 from Workshop.control.core import Control
 from Workshop.transform.constraint import constraint
-from Workshop.joint import twist_split
 
+
+from ..ik import create_IK_rotate_plane, create_IK_single_chain, IK_data
 from ..module_initialize import module_prep, module_space
 from ..module_shared import fkik_switch
+from ..twist import create_twist
 
+from .stretch import build_stretchy_ik
 
 
 @dataclass
@@ -34,8 +35,7 @@ class moudle_info:
     ik_main_handle: IK_data
     ik_singlechain: IK_data | None
     ik_len_joints:list
-    upper_split:list
-    lower_split:list
+    fk_hook:str
 
 
 
@@ -45,7 +45,7 @@ class Biped_Limb:
         guides: list,
         part: str = "leg",
         side: str = "L",
-        parent: str = "body_rig",
+        parent: str = "rig",
         joint_parent:str = None,
         control_size: float = 1.0,
         fk_control_space:list = [],
@@ -56,7 +56,11 @@ class Biped_Limb:
         ikfk_blend:float = 1,
         ik_length:bool = False,
         split:str | None = 'single_twist',
-        fk_shape_twist = 0
+        fk_shape_twist = 0,
+        fk_ctrl_shapes:str = 'fk',
+        ik_ctrl_shapes:str = 'box',
+        pv_ctrl_shapes:str = 'sphere',
+
 
     ):
         self.part: str = part
@@ -75,94 +79,9 @@ class Biped_Limb:
         self.joint_parent = joint_parent
         self.split = split
         self.fk_shape_twist = fk_shape_twist
-
-
-    def build_stretchy_ik(self,
-            name: str,
-            root_reference: str,
-            ik_control: str,
-            upper_joint: str,
-            lower_joint: str,
-            end_joint: str,
-            stretch_attr: str = "stretch",
-            drive_length_joint:bool = False,
-            len_joint:str = '',
-            down_axis:str='Y'
-        ):
-            """Build a basic non-compressing stretchy IK setup.
-
-            Assumes the limb joints extend along local translate X.
-            """
-
-            if not cmds.attributeQuery(stretch_attr, node=ik_control, exists=True,):
-                cmds.addAttr(
-                    ik_control,
-                    longName=stretch_attr,
-                    attributeType="double",
-                    minValue=0.0,
-                    maxValue=1.0,
-                    defaultValue=.2,
-                    keyable=True,
-                )
-
-            upper_length = cmds.getAttr(f"{lower_joint}.translate{down_axis}")
-            lower_length = cmds.getAttr(f"{end_joint}.translate{down_axis}")
-
-            original_length = abs(upper_length) + abs(lower_length)
-
-            ik_distance = DistanceBetweenNode(name=f"{name}_stretch_distance")
-
-            ik_distance.input_matrix1.connect_from(f"{root_reference}.worldMatrix[0]")
-            ik_distance.input_matrix2.connect_from(f"{ik_control}.worldMatrix[0]")
-
-            ratio = MultiplyDivideNode(name = f"{name}_stretch_ratio")
-            ratio.operation.set(2)
-            ratio.input2.x.set(original_length)
-            ratio.input1.x.connect_from(ik_distance.distance)
-
-            clamp = ConditionNode(name=f"{name}_stretch_condition")
-            clamp.operation.set(2)
-            clamp.second_term.set(1)
-            clamp.color_if_false.r.set(1)
-            clamp.first_term.connect_from(ratio.output.x)
-            clamp.color_if_true.r.connect_from(ratio.output.x)
-            
-            blend = BlendTwoAttrNode(name=f"{name}_stretch_blend")
-            blend.input[0].set(1)
-            blend.input[1].connect_from(clamp.out_color.r)
-            blend.blend.connect_from(f"{ik_control}.{stretch_attr}")
-
-            length = MultiplyDivideNode(name=f"{name}_stretch_lengths")
-            length.input1.x.set(upper_length)
-            length.input1.y.set(lower_length)
-            length.input2.x.connect_from(blend.output)
-            length.input2.y.connect_from(blend.output)
-            length.output.x.connect_to(f"{lower_joint}.translate{down_axis}",)
-            length.output.y.connect_to(f"{end_joint}.translate{down_axis}",)
-
-            if drive_length_joint:
-                len_mult = MultiplyDivideNode(name=f"{name}_ik_len")
-                if upper_length >= 0:
-                    mod = 1
-                elif upper_length < 0:
-                    mod = -1
-                len_mult.input1.x.connect_from(ik_distance.distance)
-                len_mult.input2.x.set(mod)
-
-                len_sum = SumNode(name = f"{name}_limb_len")
-                len_sum.input[0].connect_from(length.output.x)
-                len_sum.input[1].connect_from(length.output.y)
-
-                len_clamp = ConditionNode(name=f"{name}_stretch_condition_len")
-                len_clamp.first_term.connect_from(ratio.output.x)
-                len_clamp.second_term.set(1)
-                len_clamp.color_if_true.r.connect_from(len_sum.output)
-                len_clamp.color_if_false.r.connect_from(len_mult.output.x)
-                len_clamp.operation.set(2)
-
-                len_clamp.out_color.r.connect_to(f'{len_joint}.translate{down_axis}')
-
-
+        self.fk_ctrl_shapes = fk_ctrl_shapes
+        self.ik_ctrl_shapes = ik_ctrl_shapes
+        self.pv_ctrl_shapes = pv_ctrl_shapes
 
     def build(self):
 
@@ -185,8 +104,9 @@ class Biped_Limb:
         #switch_joints
         for i,jnt in enumerate(self.guides):
             if not self.ik_end_control and i == len(self.guides) - 1:
-                continue
-            switch_jnt = create_joint(name=f'switch_{jnt.descriptor}', transform=jnt.name, parent=jnt_par, connect=False, bind_set= False, ue_set=False,)
+                switch_jnt = create_joint(name=f'switch_{jnt.descriptor}_solver', transform=jnt.name, parent=jnt_par, connect=False, bind_set= False, ue_set=False,)
+            else:
+                switch_jnt = create_joint(name=f'switch_{jnt.descriptor}', transform=jnt.name, parent=jnt_par, connect=False, bind_set= False, ue_set=False,)
             self.switch_joints.append(switch_jnt)
             jnt_par = switch_jnt
 
@@ -199,13 +119,15 @@ class Biped_Limb:
         ctrl_par = self.fk_control_grp
         for i,jnt in enumerate(self.guides):
             if not self.ik_end_control and i == len(self.guides) - 1:
+                fk_jnt = create_joint(name=f'FK_{jnt.descriptor}_solver', transform=jnt.name, parent=jnt_par, bind_set= False, ue_set=False,)
+                self.fk_joints.append(fk_jnt)
                 continue
             ctrl = create_control(
                 name=f'FK_{jnt.descriptor}',
                 parent=ctrl_par,
                 transform=jnt.name,
                 size=self.control_size/6,
-                control_shape="fk",
+                control_shape=self.fk_ctrl_shapes,
                 direction="y",
                 color_type=self.main_control_color,
                 shape_rotation_offset=(0,self.fk_shape_twist,0)
@@ -218,6 +140,7 @@ class Biped_Limb:
             self.controls.append(ctrl.ctrl)
             jnt_par = fk_jnt
             ctrl_par = ctrl.ctrl
+        fk_hook = self.fk_joints[-1]
             
             
 
@@ -245,8 +168,8 @@ class Biped_Limb:
                 parent=self.ik_control_grp,
                 transform=self.ik_handle.start_joint,
                 size=self.control_size/8,
-                control_shape="cube",
-                direction="x",
+                control_shape=self.ik_ctrl_shapes,
+                direction="y",
                 color_type=self.main_control_color
             )
         module_space(space_list=self.ik_root_control_space, control=self.ik_root_ctrl)
@@ -258,7 +181,7 @@ class Biped_Limb:
                 parent=self.ik_control_grp,
                 transform=self.ik_handle.pole_vector,
                 size=self.control_size/10,
-                control_shape="sphere",
+                control_shape=self.pv_ctrl_shapes,
                 direction="y",
                 color_type=self.main_control_color,
             )
@@ -273,8 +196,8 @@ class Biped_Limb:
                 parent=self.ik_control_grp,
                 transform=self.guides[2].name,
                 size=self.control_size/8,
-                control_shape="cube",
-                direction="x",
+                control_shape=self.ik_ctrl_shapes,
+                direction="y",
                 color_type=self.main_control_color
             )
             constraint(drivers=[self.ik_end_ctrl.ctrl], driven=self.ik_handle.handle, parent=self.guts, constraint_type="parent")
@@ -289,8 +212,8 @@ class Biped_Limb:
                 parent=self.ik_control_grp,
                 transform=self.guides[2].name,
                 size=self.control_size/8,
-                control_shape="cube",
-                direction="x",
+                control_shape=self.ik_ctrl_shapes,
+                direction="y",
                 color_type=self.main_control_color
             )
             constraint(drivers=[self.ik_end_ctrl.ctrl], driven=self.ik_handle.handle, parent=self.guts, constraint_type="parent")
@@ -331,7 +254,7 @@ class Biped_Limb:
         else:
             end_pos = self.ik_end_ctrl.ctrl
 
-        self.build_stretchy_ik(
+        build_stretchy_ik(
             name=f'{self.guides[0].descriptor}',
             root_reference=self.ik_root_ctrl.ctrl,
             ik_control=end_pos,
@@ -346,27 +269,32 @@ class Biped_Limb:
 
         #bind chain
         for i,jnt in enumerate(self.guides):
-            bind_jnt = create_joint(name=f'def_{jnt.descriptor}', transform=jnt.name, parent=jnt_par, connect=False)
-            if not self.ik_end_control and i == len(self.guides) - 1:
-                if self.split == 'single_twist':
-                    break
-                else:
-                    cmds.delete(bind_jnt)
-                    break
+            bind_jnt = create_joint(name=f'def_{jnt.descriptor}', transform=jnt.name, parent=jnt_par, connect=False)   
             self.bind_joints.append(bind_jnt)
             jnt_par = bind_jnt
-            constraint(drivers=[self.switch_joints[i]], driven=bind_jnt, parent=self.guts, constraint_type="parent")
+            #constraint(drivers=[self.switch_joints[i]], driven=bind_jnt, parent=self.guts, constraint_type="parent")
 
+        self.twists = []
 
-        if self.split == 'single_twist':
-            upper_twist = [twist_split(self.bind_joints[0])]
-            lower_twist = [twist_split(self.bind_joints[1])]
-            if not self.ik_end_control:
-                cmds.delete(bind_jnt)
-        else:
-            upper_twist=[]
-            lower_twist=[]
-        
+        for i in range(len(self.bind_joints) - 1):
+
+            twist = create_twist(
+                start_driver=self.switch_joints[i],
+                end_driver=self.switch_joints[i + 1],
+
+                start_joint=self.bind_joints[i],
+                end_joint=self.bind_joints[i + 1],
+
+                twist_count=2,
+                primary_axis="Y",
+            )
+
+            self.twists.append(twist)
+
+        if not self.ik_end_control:
+            cmds.delete(self.bind_joints[-1])
+            self.bind_joints.pop()
+
 
 
 
@@ -387,15 +315,7 @@ class Biped_Limb:
                 ik_main_handle=self.ik_handle,
                 ik_singlechain=self.ik_len_chain if self.ik_length else None,
                 ik_len_joints = self.ik_len_joints if self.ik_length else [],
-                upper_split=upper_twist,
-                lower_split=lower_twist
+                fk_hook = fk_hook
                 )
         
         return self.info
-
-
-
-        
-
-
-
