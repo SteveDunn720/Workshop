@@ -2,7 +2,7 @@ from attr import dataclass
 
 import maya.cmds as cmds
 
-from .ik import create_IK_rotate_plane, create_IK_single_chain, IK_data
+from ..ik import create_IK_rotate_plane, create_IK_single_chain, IK_data
 from Workshop.control.core import create_control
 from Workshop.joint import create_joint
 from Workshop.maya_api.node import ConditionNode, MultiplyDivideNode, ReverseNode, DistanceBetweenNode, BlendTwoAttrNode, SumNode
@@ -11,8 +11,8 @@ from Workshop.control.core import Control
 from Workshop.transform.constraint import constraint
 from Workshop.joint import twist_split
 
-from .module_initialize import module_prep, module_space
-from .module_shared import fkik_switch
+from ..module_initialize import module_prep, module_space
+from ..module_shared import fkik_switch
 
 
 
@@ -39,7 +39,7 @@ class moudle_info:
 
 
 
-class Limb:
+class Biped_Limb:
     def __init__(
         self,
         guides: list,

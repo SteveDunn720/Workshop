@@ -24,7 +24,7 @@ from . import ear
 from . import arbit as arbit
 
 from .root import Root
-from .biped_limb import Limb
+from .biped_limb import Biped_Limb
 from .hip import Hip
 from .foot import Foot
 from .spine import Spine
@@ -54,7 +54,7 @@ __all__ = [
 "root", #rig_root
 "Root", #rig_root class
 "biped_limb",
-"Limb",
+"Biped_Limb",
 "hip",
 "Hip",
 "foot",
@@ -101,7 +101,7 @@ __all__ = [
 
 MODULE_CLASSES = [
     Root,
-    Limb,
+    Biped_Limb,
     Hip,
     Foot,
     Spine,
