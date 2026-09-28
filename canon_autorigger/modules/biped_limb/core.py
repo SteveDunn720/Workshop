@@ -12,7 +12,7 @@ from Workshop.transform.constraint import constraint
 from ..ik import create_IK_rotate_plane, create_IK_single_chain, IK_data
 from ..module_initialize import module_prep, module_space
 from ..module_shared import fkik_switch
-from ..twist import create_twist
+from ..twist import create_swing_driver, create_twist
 
 from .stretch import build_stretchy_ik
 

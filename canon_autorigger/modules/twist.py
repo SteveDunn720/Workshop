@@ -322,3 +322,71 @@ def create_twist(
         end_joint=end_joint,
         twist_joints=twist_joints,
     )
+
+def create_swing_driver(
+    start_driver: str,
+    end_driver: str,
+    parent: str,
+    primary_axis: str = "Y",
+) -> str:
+    """
+    Create a twist-free swing driver for a joint segment.
+
+    The swing driver:
+        - follows start_driver's position
+        - aims its primary axis toward end_driver
+        - does not inherit axial twist from start_driver
+    """
+
+    primary_axis = primary_axis.upper()
+
+    if primary_axis not in {"X", "Y", "Z"}:
+        raise ValueError(
+            f"Invalid primary_axis: {primary_axis}. "
+            "Expected X, Y, or Z."
+        )
+
+    descriptor = start_driver.removesuffix("_jnt")
+
+    swing = cmds.createNode(
+        "transform",
+        name=f"{descriptor}_swing",
+        parent=parent,
+    )
+
+    # Match the initial position/orientation.
+    cmds.matchTransform(
+        swing,
+        start_driver,
+        position=True,
+        rotation=True,
+    )
+
+    # Follow the start of the segment.
+    cmds.pointConstraint(
+        start_driver,
+        swing,
+        maintainOffset=False,
+    )
+
+    # Aim primary axis down the segment.
+    aim_vectors = {
+        "X": (1, 0, 0),
+        "Y": (0, 1, 0),
+        "Z": (0, 0, 1),
+    }
+
+    aim_vector = aim_vectors[primary_axis]
+
+    cmds.aimConstraint(
+        end_driver,
+        swing,
+        maintainOffset=False,
+        aimVector=aim_vector,
+        upVector=(1, 0, 0),
+        worldUpType="objectrotation",
+        worldUpObject=start_driver,
+        worldUpVector=(1, 0, 0),
+    )
+
+    return swing
