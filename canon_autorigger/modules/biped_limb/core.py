@@ -9,6 +9,7 @@ from Workshop.control.core import Control
 from Workshop.transform.constraint import constraint
 
 
+from ..display_line import create_connection_curve
 from ..ik import create_IK_rotate_plane, create_IK_single_chain, IK_data
 from ..module_initialize import module_prep, module_space
 from ..module_shared import fkik_switch
@@ -294,6 +295,13 @@ class Biped_Limb:
         if not self.ik_end_control:
             cmds.delete(self.bind_joints[-1])
             self.bind_joints.pop()
+
+        pv_line = create_connection_curve(
+            start=self.switch_joints[1],
+            end=self.ik_pv_ctrl.ctrl,
+            parent=self.ik_control_grp,
+            name=f"{self.part}_{self.side}_pv_line",
+        )
 
 
 
