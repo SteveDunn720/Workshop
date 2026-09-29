@@ -6,6 +6,7 @@ from Workshop.transform.constraint import constraint
 from Workshop.control import create_control
 from Workshop.tag.core import lock_tag
 from Workshop.joint import create_joint
+from Workshop.canon_autorigger.module_schema import ModuleGuide, ModuleRelationship, ModuleSetting
 from .module_initialize import module_prep
 
 
@@ -17,15 +18,84 @@ class module_info:
     joint:str
 
 class Root:
+
+    MODULE_NAME = "root"
+    DISPLAY_NAME = "Root"
+
+    GUIDES = (
+        ModuleGuide(
+            name="root",
+        ),
+    )
+
+    SETTINGS = (
+        ModuleSetting(
+            name="control_size",
+            setting_type="float",
+            default=1.0,
+        ),
+        ModuleSetting(
+            name="root_control_color",
+            setting_type="string",
+            default="Root",
+        ),
+        ModuleSetting(
+            name="control_color",
+            setting_type="string",
+            default="MISC",
+        ),
+        ModuleSetting(
+            name="settings_control_color",
+            setting_type="string",
+            default="MISC",
+        ),
+        ModuleSetting(
+            name="root_control_shape",
+            setting_type="control_shape",
+            default="Character_base",
+        ),
+        ModuleSetting(
+            name="control_shape",
+            setting_type="control_shape",
+            default="circle",
+        ),
+        ModuleSetting(
+            name="settings_control_shape",
+            setting_type="control_shape",
+            default="gear",
+        ),
+        ModuleSetting(
+            name="local_name",
+            setting_type="string",
+            default="local",
+        ),
+        ModuleSetting(
+            name="offset_name",
+            setting_type="string",
+            default="offset",
+        ),
+    )
+
+    RELATIONSHIPS = ()
+
     def __init__(
         self,
         part: str = "root",
         side: str = "M",
-        parent: str = "components",
+        parent: str = "rig",
         control_parent: str | None = None,
         control_size: float = 1.0,
         guides: list = [],
-        joint_parent:str = 'skel'
+        joint_parent:str = 'skel',
+        root_control_shape:str = "Character_base",
+        root_control_color:str = "Root",
+        settings_control_shape:str = "gear",
+        settings_control_color:str = "MISC",
+        control_shape:str = "circle",
+        control_color:str = "MISC",
+        local_name:str = "local",
+        offset_name:str = "offset",
+
 
     ):
         self.part: str = part
@@ -35,10 +105,68 @@ class Root:
         self.control_size: float = control_size
         self.guides: list = guides
         self.joint_parent = joint_parent
-
+        self.root_control_shape = root_control_shape
+        self.root_control_color = root_control_color
+        self.settings_control_shape = settings_control_shape
+        self.settings_control_color = settings_control_color
+        self.control_shape = control_shape
+        self.control_color = control_color
+        self.local_name = local_name
+        self.offset_name = offset_name
     # -------------------
     # Build steps
     # -------------------
+
+    @classmethod
+    def preview(
+        cls,
+        part: str,
+        side: str,
+        guides: list[str],
+        settings: dict,
+    ) -> dict:
+
+        if not guides:
+            return {
+                "controls": [],
+                "joints": [],
+                "output_control": None,
+                "output_joint": None,
+            }
+
+        local_name = settings.get(
+            "local_name",
+            "local",
+        )
+
+        offset_name = settings.get(
+            "offset_name",
+            "offset",
+        )
+
+        root_control = f"{part}_{side}_ctrl"
+        local_control = f"{local_name}_{side}_ctrl"
+        offset_control = f"{offset_name}_{side}_ctrl"
+
+        visibility_control = "visibility_options_ctrl"
+        color_control = "color_options_ctrl"
+
+        root_joint = f"def_{part}_{side}_jnt"
+
+        return {
+            "controls": [
+                root_control,
+                local_control,
+                offset_control,
+                visibility_control,
+                color_control,
+            ],
+            "joints": [
+                root_joint,
+            ],
+            "output_control": offset_control,
+            "output_joint": root_joint,
+        }
 
     def build(self)->module_info:
 
@@ -54,38 +182,43 @@ class Root:
             parent=self.control_grp,
             transform=self.guides[0].name,
             size=self.control_size,
-            control_shape="Character_base",
+            control_shape=self.root_control_shape,
             direction="y",
-            color_type='Root'
+            color_type=self.root_control_color
         )
 
         self.local_ctrl = create_control(
-            name=f'local_{self.side}',
+            name=f'{self.local_name}_{self.side}',
             parent=self.root_ctrl.ctrl,
             transform=self.guides[0].name,
             size=self.control_size * .56,
-            control_shape="circle",
+            control_shape=self.control_shape,
             direction="y",
+            color_type=self.control_color
         )
 
         self.offset_ctrl = create_control(
-            name=f'offset_{self.side}',
+            name=f'{self.offset_name}_{self.side}',
             parent=self.local_ctrl.ctrl,
             transform=self.guides[0].name,
             size=self.control_size * .4,
-            control_shape="circle",
+            control_shape=self.control_shape,
             direction="y",
+            color_type=self.control_color
         )
 
         #rig option controls
+
+        settings_offset = 0.88 if self.root_control_shape == 'Character_base' else .71
         self.vis_control = create_control(
             name='visibility_options',
             parent=self.root_ctrl.ctrl,
             transform=self.guides[0].name,
             size=self.control_size * .05,
-            control_shape="gear",
+            control_shape=self.settings_control_shape,
             direction="y",
-            shape_position_offset=(self.control_size * 0.88, 0, 0 )
+            shape_position_offset=(self.control_size * settings_offset, 0, 0 ),
+            color_type=self.settings_control_color
         )
 
         self.color_control = create_control(
@@ -93,9 +226,10 @@ class Root:
             parent=self.root_ctrl.ctrl,
             transform=self.guides[0].name,
             size=self.control_size * .05,
-            control_shape="gear",
+            control_shape=self.settings_control_shape,
             direction="y",
-            shape_position_offset=(self.control_size * -0.88, 0, 0 )
+            shape_position_offset=(self.control_size * -settings_offset, 0, 0 ),
+            color_type=self.settings_control_color
         )
         lock_tag(self.color_control.ctrl, hide_tag=True)
         lock_tag(self.vis_control.ctrl, hide_tag=True)

@@ -38,6 +38,7 @@ def build(rig_name:str, config:rig_config):
 
     root = modules.Root(control_size=canon.scene_size, joint_parent=canon.joints, parent=canon.rig, guides=[guides.root])
     root_info = root.build()
+    
 
 
 
