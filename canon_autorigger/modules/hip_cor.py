@@ -55,12 +55,14 @@ class Hip_Cor:
         psosaupinfo = psosaup.build()
         psosadown = Pull(part = 'psosadown', control_size=self.control_size, side=self.side, parent=self.main_grp, joint_parent= self.driver, guides=[self.guides[1]], driver = self.driver, range=(0,120 * mod), pull_amount=self.control_size/3)
         psosadowninfo = psosadown.build()
-        gluteslow = Blend(part = 'gluteslow', side=self.side, parent=self.main_grp, joint_parent= self.joint_parent, guides=[self.guides[2]], driver = self.driver, driver_rot_range=(30* mod, -70* mod), mult_range=(.2, .9), driver_axis='X', pop_amount=(self.control_size/4))
+        gluteslow = Blend(part = 'gluteslow', side=self.side, parent=self.main_grp, joint_parent= self.joint_parent, guides=[self.guides[2]], driver = self.driver, driver_rot_range=(30* mod, -70* mod), mult_range=(.2, .9), driver_axis='X', pop_amount=(self.control_size/16))
         gluteslowinfo = gluteslow.build()
-        glutesmid = Blend(part = 'glutesmid', side=self.side, parent=self.main_grp, joint_parent= self.joint_parent, guides=[self.guides[3]], driver = self.driver, driver_rot_range=(0, -80* mod), mult_range=(.2, .4), driver_axis='X', pop_amount=(self.control_size))
+        glutesmid = Blend(part = 'glutesmid', side=self.side, parent=self.main_grp, joint_parent= self.joint_parent, guides=[self.guides[3]], driver = self.driver, driver_rot_range=(0, -80* mod), mult_range=(.2, .4), driver_axis='X', pop_amount=(self.control_size/6))
         glutesmidinfo = glutesmid.build()
-        glutesup = Blend(part = 'glutesup', side=self.side, parent=self.main_grp, joint_parent= self.joint_parent, guides=[self.guides[4]], driver = self.driver, mult_range=(.1,.1),driver_rot_range=(0, -80* mod), driver_axis='X', pop_amount=(self.control_size/2))
+        glutesup = Blend(part = 'glutesup', side=self.side, parent=self.main_grp, joint_parent= self.joint_parent, guides=[self.guides[4]], driver = self.driver, mult_range=(.1,.1),driver_rot_range=(0, -80* mod), driver_axis='X', pop_amount=(self.control_size/8)) #trochanter
         glutesupinfo = glutesup.build()
+        trochanter = Blend(part = 'trochanter', side=self.side, parent=self.main_grp, joint_parent= self.joint_parent, guides=[self.guides[5]], driver = self.driver, mult_range=(.5,.5),driver_rot_range=(0, 90* mod), driver_axis='Z', pop_amount=(self.control_size/8)) #trochanter
+        trochanterinfo = trochanter.build()
 
         #joints
 

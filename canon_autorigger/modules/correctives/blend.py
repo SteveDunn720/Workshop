@@ -345,41 +345,32 @@ class Blend:
 
             self.pop_joint = pop_joint
 
-            # --------------------------------------------------
-            # Pop driven by activation ramp
-            # --------------------------------------------------
+            pop_mult = RemapValueNode(
+                name=f"{descriptor}_pop_remap"
+            )
 
-            if activation_remap is not None:
+            pop_mult.input_min.set(
+                            self.driver_rot_range[0]
+                        )
 
-                pop_mult = cmds.createNode(
-                    "multDoubleLinear",
-                    name=f"{descriptor}_pop_mult",
-                )
+            pop_mult.input_min.set(
+                            self.driver_rot_range[0]
+                        )
+            
+            pop_mult.input_max.set(
+                self.driver_rot_range[1]
+            )
+            
+            
+            pop_mult.output_max.set(
+                self.pop_amount
+            )
+            
+            pop_mult.input_value.connect_from(
+                f"{self.driver}.rotate{self.driver_axis}"
+            )
 
-                cmds.connectAttr(
-                    f"{activation_remap.name}.outValue",
-                    f"{pop_mult}.input1",
-                )
-
-                cmds.setAttr(
-                    f"{pop_mult}.input2",
-                    self.pop_amount,
-                )
-
-                cmds.connectAttr(
-                    f"{pop_mult}.output",
-                    f"{pop_joint}.translate{self.pop_axis}",
-                )
-
-            else:
-
-                # No activation ramp.
-                # Apply the full pop amount.
-
-                cmds.setAttr(
-                    f"{pop_joint}.translate{self.pop_axis}",
-                    self.pop_amount,
-                )
+            pop_mult.output.connect_to(f"{pop_joint}.translate{self.pop_axis}")
 
             output_switch = pop_joint
 
