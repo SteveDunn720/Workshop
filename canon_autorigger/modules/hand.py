@@ -57,7 +57,7 @@ class Hand:
     # -------------------
         
     def build(self):
-        prep = module_prep(part=self.part, parent=self.parent, side=self.side, fkik=True)
+        prep = module_prep(part=self.part, parent=self.parent, side=self.side, fkik=True, gut=True)
         self.main_grp = prep.main_grp
         self.control_grp = prep.control_grp
         self.guts = prep.guts

@@ -23,6 +23,7 @@ class cannon_guide_config:
     foot:dict[str, list[GuideInfo]]
     metacarpal:dict[str, list[GuideInfo]]
 
+    hip_correctives:dict[str,list[GuideInfo]] | None
     pec_correctives:dict[str,list[GuideInfo]] | None
     trap_correctives:dict[str,list[GuideInfo]] | None
     necktrap_correctives:dict[str,list[GuideInfo]] | None
@@ -80,6 +81,7 @@ def read_guides(rig_name:str='Canon')->cannon_guide_config:
     nose = {}
     cheek = {}
     ear = {}
+    hip_correctives = {}
     for side in ['L', 'R']:
         leg[side] = [read_guide(f'upperleg_{side}_guide'), read_guide(f'knee_{side}_guide'), read_guide(f'foot_{side}_guide')]
         arm[side] = [read_guide(f'shoulder_{side}_guide'), read_guide(f'elbow_{side}_guide'), read_guide(f'hand_{side}_guide')]
@@ -109,6 +111,7 @@ def read_guides(rig_name:str='Canon')->cannon_guide_config:
         ear[f'{side}_lower'] = read_guide(f'ear_lower_{side}_guide')
         ear[f'{side}_upper'] = read_guide(f'ear_upper_{side}_guide')
         ear[f'{side}_outer'] = read_guide(f'ear_outer_{side}_guide')
+        hip_correctives[side] = [read_guide(f'psoasup_{side}_guide'), read_guide(f'psoasdown_{side}_guide')]
 
     #face_guides
 
@@ -147,11 +150,13 @@ def read_guides(rig_name:str='Canon')->cannon_guide_config:
         foot=foot, 
         clav=clav, 
         metacarpal=metacarpal, 
+
+        hip_correctives = hip_correctives,
         pec_correctives=pec_cor, 
         trap_correctives=trap_cor,
         necktrap_correctives=necktrap_cor,
         full_joint_correctives=True,
-        
+
         face=face,
         jaw=jaw,
         mouth=mouth,

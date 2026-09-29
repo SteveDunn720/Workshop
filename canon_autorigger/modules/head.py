@@ -54,7 +54,7 @@ class Head:
     def build(self)->module_info:
 
         #modeule prep work
-        prep = module_prep(part=self.part, parent=self.parent, side=self.side, fkik=False, gut=False)
+        prep = module_prep(part=self.part, parent=self.parent, side=self.side, fkik=False, gut=True)
         self.main_grp = prep.main_grp
         self.control_grp = prep.control_grp
         self.guts = prep.guts

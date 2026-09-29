@@ -13,10 +13,12 @@ class scene_config:
     scene_size:float
     guides:str
     hide:str
+    correctives:str | None 
+    psds:str | None
     
 
-def configure_canon_scene(rig_name:str)->scene_config:
-    nodes = ['guides', 'geo', f'{rig_name}_UBM']
+def configure_canon_scene(rig_name:str, correctives:bool=True)->scene_config:
+    nodes = ['guides', 'geo',]
 
     missing = [node for node in nodes if not cmds.objExists(node)]
 
@@ -28,6 +30,12 @@ def configure_canon_scene(rig_name:str)->scene_config:
     rig_container = create_transform(name='rig', parent=root)
     hide_container = create_transform(name='hide', parent=root)
     size = get_model_size(model='geo')
+    if correctives:
+        corrective_modules = create_transform(name='corrective_modules', parent=rig_container)
+        psds = create_transform(name='psds', parent=corrective_modules)
+    else:
+        corrective_modules = None
+        psds = None
 
     cmds.parent('geo', root)
 
@@ -39,7 +47,7 @@ def configure_canon_scene(rig_name:str)->scene_config:
     obj_vis_tag('geo', visibility='visibility_options_ctrl.geo_vis')
 
 
-    config = scene_config(top=root, geo='geo', joints = skel_container, rig=rig_container, scene_size=size, guides='guides', hide=hide_container)
+    config = scene_config(top=root, geo='geo', joints = skel_container, rig=rig_container, scene_size=size, guides='guides', hide=hide_container, correctives=corrective_modules, psds=psds)
     return config
 
 

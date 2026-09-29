@@ -22,6 +22,7 @@ from . import brow
 from . import cheek
 from . import ear
 from . import arbit as arbit
+from . import hip_cor as hip_cor
 
 from .root import Root
 from .biped_limb import Biped_Limb
@@ -46,6 +47,7 @@ from .brow import Brow
 from .cheek import Cheek
 from .ear import Ear
 from .arbit import Arbit
+from .hip_cor import Hip_Cor
 
 
 
@@ -97,6 +99,8 @@ __all__ = [
 "Ear",
 "arbit",
 "Arbit",
+"hip_cor",
+"Hip_Cor",
 ]
 
 MODULE_CLASSES = [

@@ -4,6 +4,7 @@ import maya.cmds as cmds
 
 from Workshop.joint import create_joint
 from Workshop.skin.split.tag import tag_for_weight_split
+from Workshop.transform.constraint import constraint
 
 
 @dataclass
@@ -150,6 +151,7 @@ def drive_twist_joints(
     end_driver: str,
     start_joint: str,
     end_joint: str,
+    cst_parent:str,
     twist_joints: list[str],
     primary_axis: str = "Y",
 ):
@@ -185,19 +187,22 @@ def drive_twist_joints(
     # two constraints from here OR from the limb. Do not build both.
     # ---------------------------------------------------------
 
-    start_constraint = cmds.parentConstraint(
+    """start_constraint = cmds.parentConstraint(
         start_driver,
         start_joint,
         maintainOffset=False,
         name=f"{start_joint}_switch_parentConstraint",
-    )[0]
+    )[0]"""
 
-    end_constraint = cmds.parentConstraint(
+    constraint(drivers=[start_driver], driven=start_joint, maintain_offset=False, parent=cst_parent)
+    constraint(drivers=[end_driver], driven=end_joint, maintain_offset=False, parent=cst_parent)
+
+    """end_constraint = cmds.parentConstraint(
         end_driver,
         end_joint,
         maintainOffset=False,
         name=f"{end_joint}_switch_parentConstraint",
-    )[0]
+    )[0]"""
 
     # ---------------------------------------------------------
     # Relative rotation
@@ -263,6 +268,7 @@ def create_twist(
     end_driver: str,
     start_joint: str,
     end_joint: str,
+    cst_parent:str,
     twist_count: int = 2,
     primary_axis: str = "Y",
 ) -> TwistData:
@@ -313,6 +319,7 @@ def create_twist(
         end_joint=end_joint,
         twist_joints=twist_joints,
         primary_axis=primary_axis,
+        cst_parent=cst_parent
     )
 
     return TwistData(

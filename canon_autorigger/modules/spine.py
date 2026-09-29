@@ -295,7 +295,7 @@ class Spine:
             self.bind_joints.append(self.chest_joint)
 
             constraint(drivers=[self.chest_off.ctrl], driven=self.chestswitch_joint, constraint_type="parent")
-            constraint(drivers=[self.chestswitch_joint], driven=self.chest_joint, constraint_type="parent")
+            constraint(drivers=[self.chestswitch_joint], driven=self.chest_joint, constraint_type="parent", parent=self.guts)
 
         
 

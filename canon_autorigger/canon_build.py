@@ -97,6 +97,11 @@ def build(rig_name:str, config:rig_config):
 
 
         if guides.full_joint_correctives:
+
+            hip_cor = modules.Hip_Cor(control_size=canon.scene_size, joint_parent=hipinfo.hip_joint, parent=canon.correctives, side=side, guides=guides.hip_correctives[side], driver=leg_info.bind_joints[0])
+            hip_cor_info = hip_cor.build()
+
+
             pec = modules.Ik_correctives(part="pec", control_size=canon.scene_size, joint_parent=spineinfo.bind_joints[-1], parent=canon.rig, side=side, guides=guides.pec_correctives[side], end_ik_space=[arm_info.switch_joints[0]], root_ik_space=[spineinfo.chest_off.ctrl], divisions=1) #type:ignore
             pec.build()
             trap = modules.Ik_correctives(part="trap", control_size=canon.scene_size, joint_parent=spineinfo.bind_joints[-1], parent=canon.rig, side=side, guides=guides.trap_correctives[side], end_ik_space=[arm_info.switch_joints[0]], root_ik_space=[spineinfo.chest_off.ctrl], divisions=1) #type:ignore

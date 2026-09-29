@@ -134,7 +134,8 @@ class Biped_Limb:
                 shape_rotation_offset=(0,self.fk_shape_twist,0)
             )
 
-            fk_jnt = create_joint(name=f'FK_{jnt.descriptor}', transform=ctrl.ctrl, parent=jnt_par, bind_set= False, ue_set=False,)
+            fk_jnt = create_joint(name=f'FK_{jnt.descriptor}', transform=ctrl.ctrl, parent=jnt_par, bind_set= False, ue_set=False, connect=False)
+            constraint(drivers=[ctrl.ctrl], driven=fk_jnt, parent=self.guts,)
 
             self.fk_joints.append(fk_jnt)
             self.fk_controls.append(ctrl)
@@ -288,6 +289,8 @@ class Biped_Limb:
 
                 twist_count=2,
                 primary_axis="Y",
+
+                cst_parent=self.guts
             )
 
             self.twists.append(twist)
