@@ -156,7 +156,7 @@ class Hand:
         #bind joints
         self.bind_jnt = create_joint(name=f'def_{self.part}_{self.side}', transform=self.guides.name, parent=self.joint_parent, connect=False)
 
-        constraint(driven=self.bind_jnt, drivers=self.switch_joints[0], constraint_type='parent')
+        constraint(driven=self.bind_jnt, drivers=self.switch_joints[0], constraint_type='parent', parent=self.guts)
 
 
         info = module_info(fk_control=self.fk_controls[0], ik_control=self.ik_controls[1], switch=self.switch_joints[0], joint=self.bind_jnt)    

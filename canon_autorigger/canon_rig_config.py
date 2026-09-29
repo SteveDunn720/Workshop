@@ -111,7 +111,7 @@ def read_guides(rig_name:str='Canon')->cannon_guide_config:
         ear[f'{side}_lower'] = read_guide(f'ear_lower_{side}_guide')
         ear[f'{side}_upper'] = read_guide(f'ear_upper_{side}_guide')
         ear[f'{side}_outer'] = read_guide(f'ear_outer_{side}_guide')
-        hip_correctives[side] = [read_guide(f'psoasup_{side}_guide'), read_guide(f'psoasdown_{side}_guide')]
+        hip_correctives[side] = [read_guide(f'psoasup_{side}_guide'), read_guide(f'psoasdown_{side}_guide'), read_guide(f'glutelow_{side}_guide'), read_guide(f'glutemid_{side}_guide'), read_guide(f'gluteup_{side}_guide')]
 
     #face_guides
 
