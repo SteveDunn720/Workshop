@@ -102,6 +102,9 @@ def build(rig_name:str, config:rig_config):
             hip_cor = modules.Hip_Cor(control_size=canon.scene_size, joint_parent=hipinfo.hip_joint, parent=canon.correctives, side=side, guides=guides.hip_correctives[side], driver=leg_info.bind_joints[0])
             hip_cor_info = hip_cor.build()
 
+            knee_cor = modules.Knee_Cor(control_size=canon.scene_size, joint_parent=leg_info.bind_joints[0], parent=canon.correctives, side=side, guides=guides.knee_correctives[side], driver=leg_info.bind_joints[1])
+            knee_cor_info = knee_cor.build()
+
 
             pec = modules.Ik_correctives(part="pec", control_size=canon.scene_size, joint_parent=spineinfo.bind_joints[-1], parent=canon.rig, side=side, guides=guides.pec_correctives[side], end_ik_space=[arm_info.switch_joints[0]], root_ik_space=[spineinfo.chest_off.ctrl], divisions=1) #type:ignore
             pec.build()
