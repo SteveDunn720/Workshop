@@ -1,15 +1,15 @@
 
-from . import root as root
-from . import biped_limb as biped_limb
-from . import hip as hip
-from . import foot as foot
-from . import spine as spine
-from . import clav as clav
-from . import hand as hand
-from . import chain as chain
-from . import metacarpal as metacarpal
-from . import neck as neck
-from . import head as head
+from . import root 
+from . import biped_limb 
+from . import hip 
+from . import foot 
+from . import spine 
+from . import clav 
+from . import hand 
+from . import chain 
+from . import metacarpal 
+from . import neck 
+from . import head 
 from . import ik_correctives
 from . import face
 from . import jaw
@@ -21,9 +21,10 @@ from . import nl_fold
 from . import brow
 from . import cheek
 from . import ear
-from . import arbit as arbit
-from . import hip_cor as hip_cor
-from . import knee_cor as knee_cor
+from . import arbit 
+from . import hip_cor 
+from . import knee_cor 
+from . import ankle_cor
 
 from .root import Root
 from .biped_limb import Biped_Limb
@@ -50,6 +51,7 @@ from .ear import Ear
 from .arbit import Arbit
 from .hip_cor import Hip_Cor
 from .knee_cor import Knee_Cor
+from .ankle_cor import Ankle_Cor
 
 
 
@@ -71,7 +73,7 @@ __all__ = [
 "Hand",
 "chain",
 "Chain",
-"metacarpale",
+"metacarpal",
 "Metacarpal",
 "neck",
 "Neck",
@@ -105,6 +107,8 @@ __all__ = [
 "Hip_Cor",
 "knee_cor",
 "Knee_Cor",
+"ankle_cor",
+"Ankle_Cor",
 ]
 
 MODULE_CLASSES = [

@@ -21,6 +21,7 @@ class module_info:
     swtich_joints:list
     fk_joints:list
     ik_joints:list
+    bind_joints:list
 
 @dataclass
 class foot_guides:
@@ -298,7 +299,7 @@ class Foot:
             constraint(drivers=[self.switch_joints[i]], driven=switch_jnt, parent=self.guts, constraint_type="parent")
 
 
-        feet_info = module_info(fk_control=self.fk_controls, ik_controls=self.ik_controls, swtich_joints=self.switch_joints, fk_joints=self.fk_joints, ik_joints=self.ik_joints)
+        feet_info = module_info(fk_control=self.fk_controls, ik_controls=self.ik_controls, swtich_joints=self.switch_joints, fk_joints=self.fk_joints, ik_joints=self.ik_joints, bind_joints=self.bind_joints)
         return feet_info
 
 

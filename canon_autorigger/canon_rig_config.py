@@ -25,6 +25,8 @@ class cannon_guide_config:
 
     hip_correctives:dict[str,list[GuideInfo]] | None
     knee_correctives:dict[str,list[GuideInfo]] | None
+    ankle_correctives:dict[str,list[GuideInfo]] | None
+
     pec_correctives:dict[str,list[GuideInfo]] | None
     trap_correctives:dict[str,list[GuideInfo]] | None
     necktrap_correctives:dict[str,list[GuideInfo]] | None
@@ -84,6 +86,7 @@ def read_guides(rig_name:str='Canon')->cannon_guide_config:
     ear = {}
     hip_correctives = {}
     knee_correctives = {}
+    ankle_correctives = {}
 
     for side in ['L', 'R']:
         leg[side] = [read_guide(f'upperleg_{side}_guide'), read_guide(f'knee_{side}_guide'), read_guide(f'foot_{side}_guide')]
@@ -116,6 +119,7 @@ def read_guides(rig_name:str='Canon')->cannon_guide_config:
         ear[f'{side}_outer'] = read_guide(f'ear_outer_{side}_guide')
         hip_correctives[side] = [read_guide(f'psoasup_{side}_guide'), read_guide(f'psoasdown_{side}_guide'), read_guide(f'glutelow_{side}_guide'), read_guide(f'glutemid_{side}_guide'), read_guide(f'gluteup_{side}_guide'), read_guide(f'trochanter_{side}_guide')]
         knee_correctives[side] = [read_guide(f'kneecap_{side}_guide'), read_guide(f'hamstring_{side}_guide'), read_guide(f'calf_{side}_guide'),]
+        ankle_correctives[side] = [read_guide(f'tibialis_{side}_guide'), read_guide(f'achilles_{side}_guide'), read_guide(f'medialmalleolus_{side}_guide'), read_guide(f'lateralmalleolus_{side}_guide'),]
 
     #face_guides
 
@@ -157,6 +161,9 @@ def read_guides(rig_name:str='Canon')->cannon_guide_config:
 
         hip_correctives = hip_correctives,
         knee_correctives = knee_correctives,
+        ankle_correctives = ankle_correctives,
+
+
         pec_correctives=pec_cor, 
         trap_correctives=trap_cor,
         necktrap_correctives=necktrap_cor,

@@ -105,6 +105,9 @@ def build(rig_name:str, config:rig_config):
             knee_cor = modules.Knee_Cor(control_size=canon.scene_size, joint_parent=leg_info.bind_joints[0], parent=canon.correctives, side=side, guides=guides.knee_correctives[side], driver=leg_info.bind_joints[1])
             knee_cor_info = knee_cor.build()
 
+            ankle_cor = modules.Ankle_Cor(control_size=canon.scene_size, joint_parent=leg_info.bind_joints[1], parent=canon.correctives, side=side, guides=guides.ankle_correctives[side], driver=foot_info.bind_joints[0])
+            ankle_cor_info = ankle_cor.build()
+
 
             pec = modules.Ik_correctives(part="pec", control_size=canon.scene_size, joint_parent=spineinfo.bind_joints[-1], parent=canon.rig, side=side, guides=guides.pec_correctives[side], end_ik_space=[arm_info.switch_joints[0]], root_ik_space=[spineinfo.chest_off.ctrl], divisions=1) #type:ignore
             pec.build()
