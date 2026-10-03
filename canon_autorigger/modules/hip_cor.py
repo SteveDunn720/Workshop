@@ -48,7 +48,7 @@ class Hip_Cor:
         #modeule prep work
         self.main_grp = create_transform(name=f'{self.part}_{self.side}_cor', parent=self.parent)
 
-        mod = -1 if self.side == 'R' else 1
+        mod = 1 #if self.side == 'R' else 1
 
 
         psosaup = Pull(part = 'psosaup', control_size=self.control_size, side=self.side, parent=self.main_grp, joint_parent=self.joint_parent, guides=[self.guides[0]], driver =  self.driver, range=(0,120 * mod), pull_amount=self.control_size/3)

@@ -8,7 +8,7 @@ from maya.api.OpenMaya import MMatrix
 from Workshop.control.core import Control
 from Workshop.transform import match_transform, matrix_constraint, set_world_matrix
 from Workshop.tag.core import sets_tag
-from Workshop.transform.utils import get_distance_between
+from Workshop.transform.utils import create_transform, get_distance_between
 from Workshop.skin.split.tag import tag_for_weight_split
 from Workshop.maya_api.enum import RotateOrder
 
@@ -62,7 +62,8 @@ def create_joint(
     suffix:bool = True,
     bind_set:bool = True,
     ue_set:bool = True,
-    rotate_order: RotateOrder = RotateOrder.YXZ
+    rotate_order: RotateOrder = RotateOrder.YXZ,
+    dont_mirror:bool=False
 ) -> str:
     if suffix:
         joint = cmds.createNode("joint", name=f"{name}{JOINT_SUFFIX}")
@@ -75,7 +76,7 @@ def create_joint(
     if transform is None:
         pass
     elif isinstance(transform, Control):
-        source_transform = transform.transform
+        source_transform = transform.ctrl
     elif isinstance(transform, str):
         source_transform = transform
     elif isinstance(transform, MMatrix):
@@ -83,12 +84,33 @@ def create_joint(
     else:
         raise RuntimeError(f"{transform} is not a valid transform name or MMatrix")
     if source_transform is not None:
-        match_transform(joint, source_transform, use_joint_orient=True)
+        if "_R_" in joint and bind_set and not dont_mirror:
+            corrected_guide, mirror_group = get_behavior_mirrored_joint_matrix(
+                source_transform,
+                mirror_axis="X",
+            )
+
+            match_transform(
+                joint,
+                corrected_guide,
+                use_joint_orient=True,
+            )
+
+            cmds.delete(mirror_group)
+
+        else:
+            match_transform(
+                joint,
+                source_transform,
+                use_joint_orient=True,
+            )
         if connect:
             matrix_constraint(source_transform, joint, False, use_joint_orient=True)
 
     if radius != 1:
         cmds.setAttr(f"{joint}.radius", radius)  # type: ignore
+
+    cmds.setAttr(f"{joint}.segmentScaleCompensate", 0)
 
     sets = []
     if bind_set:
@@ -105,48 +127,128 @@ def create_joint(
     return joint
 
 
-def twist_split(joint:str, child_joint:str | None = None, primary_axis='Y'):
-    if child_joint:
-        end = child_joint
-    else:
-        children = cmds.listRelatives(
-            joint,
+
+def get_behavior_mirrored_joint_matrix(
+    guide: str,
+    mirror_axis: str = "X",
+    temp_parent: str = "guides",
+):
+    """
+    Convert a geometrically mirrored guide into a Maya Behavior-mirrored
+    joint matrix.
+
+    Process:
+        1. Duplicate the mirrored guide.
+        2. Remove it from its existing hierarchy.
+        3. Create an origin mirror transform.
+        4. Mirror that transform.
+        5. Parent the duplicated guide beneath it.
+        6. Un-mirror the transform.
+           -> duplicated guide is now reconstructed on the source side.
+        7. Create a temporary joint from that source-side transform.
+        8. Use Maya mirrorJoint with mirrorBehavior=True.
+        9. Return the resulting mirrored joint's world matrix.
+       10. Clean up temporary nodes.
+    """
+
+    axis = mirror_axis.upper()
+
+    temp_nodes = []
+
+    try:
+        # -----------------------------------------------------
+        # Duplicate the mirrored guide
+        # -----------------------------------------------------
+
+        mirror_group = create_transform(name=f'{guide}_reverse_flip_grp')
+        temp_nodes.append(mirror_group)
+
+        cmds.parent(
+            mirror_group,
+            temp_parent,
+            absolute=True,
+        )
+
+        # Explicitly ensure identity at world origin.
+        cmds.xform(
+            mirror_group,
+            worldSpace=True,
+            translation=(0, 0, 0),
+            rotation=(0, 0, 0),
+            scale=(-1, 1, 1),
+        )
+
+        guide_duplicate = cmds.duplicate(
+            guide,
+            parentOnly=True,
+            name=f"{guide}_jointMirror_TEMP",
+        )[0]
+
+        # Remove any child joints so mirrorJoint only mirrors this joint
+        child_joints = cmds.listRelatives(
+            guide_duplicate,
             children=True,
             type="joint",
-            fullPath=False
+            fullPath=True,
         ) or []
-        if not children:
-            raise ValueError(f"{joint} has no child joint.")
-        end = children[0]
+
+        if child_joints:
+            cmds.delete(child_joints)
+
+        temp_nodes.append(guide_duplicate)
+
+        # Pull it completely out of the mirrored guide hierarchy.
+        cmds.parent(
+            guide_duplicate,
+            mirror_group,
+        )
+
+        # -----------------------------------------------------
+        # Create an origin transform
+        # -----------------------------------------------------
 
 
-    bone_len = cmds.getAttr(f"{end}.translate{primary_axis}")
 
-    descriptor = joint.removesuffix(JOINT_SUFFIX)
+        # -----------------------------------------------------
+        # Mirror the group
+        # -----------------------------------------------------
 
-    twist_jnt = create_joint(name=f'{descriptor}_twist', transform=joint, connect=False, bind_set=True, ue_set=True, parent=joint)
+        cmds.setAttr(
+            f"{mirror_group}.scale{axis}",
+            1,
+        )
 
-    cmds.setAttr(f"{twist_jnt}.translate{primary_axis}", bone_len * .666) #type:ignore
+        if cmds.nodeType(guide_duplicate) != "joint":
 
-    old_twist = f"{joint}.rotate{primary_axis}"
-    new_twist = f"{twist_jnt}.rotate{primary_axis}"
+            temp_joint = cmds.createNode(
+                "joint",
+                name=f"{guide}_jointMirror_TEMP_jnt",
+            )
 
-    tag_for_weight_split(
-        influence=joint,  # <-- your SOURCE joint (must already exist)
-        split_influences=[joint, twist_jnt, twist_jnt],  # <-- the ones you just created
-    )
+            # Match the reverse-mirrored guide
+            match_transform(
+                temp_joint,
+                guide_duplicate,
+                use_joint_orient=True,
+            )
 
-    source = cmds.listConnections(
-        old_twist,
-        source=True,
-        destination=False,
-        plugs=True,
-    ) or []
+            # Track it if/when we turn cleanup back on
+            temp_nodes.append(temp_joint)
+            cmds.parent(temp_joint, mirror_group)
 
-    if source:
-        source_twist = source[0]
+            # From this point forward, use the joint instead
+            guide_duplicate = temp_joint
 
-        cmds.disconnectAttr(source_twist, old_twist)
-        cmds.connectAttr(source_twist, new_twist, force=True)
+        cmds.select(clear=True)
+        cmds.select(guide_duplicate)
+        mirrored_guide= cmds.mirrorJoint(mirrorYZ=True, mirrorBehavior=True, searchReplace=('_R_', '_R0_'))
+        # -----------------------------------------------------
+        # Maya Behavior mirror
+        # -----------------------------------------------------
 
-    return twist_jnt
+        
+
+        return mirrored_guide[0], mirror_group
+
+    finally:
+        pass

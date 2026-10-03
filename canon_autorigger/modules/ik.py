@@ -14,7 +14,7 @@ class IK_data:
     pole_vector:str
 
 
-def create_IK_rotate_plane(name:str, start_joint:str, end_joint:str, mid_joint:str, pole_vector_guide:str, auto_pv:bool=False)->IK_data:
+def create_IK_rotate_plane(name:str, start_joint:str, end_joint:str, mid_joint:str, pole_vector_guide:str, auto_pv:bool=False, mirror_pv:bool=False)->IK_data:
     ik_handle, effector = cmds.ikHandle(                                                 #type:ignore
             name=f'{name}_IK_handle',
             startJoint=start_joint,
@@ -23,12 +23,14 @@ def create_IK_rotate_plane(name:str, start_joint:str, end_joint:str, mid_joint:s
         )
 
     if auto_pv:
-        pv = generate_autoPV([start_joint, mid_joint, end_joint], f'{name}_PV')
+        pv = generate_autoPV([start_joint, mid_joint, end_joint], f'{name}_PV', mirror=mirror_pv)
     else:
         pv = pole_vector_guide
 
     pv_loc = cmds.spaceLocator(name=f'{name}_pv_loc')[0]
     match_location(pv_loc, pv) #type:ignore
+    if mirror_pv:
+        cmds.setAttr(f'{pv_loc}.scaleX', -1)
 
     if auto_pv:
         cmds.delete(pv)
@@ -41,7 +43,7 @@ def create_IK_rotate_plane(name:str, start_joint:str, end_joint:str, mid_joint:s
 
     
 
-def generate_autoPV(joints: list, name: str = "pv_name") -> str:
+def generate_autoPV(joints: list, name: str = "pv_name", mirror:bool=False) -> str:
 
     p0 = get_position(joints[0])
     p1 = get_position(joints[1])
@@ -69,6 +71,8 @@ def generate_autoPV(joints: list, name: str = "pv_name") -> str:
     pv_matrix = convert_to_matrix(pos=(pv_pos.x, pv_pos.y, pv_pos.z))
 
     pv_object = create_transform(name=name, parent=None, transform=pv_matrix)
+    if mirror:
+            cmds.setAttr(f'{pv_object}.scaleX', -1)
 
     return pv_object
 

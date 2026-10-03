@@ -56,6 +56,7 @@ def create_twist_joints(
     end_joint: str,
     twist_count: int = 2,
     primary_axis: str = "Y",
+    invert:bool=False,
 ) -> list[str]:
     """
     Create twist joints between two existing deformation joints.
@@ -75,6 +76,8 @@ def create_twist_joints(
     bone_length = cmds.getAttr(
         f"{end_joint}.translate{primary_axis}"
     )
+
+    mod =  1 #-1 if invert == True else
 
     descriptor = start_joint.removesuffix("_jnt")
 
@@ -96,11 +99,12 @@ def create_twist_joints(
             connect=False,
             bind_set=True,
             ue_set=True,
+            dont_mirror=True
         )
 
         cmds.setAttr(
             f"{twist_joint}.translate{primary_axis}",
-            bone_length * position,
+            bone_length * position * mod,
         )
 
         twist_joints.append(twist_joint)
@@ -194,8 +198,8 @@ def drive_twist_joints(
         name=f"{start_joint}_switch_parentConstraint",
     )[0]"""
 
-    constraint(drivers=[start_driver], driven=start_joint, maintain_offset=False, parent=cst_parent)
-    constraint(drivers=[end_driver], driven=end_joint, maintain_offset=False, parent=cst_parent)
+    constraint(drivers=[start_driver], driven=start_joint, maintain_offset=True, parent=cst_parent)
+    constraint(drivers=[end_driver], driven=end_joint, maintain_offset=True, parent=cst_parent)
 
     """end_constraint = cmds.parentConstraint(
         end_driver,
@@ -271,6 +275,7 @@ def create_twist(
     cst_parent:str,
     twist_count: int = 2,
     primary_axis: str = "Y",
+    invert:bool=False
 ) -> TwistData:
     """
     Create a twist deformation segment.
@@ -305,6 +310,7 @@ def create_twist(
         end_joint=end_joint,
         twist_count=twist_count,
         primary_axis=primary_axis,
+        invert=invert,
     )
 
     setup_twist_tag(
@@ -373,7 +379,7 @@ def create_swing_driver(
     cmds.pointConstraint(
         start_driver,
         swing,
-        maintainOffset=False,
+        maintainOffset=True,
     )
 
     # Aim primary axis down the segment.
@@ -388,7 +394,7 @@ def create_swing_driver(
     cmds.aimConstraint(
         end_driver,
         swing,
-        maintainOffset=False,
+        maintainOffset=True,
         aimVector=aim_vector,
         upVector=(1, 0, 0),
         worldUpType="objectrotation",

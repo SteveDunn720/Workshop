@@ -165,7 +165,7 @@ class Biped_Limb:
             self.ik_joints.append(ik_jnt)
             jnt_par = ik_jnt
 
-        self.ik_handle = create_IK_rotate_plane(name=f'{self.part}_{self.side}', start_joint=self.ik_joints[0], mid_joint=self.ik_joints[1], end_joint=self.ik_joints[2], auto_pv=True, pole_vector_guide='')
+        self.ik_handle = create_IK_rotate_plane(name=f'{self.part}_{self.side}', start_joint=self.ik_joints[0], mid_joint=self.ik_joints[1], end_joint=self.ik_joints[2], auto_pv=True, pole_vector_guide='', mirror_pv=True if self.side == 'R' else False)
         cmds.parent(self.ik_handle.handle, self.ik_handle.pole_vector, self.guts)
         self.ik_root_ctrl = create_control(
                 name=f'IK_{self.guides[0].descriptor}',
@@ -292,7 +292,9 @@ class Biped_Limb:
                 twist_count=2,
                 primary_axis="Y",
 
-                cst_parent=self.guts
+                cst_parent=self.guts,
+
+
             )
 
             self.twists.append(twist)
