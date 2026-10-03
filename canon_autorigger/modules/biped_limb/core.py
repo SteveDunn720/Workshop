@@ -37,6 +37,8 @@ class moudle_info:
     ik_singlechain: IK_data | None
     ik_len_joints:list
     fk_hook:str
+    upper_sub_joints:list
+    lower_sub_joints:list
 
 
 
@@ -306,6 +308,23 @@ class Biped_Limb:
             name=f"{self.part}_{self.side}_pv_line",
         )
 
+        mid = len(self.twists) // 2
+
+        upper_twist_data = self.twists[:mid]
+        lower_twist_data = self.twists[mid:]
+
+        self.upper_twists = [
+            joint
+            for twist in upper_twist_data
+            for joint in twist.twist_joints
+        ]
+
+        self.lower_twists = [
+            joint
+            for twist in lower_twist_data
+            for joint in twist.twist_joints
+        ]
+
 
 
 
@@ -326,7 +345,9 @@ class Biped_Limb:
                 ik_main_handle=self.ik_handle,
                 ik_singlechain=self.ik_len_chain if self.ik_length else None,
                 ik_len_joints = self.ik_len_joints if self.ik_length else [],
-                fk_hook = fk_hook
+                fk_hook = fk_hook,
+                upper_sub_joints=self.upper_twists,
+                lower_sub_joints=self.lower_twists,
                 )
         
         return self.info

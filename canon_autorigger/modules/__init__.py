@@ -25,6 +25,8 @@ from . import arbit
 from . import hip_cor 
 from . import knee_cor 
 from . import ankle_cor
+from . import elbow_cor
+from . import wrist_cor
 
 from .root import Root
 from .biped_limb import Biped_Limb
@@ -52,6 +54,8 @@ from .arbit import Arbit
 from .hip_cor import Hip_Cor
 from .knee_cor import Knee_Cor
 from .ankle_cor import Ankle_Cor
+from .elbow_cor import Elbow_Cor
+from .wrist_cor import Wrist_Cor
 
 
 
@@ -109,6 +113,10 @@ __all__ = [
 "Knee_Cor",
 "ankle_cor",
 "Ankle_Cor",
+"elbow_cor",
+"Elbow_Cor",
+"wrist_cor",
+"Wrist_Cor",
 ]
 
 MODULE_CLASSES = [
