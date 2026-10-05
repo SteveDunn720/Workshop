@@ -155,25 +155,29 @@ def drive_twist_joints(
     end_driver: str,
     start_joint: str,
     end_joint: str,
-    cst_parent:str,
+    cst_parent: str,
     twist_joints: list[str],
     primary_axis: str = "Y",
 ):
     """
     Drive a deformation twist segment from a switch-joint segment.
 
-    The switch joints are the authoritative input.
+    Rotation:
+        Each twist joint receives a percentage of the end driver's
+        local primary-axis rotation.
 
-    The start bind joint follows the start driver normally.
+    Translation:
+        Each twist joint receives the same percentage of the end driver's
+        change from its rest translation.
 
-    The generated twist joints inherit the start bind joint's transform,
-    then progressively receive the relative axial rotation between the
-    start and end switch joints.
+        All XYZ translation axes are tracked.
 
-    The end bind joint continues to be driven by the end switch joint.
+        On the primary axis, compression is clamped so that a twist joint
+        cannot move closer to the segment root than its original/rest
+        position.
 
-    This intentionally handles TWIST ONLY. Bendy/swing interpolation can
-    be layered on top later.
+        This clamp is sign-aware, so it works with both positive and
+        negative primary-axis limb lengths.
     """
 
     if not twist_joints:
@@ -184,84 +188,258 @@ def drive_twist_joints(
     # ---------------------------------------------------------
     # Start / end deformation joints
     # ---------------------------------------------------------
-    #
-    # These should follow their corresponding switch joints.
-    #
-    # If your limb already creates these constraints, REMOVE these
-    # two constraints from here OR from the limb. Do not build both.
-    # ---------------------------------------------------------
 
-    """start_constraint = cmds.parentConstraint(
-        start_driver,
-        start_joint,
-        maintainOffset=False,
-        name=f"{start_joint}_switch_parentConstraint",
-    )[0]"""
+    constraint(
+        drivers=[start_driver],
+        driven=start_joint,
+        maintain_offset=True,
+        parent=cst_parent,
+    )
 
-    constraint(drivers=[start_driver], driven=start_joint, maintain_offset=True, parent=cst_parent)
-    constraint(drivers=[end_driver], driven=end_joint, maintain_offset=True, parent=cst_parent)
-
-    """end_constraint = cmds.parentConstraint(
-        end_driver,
-        end_joint,
-        maintainOffset=False,
-        name=f"{end_joint}_switch_parentConstraint",
-    )[0]"""
+    constraint(
+        drivers=[end_driver],
+        driven=end_joint,
+        maintain_offset=True,
+        parent=cst_parent,
+    )
 
     # ---------------------------------------------------------
-    # Relative rotation
-    # ---------------------------------------------------------
-    #
-    # end_driver is a child of start_driver in the switch chain.
-    #
-    # Therefore:
-    #
-    #     end_driver.rotate<axis>
-    #
-    # already represents the end's local rotation relative to
-    # the start driver.
-    #
-    # We only use the primary axis here so knee/elbow bending
-    # doesn't contaminate twist.
+    # Twist source
     # ---------------------------------------------------------
 
     twist_source = f"{end_driver}.rotate{primary_axis}"
+
+    # ---------------------------------------------------------
+    # Capture end-driver rest translation
+    # ---------------------------------------------------------
+
+    end_rest_translate = {
+        axis: cmds.getAttr(f"{end_driver}.translate{axis}")
+        for axis in "XYZ"
+    }
 
     count = len(twist_joints)
 
     for i, twist_joint in enumerate(twist_joints):
 
-        # -----------------------------------------------------
-        # Rotation percentage
-        # -----------------------------------------------------
+        # Example:
         #
-        # start     twist01     twist02     end
-        #   0%        33%         66%       100%
+        # start     twist01     twist02      end
+        #  0%         33%         66%        100%
         #
         weight = (i + 1) / (count + 1)
 
-        mult = cmds.createNode(
+        # =====================================================
+        # ROTATION
+        # =====================================================
+
+        twist_mult = cmds.createNode(
             "multDoubleLinear",
             name=f"{twist_joint}_twist_mult",
         )
 
         cmds.connectAttr(
             twist_source,
-            f"{mult}.input1",
+            f"{twist_mult}.input1",
             force=True,
         )
 
         cmds.setAttr(
-            f"{mult}.input2",
+            f"{twist_mult}.input2",
             weight,
         )
 
         cmds.connectAttr(
-            f"{mult}.output",
+            f"{twist_mult}.output",
             f"{twist_joint}.rotate{primary_axis}",
             force=True,
         )
 
+        # =====================================================
+        # TRANSLATION
+        # =====================================================
+
+        for axis in "XYZ":
+
+            end_attr = f"{end_driver}.translate{axis}"
+            twist_attr = f"{twist_joint}.translate{axis}"
+
+            rest_end = end_rest_translate[axis]
+            rest_twist = cmds.getAttr(twist_attr)
+
+            # -------------------------------------------------
+            # End translation delta
+            #
+            # currentEnd - restEnd
+            # -------------------------------------------------
+
+            delta = cmds.createNode(
+                "plusMinusAverage",
+                name=f"{twist_joint}_translate{axis}_delta",
+            )
+
+            cmds.setAttr(
+                f"{delta}.operation",
+                2,  # subtract
+            )
+
+            cmds.connectAttr(
+                end_attr,
+                f"{delta}.input1D[0]",
+                force=True,
+            )
+
+            cmds.setAttr(
+                f"{delta}.input1D[1]",
+                rest_end,
+            )
+
+            # -------------------------------------------------
+            # Weighted translation delta
+            #
+            # delta * twist percentage
+            # -------------------------------------------------
+
+            translate_mult = cmds.createNode(
+                "multDoubleLinear",
+                name=f"{twist_joint}_translate{axis}_mult",
+            )
+
+            cmds.connectAttr(
+                f"{delta}.output1D",
+                f"{translate_mult}.input1",
+                force=True,
+            )
+
+            cmds.setAttr(
+                f"{translate_mult}.input2",
+                weight,
+            )
+
+            # -------------------------------------------------
+            # Add rest position back
+            #
+            # restTwist + weightedDelta
+            # -------------------------------------------------
+
+            result = cmds.createNode(
+                "addDoubleLinear",
+                name=f"{twist_joint}_translate{axis}_add",
+            )
+
+            cmds.setAttr(
+                f"{result}.input1",
+                rest_twist,
+            )
+
+            cmds.connectAttr(
+                f"{translate_mult}.output",
+                f"{result}.input2",
+                force=True,
+            )
+
+            # =================================================
+            # PRIMARY AXIS COMPRESSION CLAMP
+            # =================================================
+
+            if axis == primary_axis:
+
+                # ---------------------------------------------
+                # Positive limb
+                #
+                # rest = +5
+                #
+                # Allowed:
+                #     5, 6, 7, 8...
+                #
+                # Blocked:
+                #     4, 3, 2...
+                # ---------------------------------------------
+
+                if rest_twist >= 0.0:
+
+                    clamp = cmds.createNode(
+                        "clamp",
+                        name=f"{twist_joint}_translate{axis}_clamp",
+                    )
+
+                    cmds.setAttr(
+                        f"{clamp}.minR",
+                        weight,
+                    )
+
+                    cmds.setAttr(
+                        f"{clamp}.maxR",
+                        1000000.0,
+                    )
+
+                    cmds.connectAttr(
+                        f"{result}.output",
+                        f"{clamp}.inputR",
+                        force=True,
+                    )
+
+                    cmds.connectAttr(
+                        f"{clamp}.outputR",
+                        twist_attr,
+                        force=True,
+                    )
+
+                # ---------------------------------------------
+                # Negative limb
+                #
+                # rest = -5
+                #
+                # Allowed:
+                #     -5, -6, -7, -8...
+                #
+                # Blocked:
+                #     -4, -3, -2...
+                #
+                # Therefore the rest position is our MAX,
+                # rather than our MIN.
+                # ---------------------------------------------
+
+                else:
+
+                    clamp = cmds.createNode(
+                        "clamp",
+                        name=f"{twist_joint}_translate{axis}_clamp",
+                    )
+
+                    cmds.setAttr(
+                        f"{clamp}.minR",
+                        -1000000.0,
+                    )
+
+                    cmds.setAttr(
+                        f"{clamp}.maxR",
+                        weight,
+                    )
+
+                    cmds.connectAttr(
+                        f"{result}.output",
+                        f"{clamp}.inputR",
+                        force=True,
+                    )
+
+                    cmds.connectAttr(
+                        f"{clamp}.outputR",
+                        twist_attr,
+                        force=True,
+                    )
+
+            # =================================================
+            # SECONDARY AXES
+            # =================================================
+
+            else:
+
+                cmds.connectAttr(
+                    f"{result}.output",
+                    twist_attr,
+                    force=True,
+                )
 
 # ----------------------------------------------------------------------
 # Main
