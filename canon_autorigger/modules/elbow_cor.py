@@ -55,8 +55,10 @@ class Elbow_Cor:
         lowerbicepinfo = lowerbicep.build()
         lowertricep = Pull(part = 'lowertricep', control_size=self.control_size, side=self.side, parent=self.main_grp, joint_parent=self.joint_parent, guides=[self.guides[2]], driver =  self.driver, range=(0,120 * mod), pull_amount=self.control_size/15)
         lowertricepinfo = lowertricep.build()
-        elbowcorner = Blend(part = 'elbowcorner', side=self.side, parent=self.main_grp, joint_parent= self.joint_parent, guides=[self.guides[0]], driver = self.driver, driver_rot_range=(0, 80* mod), mult_range=(.5,.5), driver_axis='X', pop_amount=(self.control_size/15))
-        elbowcornerinfo = elbowcorner.build()
+        elbowin = Blend(part = 'elbowin', side=self.side, parent=self.main_grp, joint_parent= self.joint_parent, guides=[self.guides[0]], driver = self.driver, driver_rot_range=(0, 80* mod), mult_range=(.5,.5), driver_axis='X', pop_amount=(self.control_size/10))
+        elbowininfo = elbowin.build()
+        pronator = Pull(part = 'pronator', control_size=self.control_size, side=self.side, parent=self.main_grp, joint_parent=self.driver, guides=[self.guides[3]], driver =  self.driver, range=(0,120 * mod), pull_amount=self.control_size/10,)
+        pronatorinfo = pronator.build()
 
 
         #joints
