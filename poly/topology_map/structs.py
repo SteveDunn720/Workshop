@@ -2,12 +2,25 @@ from dataclasses import dataclass
 
 
 @dataclass
+class TopologyFingerprint:
+    """
+    Identifies a specific polygon topology.
+
+    Positions are intentionally not included, so differently shaped
+    meshes with identical topology produce the same fingerprint.
+    """
+
+    vertex_count: int
+    edge_count: int
+    face_count: int
+    connectivity_hash: str
+
+
+
+@dataclass
 class SurfaceBinding:
     """
     Describes where one target vertex exists on the source surface.
-
-    The target position can be reconstructed from the three source
-    triangle vertices using the stored barycentric weights.
     """
 
     target_index: int
@@ -18,17 +31,39 @@ class SurfaceBinding:
     source_vertices: tuple[int, int, int]
     barycentric: tuple[float, float, float]
 
+@dataclass
+class MeshTopology:
+    """
+    Complete polygon connectivity required to reconstruct a mesh.
+    """
+
+    vertex_count: int
+
+    # One tuple per polygon containing its vertex IDs.
+    faces: list[tuple[int, ...]]
+
+@dataclass
+class MeshSnapshot:
+    """
+    Complete reconstructable mesh data.
+    """
+
+    fingerprint: TopologyFingerprint
+    topology: MeshTopology
+
+    positions: list[
+        tuple[float, float, float]
+    ]
 
 @dataclass
 class TopologyMap:
-    """
-    Mapping from one polygon topology to another.
 
-    The map itself is independent of specific Maya node names, allowing
-    the same topology relationship to be reused between characters.
-    """
-
-    source_vertex_count: int
-    target_vertex_count: int
+    source_fingerprint: TopologyFingerprint
+    target_fingerprint: TopologyFingerprint
 
     bindings: list[SurfaceBinding]
+
+    source_snapshot: MeshSnapshot | None = None
+    target_snapshot: MeshSnapshot | None = None
+
+

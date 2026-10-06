@@ -1,31 +1,74 @@
 import maya.api.OpenMaya as om
 
-from .build import _get_mesh_dag_path
-from .structs import TopologyMap
+from .fingerprint import (
+    _get_mesh_dag_path,
+    validate_topology,
+)
+
+from .snapshot import validate_snapshot
+
+from .structs import (
+    MeshSnapshot,
+    TopologyMap,
+)
 
 
-def _validate_topology(
-    source_fn: om.MFnMesh,
-    target_fn: om.MFnMesh,
+def _calculate_target_positions(
+    source_positions: list[tuple[float, float, float]],
     topology_map: TopologyMap,
-):
+) -> om.MPointArray:
     """
-    Validate meshes against the topology map.
+    Calculate target positions from source vertex data and a
+    TopologyMap.
     """
 
-    if source_fn.numVertices != topology_map.source_vertex_count:
+    if (
+        len(source_positions)
+        != topology_map.source_fingerprint.vertex_count
+    ):
         raise ValueError(
-            "Source topology does not match TopologyMap.\n"
-            f"Expected: {topology_map.source_vertex_count} vertices\n"
-            f"Received: {source_fn.numVertices} vertices"
+            "Source position count does not match "
+            "TopologyMap source topology."
         )
 
-    if target_fn.numVertices != topology_map.target_vertex_count:
-        raise ValueError(
-            "Target topology does not match TopologyMap.\n"
-            f"Expected: {topology_map.target_vertex_count} vertices\n"
-            f"Received: {target_fn.numVertices} vertices"
+    target_count = (
+        topology_map.target_fingerprint.vertex_count
+    )
+
+    # Initialize to correct size.
+    target_positions = om.MPointArray(
+        target_count,
+        om.MPoint(),
+    )
+
+    for binding in topology_map.bindings:
+
+        v0, v1, v2 = binding.source_vertices
+        w0, w1, w2 = binding.barycentric
+
+        p0 = om.MVector(
+            *source_positions[v0]
         )
+
+        p1 = om.MVector(
+            *source_positions[v1]
+        )
+
+        p2 = om.MVector(
+            *source_positions[v2]
+        )
+
+        position = (
+            p0 * w0
+            + p1 * w1
+            + p2 * w2
+        )
+
+        target_positions[
+            binding.target_index
+        ] = om.MPoint(position)
+
+    return target_positions
 
 
 def transfer_positions(
@@ -34,60 +77,160 @@ def transfer_positions(
     topology_map: TopologyMap,
 ):
     """
-    Transfer source surface shape onto a target topology using a
-    previously generated TopologyMap.
+    Transfer shape from a Maya source mesh to a Maya target mesh using
+    a previously generated TopologyMap.
 
-    Args:
-        source:
-            Mesh sharing the topology used to build the map.
-
-        target:
-            Mesh sharing the target topology used to build the map.
-
-        topology_map:
-            Stored relationship between the two topologies.
+    The source may have a completely different form from the mesh used
+    when the TopologyMap was originally generated, provided its
+    topology is identical.
     """
 
-    source_path = _get_mesh_dag_path(source)
-    target_path = _get_mesh_dag_path(target)
+    validate_topology(
+        source,
+        topology_map.source_fingerprint,
+    )
 
+    validate_topology(
+        target,
+        topology_map.target_fingerprint,
+    )
+
+    source_path = _get_mesh_dag_path(source)
     source_fn = om.MFnMesh(source_path)
+
+    source_points = source_fn.getPoints(
+        om.MSpace.kObject
+    )
+
+    source_positions = [
+        (
+            point.x,
+            point.y,
+            point.z,
+        )
+        for point in source_points
+    ]
+
+    transfer_positions_from_data(
+        source_positions=source_positions,
+        target=target,
+        topology_map=topology_map,
+    )
+
+
+def transfer_positions_from_data(
+    source_positions: list[tuple[float, float, float]],
+    target: str,
+    topology_map: TopologyMap,
+):
+    """
+    Conform a Maya target mesh using source vertex positions that do
+    not need to come from a mesh currently in the scene.
+    """
+
+    validate_topology(
+        target,
+        topology_map.target_fingerprint,
+    )
+
+    target_path = _get_mesh_dag_path(target)
     target_fn = om.MFnMesh(target_path)
 
-    _validate_topology(
-        source_fn,
-        target_fn,
-        topology_map,
+    target_positions = _calculate_target_positions(
+        source_positions=source_positions,
+        topology_map=topology_map,
     )
-
-    # Work in world space because the map was generated from
-    # world-space surface relationships.
-    source_points = source_fn.getPoints(
-        om.MSpace.kWorld
-    )
-
-    target_points = target_fn.getPoints(
-        om.MSpace.kWorld
-    )
-
-    for binding in topology_map.bindings:
-
-        v0, v1, v2 = binding.source_vertices
-        w0, w1, w2 = binding.barycentric
-
-        p0 = source_points[v0]
-        p1 = source_points[v1]
-        p2 = source_points[v2]
-
-        point = om.MPoint(
-            om.MVector(p0) * w0 +
-            om.MVector(p1) * w1 +
-            om.MVector(p2) * w2
-        )
-
-        target_points[binding.target_index] = point
 
     target_fn.setPoints(
-        target_points,
-        om.MSpace.kWorld,
+        target_positions,
+        om.MSpace.kObject,
     )
+
+
+def transfer_positions_from_snapshot(
+    snapshot: MeshSnapshot,
+    target: str,
+    topology_map: TopologyMap,
+):
+    """
+    Conform a target using a standalone MeshSnapshot.
+    """
+
+    validate_snapshot(
+        snapshot,
+        topology_map.source_fingerprint,
+    )
+
+    transfer_positions_from_data(
+        source_positions=snapshot.positions,
+        target=target,
+        topology_map=topology_map,
+    )
+
+
+def conform_from_topology_map(
+    target: str,
+    topology_map: TopologyMap,
+):
+    """
+    Conform a target mesh using the source snapshot embedded inside a
+    TopologyMap.
+    """
+
+    if topology_map.source_snapshot is None:
+        raise ValueError(
+            "TopologyMap does not contain an embedded "
+            "source snapshot."
+        )
+
+    transfer_positions_from_snapshot(
+        snapshot=topology_map.source_snapshot,
+        target=target,
+        topology_map=topology_map,
+    )
+
+
+def build_conformed_mesh(
+    topology_map: TopologyMap,
+    name: str = "conformed_mesh",
+) -> str:
+    """
+    Build the target topology from stored data and conform it to the
+    stored source form.
+
+    Neither the source nor target Maya mesh needs to exist.
+    """
+
+    if topology_map.source_snapshot is None:
+        raise ValueError(
+            "TopologyMap does not contain a source snapshot."
+        )
+
+    if topology_map.target_snapshot is None:
+        raise ValueError(
+            "TopologyMap does not contain a target snapshot."
+        )
+
+    # Import here to avoid unnecessary module dependencies.
+    from .snapshot import build_mesh_from_snapshot
+
+    # ---------------------------------------------------------
+    # Build target topology
+    # ---------------------------------------------------------
+
+    target = build_mesh_from_snapshot(
+        snapshot=topology_map.target_snapshot,
+        name=name,
+    )
+
+    # ---------------------------------------------------------
+    # Conform target to source snapshot
+    # ---------------------------------------------------------
+
+    transfer_positions_from_snapshot(
+        snapshot=topology_map.source_snapshot,
+        target=target,
+        topology_map=topology_map,
+    )
+
+    return target
