@@ -63,6 +63,7 @@ class Biped_Limb:
         fk_ctrl_shapes:str = 'fk',
         ik_ctrl_shapes:str = 'box',
         pv_ctrl_shapes:str = 'sphere',
+        bendy_control_shape = 'round_square'
 
 
     ):
@@ -85,17 +86,19 @@ class Biped_Limb:
         self.fk_ctrl_shapes = fk_ctrl_shapes
         self.ik_ctrl_shapes = ik_ctrl_shapes
         self.pv_ctrl_shapes = pv_ctrl_shapes
+        self.bendy_control_shape = bendy_control_shape
 
     def build(self):
 
         #module prep
 
-        prep = module_prep(part=self.part, parent=self.parent, side=self.side, fkik=True)
+        prep = module_prep(part=self.part, parent=self.parent, side=self.side, fkik=True, bendy=True)
         self.main_grp = prep.main_grp
         self.control_grp = prep.control_grp
         self.guts = prep.guts
         self.ik_control_grp = prep.ik_grp
         self.fk_control_grp = prep.fk_grp
+        self.bend_control_grp = prep.bendy_grp
 
         self.controls = []
         self.bind_joints = []
@@ -293,6 +296,11 @@ class Biped_Limb:
                 primary_axis="Y",
 
                 cst_parent=self.guts,
+
+                mid_control=True,
+                control_parent=self.bend_control_grp,
+                control_size=self.control_size/10,
+                control_shape=self.bendy_control_shape,
 
 
             )

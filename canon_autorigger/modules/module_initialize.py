@@ -15,8 +15,9 @@ class module:
     guts:str
     fk_grp:str
     ik_grp:str
+    bendy_grp:str
 
-def module_prep(part: str, side: str, parent: str, fkik:bool=False, gut:bool=True)->module:
+def module_prep(part: str, side: str, parent: str, fkik:bool=False, gut:bool=True, bendy:bool=True)->module:
     cmds.refresh()
     main_grp = create_transform(name=f"{part}_{side}", parent=parent)
     control_grp = create_transform(name=f"{part}_CTRLS_{side}", parent=main_grp)
@@ -31,8 +32,12 @@ def module_prep(part: str, side: str, parent: str, fkik:bool=False, gut:bool=Tru
     else:
         ik_control_grp = ''
         fk_control_grp = ''
+    if bendy:
+        bendy_control_grp = create_transform(name=f"{part}_bendy_controls_{side}", parent=control_grp)
+    else:
+        bendy_control_grp = ''
 
-    prep = module(main_grp=main_grp, control_grp=control_grp, guts=guts, fk_grp=fk_control_grp, ik_grp=ik_control_grp)
+    prep = module(main_grp=main_grp, control_grp=control_grp, guts=guts, fk_grp=fk_control_grp, ik_grp=ik_control_grp, bendy_grp=bendy_control_grp)
     
     return prep
 

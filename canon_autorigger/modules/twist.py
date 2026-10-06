@@ -219,6 +219,7 @@ def create_twist_control(
     primary_axis: str,
     control_parent: str | None = None,
     control_size: float = 1.0,
+    control_shape:str = 'round_square'
 ):
     """
     Create a control at the midpoint of the twist segment.
@@ -272,7 +273,7 @@ def create_twist_control(
         transform=midpoint,
         parent=control_parent,
         size=control_size,
-        control_shape="round_square",
+        control_shape=control_shape,
         direction=primary_axis.lower(),
     )
 
@@ -1032,9 +1033,10 @@ def create_twist(
     invert: bool = False,
 
     # Optional midpoint control
-    mid_control: bool = True,
+    mid_control: bool = False,
     control_parent: str | None = None,
     control_size: float = 1.0,
+    control_shape:str = "round_square"
 
 ) -> TwistData:
     """
@@ -1117,6 +1119,7 @@ def create_twist(
             primary_axis=primary_axis,
             control_parent=control_parent,
             control_size=control_size,
+            control_shape =control_shape,
         )
 
     # ---------------------------------------------------------
