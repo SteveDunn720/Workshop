@@ -214,33 +214,40 @@ def setup_twist_tag(
 # ----------------------------------------------------------------------
 
 def create_twist_control(
-    start_joint: str,
-    end_joint: str,
+    start_driver: str,
+    end_driver: str,
     primary_axis: str,
     control_parent: str | None = None,
     control_size: float = 1.0,
-    control_shape:str = 'round_square'
+    control_shape: str = "round_square",
 ):
     """
-    Create a control at the midpoint of the twist segment.
+    Create a bend/twist control between two drivers.
 
-    The control's top transform follows a 50/50 matrix blend between
-    the start and end joints.
+    Behavior:
+        Position:
+            50/50 between start_driver and end_driver.
 
-    This gives us:
-        - midpoint translation
-        - blended orientation
-        - clean zeroed animator control underneath
+        Orientation:
+            Follows start_driver only.
+
+        This means:
+            upper control -> between upper and mid
+            lower control -> between mid and lower
+
+        The orientation always comes from the segment's start/parent
+        driver rather than being blended between the two drivers.
+
+        Using an orientConstraint for rotation also preserves behavior
+        correctly on mirrored joint chains.
     """
 
     primary_axis = _validate_axis(primary_axis)
 
-    descriptor = start_joint.removesuffix("_jnt")
+    descriptor = start_driver.removesuffix("_jnt")
 
     # ---------------------------------------------------------
-    # Temporary midpoint transform
-    #
-    # Only used to initially create/place the control.
+    # Temporary placement transform
     # ---------------------------------------------------------
 
     midpoint = cmds.createNode(
@@ -248,21 +255,24 @@ def create_twist_control(
         name=f"{descriptor}_twist_mid_tmp",
     )
 
+    # Start with the exact orientation of the start driver.
     cmds.matchTransform(
         midpoint,
-        start_joint,
+        start_driver,
         position=True,
         rotation=True,
     )
 
-    tmp_constraint = cmds.parentConstraint(
-        start_joint,
-        end_joint,
+    # Position only:
+    # place halfway between start and end.
+    point_cst = cmds.pointConstraint(
+        start_driver,
+        end_driver,
         midpoint,
         maintainOffset=False,
     )[0]
 
-    cmds.delete(tmp_constraint)
+    cmds.delete(point_cst)
 
     # ---------------------------------------------------------
     # Create control
@@ -280,122 +290,134 @@ def create_twist_control(
     cmds.delete(midpoint)
 
     # ---------------------------------------------------------
-    # 50/50 blended world matrix
+    # POSITION
+    #
+    # 50/50 blend between start and end.
+    # Rotation is explicitly disabled on this blend.
     # ---------------------------------------------------------
 
-    blend = cmds.createNode(
+    position_blend = cmds.createNode(
         "blendMatrix",
-        name=f"{descriptor}_twist_mid_blendMatrix",
+        name=f"{descriptor}_twist_mid_position_blendMatrix",
     )
 
-    # Start is the base.
+    # Start driver is the base matrix.
     cmds.connectAttr(
-        f"{start_joint}.worldMatrix[0]",
-        f"{blend}.inputMatrix",
+        f"{start_driver}.worldMatrix[0]",
+        f"{position_blend}.inputMatrix",
         force=True,
     )
 
-    # End is the target.
+    # End driver is the target.
     cmds.connectAttr(
-        f"{end_joint}.worldMatrix[0]",
-        f"{blend}.target[0].targetMatrix",
+        f"{end_driver}.worldMatrix[0]",
+        f"{position_blend}.target[0].targetMatrix",
         force=True,
     )
 
     cmds.setAttr(
-        f"{blend}.target[0].weight",
+        f"{position_blend}.target[0].weight",
         0.5,
     )
 
+    # Translation only.
     cmds.setAttr(
-        f"{blend}.target[0].translateWeight",
+        f"{position_blend}.target[0].translateWeight",
         1.0,
     )
 
     cmds.setAttr(
-        f"{blend}.target[0].rotateWeight",
-        1.0,
-    )
-
-    cmds.setAttr(
-        f"{blend}.target[0].scaleWeight",
+        f"{position_blend}.target[0].rotateWeight",
         0.0,
     )
 
     cmds.setAttr(
-        f"{blend}.target[0].shearWeight",
+        f"{position_blend}.target[0].scaleWeight",
+        0.0,
+    )
+
+    cmds.setAttr(
+        f"{position_blend}.target[0].shearWeight",
         0.0,
     )
 
     # ---------------------------------------------------------
-    # Convert world result into control.top's parent space
+    # Convert blended WORLD position into control.top's
+    # parent space.
     # ---------------------------------------------------------
 
-    local_mult = cmds.createNode(
+    position_local = cmds.createNode(
         "multMatrix",
-        name=f"{descriptor}_twist_mid_local_multMatrix",
+        name=f"{descriptor}_twist_mid_position_local_multMatrix",
     )
 
     cmds.connectAttr(
-        f"{blend}.outputMatrix",
-        f"{local_mult}.matrixIn[0]",
+        f"{position_blend}.outputMatrix",
+        f"{position_local}.matrixIn[0]",
         force=True,
     )
 
     cmds.connectAttr(
         f"{control.top}.parentInverseMatrix[0]",
-        f"{local_mult}.matrixIn[1]",
+        f"{position_local}.matrixIn[1]",
         force=True,
     )
 
-    # ---------------------------------------------------------
-    # Decompose into local translate / rotate
-    # ---------------------------------------------------------
-
-    decompose = cmds.createNode(
+    position_decompose = cmds.createNode(
         "decomposeMatrix",
-        name=f"{descriptor}_twist_mid_decomposeMatrix",
+        name=f"{descriptor}_twist_mid_position_decomposeMatrix",
     )
 
     cmds.connectAttr(
-        f"{local_mult}.matrixSum",
-        f"{decompose}.inputMatrix",
+        f"{position_local}.matrixSum",
+        f"{position_decompose}.inputMatrix",
         force=True,
     )
 
-    # Make decomposition respect the control top's rotation order.
+    # We ONLY take translation from this matrix.
     cmds.connectAttr(
-        f"{control.top}.rotateOrder",
-        f"{decompose}.inputRotateOrder",
-        force=True,
-    )
-
-    cmds.connectAttr(
-        f"{decompose}.outputTranslate",
+        f"{position_decompose}.outputTranslate",
         f"{control.top}.translate",
         force=True,
     )
 
-    cmds.connectAttr(
-        f"{decompose}.outputRotate",
-        f"{control.top}.rotate",
-        force=True,
+    # ---------------------------------------------------------
+    # ORIENTATION
+    #
+    # Follow the start driver only.
+    #
+    # maintainOffset=True is important here because the control
+    # has already been created with its correct initial
+    # orientation. This preserves that relationship on both
+    # normal and behavior-mirrored chains.
+    # ---------------------------------------------------------
+
+    cmds.orientConstraint(
+        start_driver,
+        control.top,
+        maintainOffset=True,
     )
 
     # ---------------------------------------------------------
-    # Lock non-twist rotation axes
+    # Lock / hide scale
     # ---------------------------------------------------------
 
     for axis in "XYZ":
 
         attr = f"{control.ctrl}.scale{axis}"
-        
+
         cmds.setAttr(
             attr,
             lock=True,
             keyable=False,
             channelBox=False,
         )
+
+    # ---------------------------------------------------------
+    # Lock / hide non-twist rotations
+    # ---------------------------------------------------------
+
+    for axis in "XYZ":
 
         if axis == primary_axis:
             continue
@@ -408,7 +430,6 @@ def create_twist_control(
             keyable=False,
             channelBox=False,
         )
-        
 
     return control
 
@@ -698,120 +719,248 @@ def _connect_primary_translation_clamp(
     negative: bool,
 ):
     """
-    Clamp the primary-axis translation.
+    Clamp a twist joint so it cannot pass either end of its segment.
 
-    Positive segment:
+    Works for both positive and negative / mirrored bone directions.
 
-        minimum = twist percentage
-        maximum = current limb length - remaining percentage
+    Instead of assuming:
 
-    Negative segment:
+        positive bone -> min is root, max is end
+        negative bone -> max is root, min is end
 
-        minimum = current limb length + remaining percentage
-        maximum = -twist percentage
+    we calculate both boundaries from the current segment length and
+    then determine which is numerically the minimum / maximum.
 
-    This prevents a midpoint control from:
-
-        1. collapsing a twist joint through the segment root
-        2. pushing a twist joint through the current segment end
+    `negative` is retained in the signature for compatibility, but the
+    clamp no longer needs to branch based on it.
     """
 
-    twist_attr = (
-        f"{twist_joint}.translate{primary_axis}"
+    twist_attr = f"{twist_joint}.translate{primary_axis}"
+    end_attr = f"{end_driver}.translate{primary_axis}"
+
+    # ---------------------------------------------------------
+    # Boundary at the START side
+    #
+    # Keep the twist joint `weight` units away from zero.
+    #
+    # Positive segment:
+    #     +weight
+    #
+    # Negative segment:
+    #     -weight
+    # ---------------------------------------------------------
+
+    start_boundary = cmds.createNode(
+        "condition",
+        name=f"{twist_joint}_translate{primary_axis}_startBoundary",
     )
 
-    end_attr = (
-        f"{end_driver}.translate{primary_axis}"
+    # Is the current segment length >= 0?
+    cmds.setAttr(
+        f"{start_boundary}.operation",
+        3,  # Greater Than or Equal
     )
 
-    remaining_weight = (
-        1.0 - weight
+    cmds.connectAttr(
+        end_attr,
+        f"{start_boundary}.firstTerm",
+        force=True,
     )
+
+    cmds.setAttr(
+        f"{start_boundary}.secondTerm",
+        0.0,
+    )
+
+    # Positive segment.
+    cmds.setAttr(
+        f"{start_boundary}.colorIfTrueR",
+        weight,
+    )
+
+    # Negative / mirrored segment.
+    cmds.setAttr(
+        f"{start_boundary}.colorIfFalseR",
+        -weight,
+    )
+
+    # ---------------------------------------------------------
+    # Boundary at the END side
+    #
+    # Keep the twist joint (1-weight) units away from the end.
+    #
+    # Positive:
+    #     end - remaining
+    #
+    # Negative:
+    #     end + remaining
+    # ---------------------------------------------------------
+
+    remaining_weight = 1.0 - weight
+
+    end_positive = cmds.createNode(
+        "addDoubleLinear",
+        name=f"{twist_joint}_translate{primary_axis}_endPositive",
+    )
+
+    cmds.connectAttr(
+        end_attr,
+        f"{end_positive}.input1",
+        force=True,
+    )
+
+    cmds.setAttr(
+        f"{end_positive}.input2",
+        -remaining_weight,
+    )
+
+    end_negative = cmds.createNode(
+        "addDoubleLinear",
+        name=f"{twist_joint}_translate{primary_axis}_endNegative",
+    )
+
+    cmds.connectAttr(
+        end_attr,
+        f"{end_negative}.input1",
+        force=True,
+    )
+
+    cmds.setAttr(
+        f"{end_negative}.input2",
+        remaining_weight,
+    )
+
+    end_boundary = cmds.createNode(
+        "condition",
+        name=f"{twist_joint}_translate{primary_axis}_endBoundary",
+    )
+
+    cmds.setAttr(
+        f"{end_boundary}.operation",
+        3,  # Greater Than or Equal
+    )
+
+    cmds.connectAttr(
+        end_attr,
+        f"{end_boundary}.firstTerm",
+        force=True,
+    )
+
+    cmds.setAttr(
+        f"{end_boundary}.secondTerm",
+        0.0,
+    )
+
+    cmds.connectAttr(
+        f"{end_positive}.output",
+        f"{end_boundary}.colorIfTrueR",
+        force=True,
+    )
+
+    cmds.connectAttr(
+        f"{end_negative}.output",
+        f"{end_boundary}.colorIfFalseR",
+        force=True,
+    )
+
+    # ---------------------------------------------------------
+    # Determine actual MIN boundary
+    # ---------------------------------------------------------
+
+    minimum = cmds.createNode(
+        "condition",
+        name=f"{twist_joint}_translate{primary_axis}_minimum",
+    )
+
+    # start < end
+    cmds.setAttr(
+        f"{minimum}.operation",
+        4,  # Less Than
+    )
+
+    cmds.connectAttr(
+        f"{start_boundary}.outColorR",
+        f"{minimum}.firstTerm",
+        force=True,
+    )
+
+    cmds.connectAttr(
+        f"{end_boundary}.outColorR",
+        f"{minimum}.secondTerm",
+        force=True,
+    )
+
+    cmds.connectAttr(
+        f"{start_boundary}.outColorR",
+        f"{minimum}.colorIfTrueR",
+        force=True,
+    )
+
+    cmds.connectAttr(
+        f"{end_boundary}.outColorR",
+        f"{minimum}.colorIfFalseR",
+        force=True,
+    )
+
+    # ---------------------------------------------------------
+    # Determine actual MAX boundary
+    # ---------------------------------------------------------
+
+    maximum = cmds.createNode(
+        "condition",
+        name=f"{twist_joint}_translate{primary_axis}_maximum",
+    )
+
+    # start > end
+    cmds.setAttr(
+        f"{maximum}.operation",
+        2,  # Greater Than
+    )
+
+    cmds.connectAttr(
+        f"{start_boundary}.outColorR",
+        f"{maximum}.firstTerm",
+        force=True,
+    )
+
+    cmds.connectAttr(
+        f"{end_boundary}.outColorR",
+        f"{maximum}.secondTerm",
+        force=True,
+    )
+
+    cmds.connectAttr(
+        f"{start_boundary}.outColorR",
+        f"{maximum}.colorIfTrueR",
+        force=True,
+    )
+
+    cmds.connectAttr(
+        f"{end_boundary}.outColorR",
+        f"{maximum}.colorIfFalseR",
+        force=True,
+    )
+
+    # ---------------------------------------------------------
+    # Clamp
+    # ---------------------------------------------------------
 
     clamp = cmds.createNode(
         "clamp",
         name=f"{twist_joint}_translate{primary_axis}_clamp",
     )
 
-    # ---------------------------------------------------------
-    # Positive primary-axis segment
-    # ---------------------------------------------------------
+    cmds.connectAttr(
+        f"{minimum}.outColorR",
+        f"{clamp}.minR",
+        force=True,
+    )
 
-    if not negative:
-
-        # Dynamic upper boundary:
-        #
-        # current limb length - remaining percentage
-
-        upper_limit = cmds.createNode(
-            "addDoubleLinear",
-            name=f"{twist_joint}_translate{primary_axis}_max",
-        )
-
-        cmds.connectAttr(
-            end_attr,
-            f"{upper_limit}.input1",
-            force=True,
-        )
-
-        cmds.setAttr(
-            f"{upper_limit}.input2",
-            -remaining_weight,
-        )
-
-        # Literal percentage minimum.
-        cmds.setAttr(
-            f"{clamp}.minR",
-            weight,
-        )
-
-        cmds.connectAttr(
-            f"{upper_limit}.output",
-            f"{clamp}.maxR",
-            force=True,
-        )
-
-    # ---------------------------------------------------------
-    # Negative primary-axis segment
-    # ---------------------------------------------------------
-
-    else:
-
-        # Dynamic lower boundary:
-        #
-        # current limb length + remaining percentage
-
-        lower_limit = cmds.createNode(
-            "addDoubleLinear",
-            name=f"{twist_joint}_translate{primary_axis}_min",
-        )
-
-        cmds.connectAttr(
-            end_attr,
-            f"{lower_limit}.input1",
-            force=True,
-        )
-
-        cmds.setAttr(
-            f"{lower_limit}.input2",
-            remaining_weight,
-        )
-
-        cmds.connectAttr(
-            f"{lower_limit}.output",
-            f"{clamp}.minR",
-            force=True,
-        )
-
-        # Literal percentage maximum toward zero.
-        cmds.setAttr(
-            f"{clamp}.maxR",
-            -weight,
-        )
-
-    # ---------------------------------------------------------
-    # Result
-    # ---------------------------------------------------------
+    cmds.connectAttr(
+        f"{maximum}.outColorR",
+        f"{clamp}.maxR",
+        force=True,
+    )
 
     cmds.connectAttr(
         source,
@@ -826,87 +975,190 @@ def _connect_primary_translation_clamp(
     )
 
 
+
 def _drive_twist_translation(
+    start_driver: str,
     end_driver: str,
     twist_joint: str,
     primary_axis: str,
     weight: float,
-    end_rest_translate: dict[str, float],
+    end_rest_translate: dict[str, float] | None = None,
     control=None,
 ):
     """
-    Drive XYZ translation for a single twist joint.
+    Drive a twist joint's position between start_driver and end_driver.
 
-    All three axes receive proportional translation.
+    The automatic position is calculated in WORLD SPACE:
 
-    The primary axis additionally receives dynamic compression and
-    extension limits.
+        start_driver ---- twist ---- end_driver
+                         weight
+
+    The resulting world position is then converted into the local
+    space of the twist joint's parent.
+
+    This avoids relying on local translate axis signs, so the same
+    setup works on behavior-mirrored chains.
+
+    The optional midpoint control is additive in the twist joint's
+    local space with falloff toward the segment ends.
     """
 
+    primary_axis = _validate_axis(primary_axis)
+
     # ---------------------------------------------------------
-    # Capture twist rest position BEFORE connecting anything.
+    # World-space position blend
     # ---------------------------------------------------------
 
-    twist_rest_translate = {
-        axis: cmds.getAttr(
-            f"{twist_joint}.translate{axis}"
+    blend = cmds.createNode(
+        "blendMatrix",
+        name=f"{twist_joint}_position_blendMatrix",
+    )
+
+    cmds.connectAttr(
+        f"{start_driver}.worldMatrix[0]",
+        f"{blend}.inputMatrix",
+        force=True,
+    )
+
+    cmds.connectAttr(
+        f"{end_driver}.worldMatrix[0]",
+        f"{blend}.target[0].targetMatrix",
+        force=True,
+    )
+
+    cmds.setAttr(
+        f"{blend}.target[0].weight",
+        weight,
+    )
+
+    # Position only.
+    cmds.setAttr(
+        f"{blend}.target[0].translateWeight",
+        1.0,
+    )
+
+    cmds.setAttr(
+        f"{blend}.target[0].rotateWeight",
+        0.0,
+    )
+
+    cmds.setAttr(
+        f"{blend}.target[0].scaleWeight",
+        0.0,
+    )
+
+    cmds.setAttr(
+        f"{blend}.target[0].shearWeight",
+        0.0,
+    )
+
+    # ---------------------------------------------------------
+    # Convert world-space result into twist parent space
+    # ---------------------------------------------------------
+
+    parent = cmds.listRelatives(
+        twist_joint,
+        parent=True,
+        fullPath=True,
+    )
+
+    if not parent:
+        raise RuntimeError(
+            f"{twist_joint} must have a parent."
         )
-        for axis in "XYZ"
-    }
 
-    primary_rest = twist_rest_translate[
-        primary_axis
-    ]
+    parent = parent[0]
 
-    negative = primary_rest < 0.0
+    local_mult = cmds.createNode(
+        "multMatrix",
+        name=f"{twist_joint}_position_local_multMatrix",
+    )
+
+    cmds.connectAttr(
+        f"{blend}.outputMatrix",
+        f"{local_mult}.matrixIn[0]",
+        force=True,
+    )
+
+    cmds.connectAttr(
+        f"{parent}.worldInverseMatrix[0]",
+        f"{local_mult}.matrixIn[1]",
+        force=True,
+    )
+
+    decompose = cmds.createNode(
+        "decomposeMatrix",
+        name=f"{twist_joint}_position_decomposeMatrix",
+    )
+
+    cmds.connectAttr(
+        f"{local_mult}.matrixSum",
+        f"{decompose}.inputMatrix",
+        force=True,
+    )
 
     # ---------------------------------------------------------
-    # XYZ
+    # No bend control
     # ---------------------------------------------------------
+
+    control_transform = _get_control_transform(control)
+
+    if not control_transform:
+
+        cmds.connectAttr(
+            f"{decompose}.outputTranslate",
+            f"{twist_joint}.translate",
+            force=True,
+        )
+
+        return
+
+    # ---------------------------------------------------------
+    # Bend control additive translation
+    # ---------------------------------------------------------
+
+    control_weight = _get_control_weight(weight)
 
     for axis in "XYZ":
 
-        source = _create_translation_result(
-            end_driver=end_driver,
-            twist_joint=twist_joint,
-            axis=axis,
-            weight=weight,
-            rest_end=end_rest_translate[axis],
-            rest_twist=twist_rest_translate[axis],
-            control=control,
+        control_mult = cmds.createNode(
+            "multDoubleLinear",
+            name=f"{twist_joint}_control_translate{axis}_mult",
         )
 
-        twist_attr = (
-            f"{twist_joint}.translate{axis}"
+        cmds.connectAttr(
+            f"{control_transform}.translate{axis}",
+            f"{control_mult}.input1",
+            force=True,
         )
 
-        # -----------------------------------------------------
-        # Primary axis gets dynamic min/max limits.
-        # -----------------------------------------------------
+        cmds.setAttr(
+            f"{control_mult}.input2",
+            control_weight,
+        )
 
-        if axis == primary_axis:
+        add = cmds.createNode(
+            "addDoubleLinear",
+            name=f"{twist_joint}_control_translate{axis}_add",
+        )
 
-            _connect_primary_translation_clamp(
-                source=source,
-                end_driver=end_driver,
-                twist_joint=twist_joint,
-                primary_axis=primary_axis,
-                weight=weight,
-                negative=negative,
-            )
+        cmds.connectAttr(
+            f"{decompose}.outputTranslate{axis}",
+            f"{add}.input1",
+            force=True,
+        )
 
-        # -----------------------------------------------------
-        # Other axes remain unrestricted.
-        # -----------------------------------------------------
+        cmds.connectAttr(
+            f"{control_mult}.output",
+            f"{add}.input2",
+            force=True,
+        )
 
-        else:
-
-            cmds.connectAttr(
-                source,
-                twist_attr,
-                force=True,
-            )
-
+        cmds.connectAttr(
+            f"{add}.output",
+            f"{twist_joint}.translate{axis}",
+            force=True,
+        )
 
 # ----------------------------------------------------------------------
 # Driving
@@ -1009,11 +1261,11 @@ def drive_twist_joints(
         # -----------------------------------------------------
 
         _drive_twist_translation(
+            start_driver=start_driver,
             end_driver=end_driver,
             twist_joint=twist_joint,
             primary_axis=primary_axis,
             weight=weight,
-            end_rest_translate=end_rest_translate,
             control=control,
         )
 
@@ -1114,12 +1366,12 @@ def create_twist(
     if mid_control:
 
         control = create_twist_control(
-            start_joint=start_joint,
-            end_joint=end_joint,
+            start_driver=start_driver,
+            end_driver=end_driver,
             primary_axis=primary_axis,
             control_parent=control_parent,
             control_size=control_size,
-            control_shape =control_shape,
+            control_shape=control_shape,
         )
 
     # ---------------------------------------------------------
