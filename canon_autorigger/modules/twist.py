@@ -1114,48 +1114,204 @@ def _drive_twist_translation(
         return
 
     # ---------------------------------------------------------
-    # Bend control additive translation
+    # Bend control translation
+    #
+    # PRIMARY AXIS:
+    #     Keep the existing additive system exactly as before.
+    #
+    # NON-PRIMARY AXES:
+    #     Use the control as a true midpoint:
+    #
+    #         root -> mid -> end
     # ---------------------------------------------------------
 
     control_weight = _get_control_weight(weight)
 
     for axis in "XYZ":
 
-        control_mult = cmds.createNode(
-            "multDoubleLinear",
-            name=f"{twist_joint}_control_translate{axis}_mult",
+        # -----------------------------------------------------
+        # PRIMARY AXIS
+        #
+        # KEEP EXISTING BEHAVIOR.
+        # -----------------------------------------------------
+
+        if axis == primary_axis:
+
+            control_mult = cmds.createNode(
+                "multDoubleLinear",
+                name=f"{twist_joint}_control_translate{axis}_mult",
+            )
+
+            cmds.connectAttr(
+                f"{control_transform}.translate{axis}",
+                f"{control_mult}.input1",
+                force=True,
+            )
+
+            cmds.setAttr(
+                f"{control_mult}.input2",
+                control_weight,
+            )
+
+            add = cmds.createNode(
+                "addDoubleLinear",
+                name=f"{twist_joint}_control_translate{axis}_add",
+            )
+
+            cmds.connectAttr(
+                f"{decompose}.outputTranslate{axis}",
+                f"{add}.input1",
+                force=True,
+            )
+
+            cmds.connectAttr(
+                f"{control_mult}.output",
+                f"{add}.input2",
+                force=True,
+            )
+
+            cmds.connectAttr(
+                f"{add}.output",
+                f"{twist_joint}.translate{axis}",
+                force=True,
+            )
+
+            continue
+
+        # -----------------------------------------------------
+        # NON-PRIMARY AXES
+        #
+        # root -> mid -> end
+        # -----------------------------------------------------
+
+        if weight <= 0.5:
+
+            # First half:
+            #
+            # root -> mid
+            #
+            # Convert:
+            #     0.0 -> 0.5
+            #
+            # into:
+            #     0.0 -> 1.0
+
+            segment_start = start_driver
+            segment_end = control_transform
+
+            segment_weight = weight * 2.0
+
+            descriptor = "root_to_mid"
+
+        else:
+
+            # Second half:
+            #
+            # mid -> end
+            #
+            # Convert:
+            #     0.5 -> 1.0
+            #
+            # into:
+            #     0.0 -> 1.0
+
+            segment_start = control_transform
+            segment_end = end_driver
+
+            segment_weight = (weight - 0.5) * 2.0
+
+            descriptor = "mid_to_end"
+
+        # -----------------------------------------------------
+        # World-space position blend
+        # -----------------------------------------------------
+
+        axis_blend = cmds.createNode(
+            "blendMatrix",
+            name=(
+                f"{twist_joint}_translate{axis}_"
+                f"{descriptor}_blendMatrix"
+            ),
         )
 
         cmds.connectAttr(
-            f"{control_transform}.translate{axis}",
-            f"{control_mult}.input1",
+            f"{segment_start}.worldMatrix[0]",
+            f"{axis_blend}.inputMatrix",
+            force=True,
+        )
+
+        cmds.connectAttr(
+            f"{segment_end}.worldMatrix[0]",
+            f"{axis_blend}.target[0].targetMatrix",
             force=True,
         )
 
         cmds.setAttr(
-            f"{control_mult}.input2",
-            control_weight,
+            f"{axis_blend}.target[0].weight",
+            segment_weight,
         )
 
-        add = cmds.createNode(
-            "addDoubleLinear",
-            name=f"{twist_joint}_control_translate{axis}_add",
+        cmds.setAttr(
+            f"{axis_blend}.target[0].translateWeight",
+            1.0,
+        )
+
+        cmds.setAttr(
+            f"{axis_blend}.target[0].rotateWeight",
+            0.0,
+        )
+
+        cmds.setAttr(
+            f"{axis_blend}.target[0].scaleWeight",
+            0.0,
+        )
+
+        cmds.setAttr(
+            f"{axis_blend}.target[0].shearWeight",
+            0.0,
+        )
+
+        # -----------------------------------------------------
+        # Convert world position into twist-parent space
+        # -----------------------------------------------------
+
+        axis_local = cmds.createNode(
+            "multMatrix",
+            name=(
+                f"{twist_joint}_translate{axis}_"
+                f"{descriptor}_local_multMatrix"
+            ),
         )
 
         cmds.connectAttr(
-            f"{decompose}.outputTranslate{axis}",
-            f"{add}.input1",
+            f"{axis_blend}.outputMatrix",
+            f"{axis_local}.matrixIn[0]",
             force=True,
         )
 
         cmds.connectAttr(
-            f"{control_mult}.output",
-            f"{add}.input2",
+            f"{parent}.worldInverseMatrix[0]",
+            f"{axis_local}.matrixIn[1]",
             force=True,
         )
 
+        axis_decompose = cmds.createNode(
+            "decomposeMatrix",
+            name=(
+                f"{twist_joint}_translate{axis}_"
+                f"{descriptor}_decomposeMatrix"
+            ),
+        )
+
         cmds.connectAttr(
-            f"{add}.output",
+            f"{axis_local}.matrixSum",
+            f"{axis_decompose}.inputMatrix",
+            force=True,
+        )
+
+        # Only take this non-primary axis.
+        cmds.connectAttr(
+            f"{axis_decompose}.outputTranslate{axis}",
             f"{twist_joint}.translate{axis}",
             force=True,
         )

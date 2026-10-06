@@ -32,7 +32,11 @@ class Hand:
         ik_control_space:list = [],
         ik_hook:list=[],
         fkik_switch_attr:str = '',
-        fk_hook:str = ''
+        fk_hook:str = '',
+        ik_control_shape:str = 'round_square', 
+        ik_offset_shape:str = 'triangle', 
+        fk_control_shape:str = 'fk',
+        prop_shape:str = 'cube' 
         
 
     ):
@@ -51,6 +55,11 @@ class Hand:
         self.sub_control_color = 'SubLeft' if self.side == 'L' else 'SubRight'
         self.joint_parent = joint_parent
         self.fk_hook = fk_hook
+        self.ik_control_shape = ik_control_shape
+        self.ik_offset_shape = ik_offset_shape
+        self.fk_control_shape = fk_control_shape
+        self.prop_shape = prop_shape
+        
 
     # -------------------
     # Build steps
@@ -84,7 +93,7 @@ class Hand:
             parent=ctrl_par,
             transform=self.guides.name,
             size=self.control_size/(6),
-            control_shape="fk",
+            control_shape=self.fk_control_shape,
             direction="y",
             color_type=self.main_control_color
         )
@@ -107,26 +116,28 @@ class Hand:
         ctrl_par = self.ik_control_grp
 
         self.ik_hand_piv = create_control(
-                name=f'IK_{self.part}_{self.side}_piv',
+                name=f'IK_{self.part}_{self.side}',
                 parent=ctrl_par,
                 transform=f'{self.guides.name}',
-                size=self.control_size/16,
-                control_shape="triangle",
-                direction="x",
+                size=self.control_size/4,
+                control_shape=self.ik_control_shape,
+                direction="y",
                 color_type=self.sub_control_color,
-                shape_position_offset=(0,0,-(self.control_size * .4))
+                
             )
         self.ik_controls.append(self.ik_hand_piv)
         self.controls.append(self.ik_hand_piv)
 
         self.ik_hand = create_control(
-                name=f'IK_{self.part}_{self.side}',
+                name=f'IK_{self.part}_off_{self.side}',
                 parent=self.ik_hand_piv.ctrl,
                 transform=f'{self.guides.name}',
-                size=self.control_size/4,
-                control_shape="hand",
+                size=self.control_size/16,
+                control_shape=self.ik_offset_shape,
                 direction="y",
                 color_type=self.main_control_color,
+                shape_position_offset=(0,0,-(self.control_size * .4)),
+                shape_rotation_offset=(0,0,0)
             )
         self.ik_controls.append(self.ik_hand)
         self.controls.append(self.ik_hand)
@@ -139,7 +150,7 @@ class Hand:
                 parent=self.control_grp,
                 transform=f'{self.guides.name}',
                 size=self.control_size/32,
-                control_shape="cube",
+                control_shape=self.prop_shape,
                 direction="y",
                 color_type=self.main_control_color,
                 shape_position_offset=((self.control_size * .1),0,0)
@@ -148,7 +159,6 @@ class Hand:
         self.controls.append(self.prop)
 
         cmds.parentConstraint(self.ik_hand.ctrl, self.ik_hook[0], maintainOffset=True)
-        #cmds.orientConstraint(self.ik_hand.ctrl, self.ik_hook[1], maintainOffset=True)
         cmds.parentConstraint(self.ik_hook[1], self.ik_joints[0], maintainOffset=True)
         cmds.parentConstraint(self.ik_hand.ctrl, self.ik_hook[2], maintainOffset=True)
         cmds.addAttr(self.ik_hand.ctrl, longName='stretch', proxy=f'{self.ik_hook[2]}.stretch')

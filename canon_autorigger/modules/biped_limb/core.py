@@ -63,7 +63,8 @@ class Biped_Limb:
         fk_ctrl_shapes:str = 'fk',
         ik_ctrl_shapes:str = 'box',
         pv_ctrl_shapes:str = 'sphere',
-        bendy_control_shape = 'round_square'
+        bendy_control_shape = 'round_square',
+        twist_count = 4
 
 
     ):
@@ -87,6 +88,7 @@ class Biped_Limb:
         self.ik_ctrl_shapes = ik_ctrl_shapes
         self.pv_ctrl_shapes = pv_ctrl_shapes
         self.bendy_control_shape = bendy_control_shape
+        self.twist_count = twist_count
 
     def build(self):
 
@@ -292,7 +294,7 @@ class Biped_Limb:
                 start_joint=self.bind_joints[i],
                 end_joint=self.bind_joints[i + 1],
 
-                twist_count=2,
+                twist_count=self.twist_count,
                 primary_axis="Y",
 
                 cst_parent=self.guts,
