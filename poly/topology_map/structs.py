@@ -16,7 +16,6 @@ class TopologyFingerprint:
     connectivity_hash: str
 
 
-
 @dataclass
 class SurfaceBinding:
     """
@@ -30,6 +29,8 @@ class SurfaceBinding:
 
     source_vertices: tuple[int, int, int]
     barycentric: tuple[float, float, float]
+
+    source_polygroup: int | None = None
 
 @dataclass
 class MeshTopology:
@@ -65,5 +66,8 @@ class TopologyMap:
 
     source_snapshot: MeshSnapshot | None = None
     target_snapshot: MeshSnapshot | None = None
+
+
+    
 
 
