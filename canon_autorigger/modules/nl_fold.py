@@ -136,8 +136,8 @@ class NL_Fold:
         corner_remap.input_value.connect_from(f'{self.corner.ctrl}.translateX')
         corner_remap.input_max.set(control_max)
         corner_remap.output_max.set(self.control_size/45)
-        corner_remap.output.connect_to(f'{controls[2].ctrl}.translateX')
-        corner_remap.output.connect_to(f'{controls[2].ctrl}.translateZ')
+        corner_remap.output.connect_to(f'{controls[2].sdk}.translateX')
+        corner_remap.output.connect_to(f'{controls[2].sdk}.translateZ')
 
             
         for i in range(self.divisions + 1):

@@ -153,7 +153,7 @@ def build(rig_name:str, config:rig_config):
         cheek = modules.Cheek(control_size=canon.scene_size, side=side, parent=canon.rig, joint_parent=faceinfo.mid_joint, guides=guides.cheek[side], puff_space=[faceinfo.lower_control], cheekbone_space=[faceinfo.upper_control], driver=jawinfo.jaw, head_space=headinfo.control)
         cheekinfo = cheek.build()
 
-        ear = modules.Ear(control_size=canon.scene_size, side=side, parent=canon.rig, joint_parent=faceinfo.mid_joint, guides=guides.ear, main_space=[faceinfo.lower_control], driver=jawinfo.jaw, head_space=headinfo.control)
+        ear = modules.Ear(control_size=canon.scene_size, side=side, parent=canon.rig, joint_parent=faceinfo.mid_joint, guides=guides.ear, main_space=[faceinfo.muppet_control], driver=jawinfo.jaw, head_space=headinfo.control)
         earinfo = ear.build()
             
     

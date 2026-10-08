@@ -79,7 +79,7 @@ class Nose:
 
         module_space(control=self.nose_ctrl, space_list=self.control_space)
 
-        create_blend_driver_offset(default_mult=.1, control=self.nose_ctrl, driver=self.mouth, parent_space=self.head.ctrl,)
+        create_blend_driver_offset(default_mult=.05, control=self.nose_ctrl, driver=self.mouth, parent_space=self.head.ctrl,)
         create_driver_offset(control=self.nose_ctrl, driver=self.jaw, x_range=(-90,0), rot_mult=.8, trans_mult=.25, y_range=(0,0), z_range=(-5,5))
 
         #joints
