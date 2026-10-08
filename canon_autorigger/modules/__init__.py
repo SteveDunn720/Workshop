@@ -10,7 +10,6 @@ from . import chain
 from . import metacarpal 
 from . import neck 
 from . import head 
-from . import ik_correctives
 from . import face
 from . import jaw
 from . import mouth
@@ -27,6 +26,7 @@ from . import knee_cor
 from . import ankle_cor
 from . import elbow_cor
 from . import wrist_cor
+from . import chest_cor
 
 from .root import Root
 from .biped_limb import Biped_Limb
@@ -39,7 +39,6 @@ from .chain import Chain
 from .metacarpal import Metacarpal
 from .neck import Neck
 from .head import Head
-from .ik_correctives import Ik_correctives
 from .face import Face
 from .jaw import Jaw
 from .mouth import Mouth
@@ -56,6 +55,7 @@ from .knee_cor import Knee_Cor
 from .ankle_cor import Ankle_Cor
 from .elbow_cor import Elbow_Cor
 from .wrist_cor import Wrist_Cor
+from .chest_cor import Chest_Cor
 
 
 
@@ -83,8 +83,6 @@ __all__ = [
 "Neck",
 "head",
 "Head",
-"ik_correctives",
-"Ik_correctives",
 "face",
 "Face",
 "jaw",
@@ -117,6 +115,8 @@ __all__ = [
 "Elbow_Cor",
 "wrist_cor",
 "Wrist_Cor",
+"chest_cor",
+"Chest_Cor",
 ]
 
 MODULE_CLASSES = [
@@ -131,7 +131,6 @@ MODULE_CLASSES = [
     Metacarpal,
     Neck,
     Head,
-    Ik_correctives,
     Face,
     Jaw,
     Mouth,

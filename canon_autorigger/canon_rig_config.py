@@ -28,10 +28,11 @@ class cannon_guide_config:
     ankle_correctives:dict[str,list[GuideInfo]] | None
     elbow_correctives:dict[str,list[GuideInfo]] | None
     wrist_correctives:dict[str,list[GuideInfo]] | None
+    chest_correctives:dict | None
 
-    pec_correctives:dict[str,list[GuideInfo]] | None
+    """pec_correctives:dict[str,list[GuideInfo]] | None
     trap_correctives:dict[str,list[GuideInfo]] | None
-    necktrap_correctives:dict[str,list[GuideInfo]] | None
+    necktrap_correctives:dict[str,list[GuideInfo]] | None"""
 
     full_joint_correctives:bool
 
@@ -91,6 +92,7 @@ def read_guides(rig_name:str='Canon')->cannon_guide_config:
     ankle_correctives = {}
     elbow_correctives = {}
     wrist_correctives = {}
+    chest_correctives = {}
 
     for side in ['L', 'R']:
         leg[side] = [read_guide(f'upperleg_{side}_guide'), read_guide(f'knee_{side}_guide'), read_guide(f'foot_{side}_guide')]
@@ -126,7 +128,7 @@ def read_guides(rig_name:str='Canon')->cannon_guide_config:
         ankle_correctives[side] = [read_guide(f'tibialis_{side}_guide'), read_guide(f'achilles_{side}_guide'), read_guide(f'medialmalleolus_{side}_guide'), read_guide(f'lateralmalleolus_{side}_guide'),]
         elbow_correctives[side] = [read_guide(f'elbowin_{side}_guide'), read_guide(f'lowerbicep_{side}_guide'), read_guide(f'lowertricep_{side}_guide'), read_guide(f'pronator_{side}_guide')]
         wrist_correctives[side] = [read_guide(f'wristin_{side}_guide'), read_guide(f'wristout_{side}_guide'), read_guide(f'wristup_{side}_guide'), read_guide(f'wristdown_{side}_guide'), ]
-
+        chest_correctives[side] = [pec_cor[side], trap_cor[side], necktrap_cor[side]]
     #face_guides
 
     face = [read_guide('upper_head_M_guide'), read_guide('lower_head_M_guide'), read_guide('mid_head_M_guide'), read_guide('top_head_M_guide'), read_guide('jaw_M_guide')]
@@ -170,10 +172,8 @@ def read_guides(rig_name:str='Canon')->cannon_guide_config:
         ankle_correctives = ankle_correctives,
         elbow_correctives = elbow_correctives,
         wrist_correctives = wrist_correctives,
+        chest_correctives = chest_correctives,
 
-        pec_correctives=pec_cor, 
-        trap_correctives=trap_cor,
-        necktrap_correctives=necktrap_cor,
         full_joint_correctives=True,
 
         face=face,

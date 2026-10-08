@@ -114,13 +114,16 @@ def build(rig_name:str, config:rig_config):
             wrist_cor = modules.Wrist_Cor(control_size=canon.scene_size, joint_parent=arm_info.lower_sub_joints[-1], parent=canon.correctives, side=side, guides=guides.wrist_correctives[side], driver=hand_info.joint)
             wrist_cor_info = wrist_cor.build()
 
+            chest_cor = modules.Chest_Cor(control_size=canon.scene_size, joint_parent=spineinfo.bind_joints[-1], parent=canon.correctives, side=side, guides=guides.chest_correctives[side], driver=arm_info.switch_joints[0], parent_space=spineinfo.chest_off.ctrl)
+            chest_cor_info = chest_cor.build()
 
-            pec = modules.Ik_correctives(part="pec", control_size=canon.scene_size, joint_parent=spineinfo.bind_joints[-1], parent=canon.rig, side=side, guides=guides.pec_correctives[side], end_ik_space=[arm_info.switch_joints[0]], root_ik_space=[spineinfo.chest_off.ctrl], divisions=1) #type:ignore
+
+            """pec = modules.Ik_correctives(part="pec", control_size=canon.scene_size, joint_parent=spineinfo.bind_joints[-1], parent=canon.rig, side=side, guides=guides.pec_correctives[side], end_ik_space=[arm_info.switch_joints[0]], root_ik_space=[spineinfo.chest_off.ctrl], divisions=1) #type:ignore
             pec.build()
             trap = modules.Ik_correctives(part="trap", control_size=canon.scene_size, joint_parent=spineinfo.bind_joints[-1], parent=canon.rig, side=side, guides=guides.trap_correctives[side], end_ik_space=[arm_info.switch_joints[0]], root_ik_space=[spineinfo.chest_off.ctrl], divisions=1) #type:ignore
             trap.build()
             necktrap = modules.Ik_correctives(part="necktrap", control_size=canon.scene_size, joint_parent=spineinfo.bind_joints[-1], parent=canon.rig, side=side, guides=guides.necktrap_correctives[side], end_ik_space=[arm_info.switch_joints[0]], root_ik_space=[spineinfo.chest_off.ctrl], divisions=1) #type:ignore
-            necktrap.build()
+            necktrap.build()"""
 
     #face modules
 
