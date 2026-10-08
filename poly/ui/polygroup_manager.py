@@ -323,6 +323,8 @@ class PolyGroupManagerWindow(
 
         self.mesh: str | None = None
 
+        self._display_colors = False
+
         self._build_ui()
         self._connect_signals()
 
@@ -483,9 +485,7 @@ class PolyGroupManagerWindow(
         )
 
         self.authoring.display_colors_clicked.connect(
-            lambda: self._dummy(
-                "Toggle color display"
-            )
+            self._toggle_color_display
         )
 
         self.authoring.refresh_colors_clicked.connect(
@@ -708,6 +708,28 @@ class PolyGroupManagerWindow(
     # ------------------------------------------------------------------
     # Layers
     # ------------------------------------------------------------------
+
+    def _toggle_color_display(
+        self,
+    ) -> None:
+        """Toggle PolyGroup color display."""
+
+        layer = self.polygroup_browser.layer
+
+        if layer is None:
+            print(
+                "PolyGroup Manager: "
+                "No PolyGroup layer selected."
+            )
+            return
+
+        self._display_colors = (
+            not self._display_colors
+        )
+
+        layer.set_color_display(
+            self._display_colors
+        )
 
     def _layer_changed(
         self,

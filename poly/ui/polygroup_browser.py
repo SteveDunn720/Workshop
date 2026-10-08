@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from Workshop.poly.polygroup_metadata import set_polygroup_data
+
 try:
     from PySide6 import QtCore, QtGui, QtWidgets
 except ImportError:
@@ -671,20 +673,25 @@ class PolyGroupBrowser(QtWidgets.QWidget):
         polygroup: PolyGroup,
         name: str,
     ) -> None:
+        """Rename a PolyGroup."""
 
-        print(
-            f"Rename polygroup "
-            f"'{polygroup.name}' -> '{name}'"
+        polygroup.name = name
+
+        set_polygroup_data(
+            mesh=polygroup.mesh,
+            uv_set=polygroup.uv_set,
+            index=polygroup.index,
+            name=polygroup.name,
+            color=polygroup.color,
         )
 
-        # Dummy for now.
-        polygroup.name = name
 
     def _change_color(
         self,
         polygroup: PolyGroup,
         color: QtGui.QColor,
     ) -> None:
+        """Change a PolyGroup's color."""
 
         polygroup.color = (
             color.redF(),
@@ -692,10 +699,15 @@ class PolyGroupBrowser(QtWidgets.QWidget):
             color.blueF(),
         )
 
-        # This part already exists, so let's
-        # actually make color editing work.
-        polygroup.apply_color()
+        set_polygroup_data(
+            mesh=polygroup.mesh,
+            uv_set=polygroup.uv_set,
+            index=polygroup.index,
+            name=polygroup.name,
+            color=polygroup.color,
+        )
 
+        polygroup.apply_color()
     # ------------------------------------------------------------------
     # Dummy Functions
     # ------------------------------------------------------------------

@@ -20,6 +20,11 @@ from Workshop.color.maya import set_faces_color
 from Workshop.color.maya import set_color_display as set_mesh_color_display
 from Workshop.color.core import random_color
 
+from .polygroup_metadata import (
+    get_polygroup_data,
+    set_polygroup_data,
+)
+
 POLYGROUP_UV_PREFIX = "PG_"
 
 @dataclass
@@ -295,6 +300,14 @@ def initialize_polygroup(
 
     layer.polygroups.append(
         polygroup
+    )
+
+    set_polygroup_data(
+        mesh=polygroup.mesh,
+        uv_set=polygroup.uv_set,
+        index=polygroup.index,
+        name=polygroup.name,
+        color=polygroup.color,
     )
 
     return polygroup
@@ -704,12 +717,57 @@ def read_polygroup_layer_from_scene(
             udim=udim,
         )
 
+        # ---------------------------------------------------------
+        # Metadata
+        # ---------------------------------------------------------
+
+        polygroup_data = get_polygroup_data(
+            mesh=mesh,
+            uv_set=uv_set,
+            index=index,
+        )
+
+        # If this is an older PolyGroup layer that does not have
+        # metadata yet, generate defaults and register them.
+        if polygroup_data is None:
+
+            name = f"polygroup_{index:02d}"
+            color = random_color()
+
+            set_polygroup_data(
+                mesh=mesh,
+                uv_set=uv_set,
+                index=index,
+                name=name,
+                color=color,
+            )
+
+        else:
+
+            name = polygroup_data.get(
+                "name",
+                f"polygroup_{index:02d}",
+            )
+
+            color_data = polygroup_data.get(
+                "color",
+            )
+
+            if color_data is None:
+                color = random_color()
+            else:
+                color = tuple(color_data)
+
+        # ---------------------------------------------------------
+        # PolyGroup
+        # ---------------------------------------------------------
+
         polygroup = PolyGroup(
-            name=f"polygroup_{index:02d}",
+            name=name,
             index=index,
             mesh=mesh,
             uv_set=uv_set,
-            color=random_color(),
+            color=color,
         )
 
         layer.polygroups.append(
@@ -719,10 +777,14 @@ def read_polygroup_layer_from_scene(
     return layer
 
 
+
+
 def get_polygroup_layers_from_scene(
     mesh: str,
 ) -> list[PolyGroupLayer]:
     """Discover all polygroup layers on a mesh."""
+
+    
 
     layers = []
 
@@ -813,3 +875,19 @@ def create_polygroup_layer(
     )
 
     return layer
+
+
+def get_polygroup(
+    layer: PolyGroupLayer | PolyGroupSubLayer,
+    name: str,
+) -> PolyGroup:
+    """Get a polygroup by name."""
+
+    for polygroup in layer.polygroups:
+        if polygroup.name == name:
+            return polygroup
+
+    raise RuntimeError(
+        f"Polygroup '{name}' does not exist "
+        f"in layer '{layer.name}'."
+    )
