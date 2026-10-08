@@ -5,6 +5,9 @@ from Workshop.skin.ng import apply_ng_skin_weights, init_layers_from_transforms
 from .load_guides import RIG_BUILD_DIRECTORY, CANNON_DIRECTORY
 from pathlib import Path
 
+import Workshop.skin.split.operations
+
+
 
 SKINNABLE_TYPES = {
     "mesh",
@@ -106,6 +109,8 @@ def apply_skins(character:str, geo_root:str='geo', primary_mesh='Cannon_UBM',):
         geometry=primary_mesh
     )
 
+    Workshop.skin.split.operations.auto_split_weights([primary_mesh])
+
 
     children = cmds.listRelatives(geo_root, children=True, type="transform", allDescendents=True) or []
     for geo in children:
@@ -123,8 +128,11 @@ def apply_skins(character:str, geo_root:str='geo', primary_mesh='Cannon_UBM',):
                             / "skin_data"
                             / f"{geo}.json"
                         ), 
+
+                        
                         geometry=geo
                     )
+                    Workshop.skin.split.operations.auto_split_weights([geo])
             except Exception:
                 transfer_skin_weights(
                     source=primary_mesh, target=geo, 
