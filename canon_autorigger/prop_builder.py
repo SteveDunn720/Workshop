@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import inspect
+
 from Workshop.guide.resolver import (
     ModuleInstance,
     resolve_module_instances,
@@ -224,9 +226,14 @@ def get_module_guides(
 def build_module_instance(
     instance: ModuleInstance,
     instances: list[ModuleInstance],
+    parent: str = "rig",
+    control_size: float | None = None,
 ):
     """
     Build a single resolved module instance.
+
+    Only pass arguments supported by the module's
+    constructor.
     """
 
     module_class = get_module_class(
@@ -246,19 +253,58 @@ def build_module_instance(
         instances,
     )
 
-    module = module_class(
-        part=instance.part,
-        side=instance.side,
-        guides=guides,
+    # --------------------------------------------------
+    # CONTROL SIZE
+    # --------------------------------------------------
+
+    if control_size is not None:
+
+        if settings.get("control_size", 1.0) == 1.0:
+
+            settings["control_size"] = control_size
+
+    # --------------------------------------------------
+    # COLLECT ARGUMENTS
+    # --------------------------------------------------
+
+    kwargs = {
+        "part": instance.part,
+        "side": instance.side,
+        "parent": parent,
+        "guides": guides,
         **settings,
         **relationships,
+    }
+
+    # --------------------------------------------------
+    # FILTER UNSUPPORTED ARGUMENTS
+    # --------------------------------------------------
+
+    signature = inspect.signature(
+        module_class.__init__
     )
 
-    # Temporary while Arbit is our test module.
-    if instance.module == "arbit":
-        return module.arbit_build()
+    parameters = signature.parameters
 
-    raise NotImplementedError(
-        f"Build method not configured for module: "
-        f"{instance.module}"
+    accepts_kwargs = any(
+        parameter.kind == inspect.Parameter.VAR_KEYWORD
+        for parameter in parameters.values()
     )
+
+    if not accepts_kwargs:
+
+        kwargs = {
+            name: value
+            for name, value in kwargs.items()
+            if name in parameters
+        }
+
+    # --------------------------------------------------
+    # BUILD
+    # --------------------------------------------------
+
+    module = module_class(
+        **kwargs
+    )
+
+    return module.build()

@@ -92,7 +92,7 @@ def build(rig_name:str, config:rig_config):
                 parent = metacarpal_info.control[i].ctrl
                 jnt_par = metacarpal_info.joint[i]
 
-            finger = modules.Chain(part=fingers, control_size=canon.scene_size, joint_parent=jnt_par, parent=canon.rig, side=side, guides=guides.fingers[f'{fingers}_{side}'], control_space=parent)
+            finger = modules.Chain(part=fingers, control_size=canon.scene_size, joint_parent=jnt_par, parent=canon.rig, side=side, guides=guides.fingers[f'{fingers}_{side}'], control_space=[parent])
             finger.build()
 
 

@@ -224,7 +224,7 @@ class Chain:
                             color_type=self.roll_control_color,
                             shape_position_offset=(-(self.control_size/16), 0, 0)
                         )
-            module_space(control=self.roll_ctrl, space_list=[self.control_space])
+            module_space(control=self.roll_ctrl, space_list=self.control_space)
 
         jnt_par = self.joint_parent
         ctrl_par = self.control_grp
@@ -255,7 +255,7 @@ class Chain:
             jnt_par = joint
             ctrl_par = ctrl.ctrl
 
-        module_space(control=self.chain_ctrls[0], space_list=[self.control_space])
+        module_space(control=self.chain_ctrls[0], space_list=self.control_space)
 
         chain_info = module_info(control=self.chain_ctrls, joint=self.chain_joints)
         return chain_info

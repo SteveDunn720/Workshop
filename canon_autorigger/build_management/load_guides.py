@@ -3,6 +3,7 @@ import maya.cmds as cmds
 
 RIG_BUILD_DIRECTORY = r'C:\Users\sldun\Documents\maya\projects\rig_build'
 CANNON_DIRECTORY = 'canon_rigs'
+CANNON_PROP_DIRECTORY = 'canon_prop_rigs'
 
 
 
@@ -29,6 +30,20 @@ def load_guides(rig:str, rig_type:str = 'canon'):
                 import_node_list.append(short_name)
         clean_scene()
         return import_node_list
+
+    elif rig_type == 'prop':
+            path_ = rf'{RIG_BUILD_DIRECTORY}\{CANNON_PROP_DIRECTORY}\{rig}\{rig}_guides.mb'
+            print(path_)
+            import_nodes = import_from_path(path_=path_)
+            for node in import_nodes.top:
+                short_name = node.rsplit("|", 1)[-1]
+                
+                if short_name not in ['guides', 'geo']:
+                    cmds.delete(short_name)
+                else:
+                    import_node_list.append(short_name)
+            clean_scene()
+            return import_node_list
             
     else:
         print(f'rig_type:{rig_type} not supported')
