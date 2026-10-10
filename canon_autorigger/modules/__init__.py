@@ -27,6 +27,7 @@ from . import ankle_cor
 from . import elbow_cor
 from . import wrist_cor
 from . import chest_cor
+from . import matrix_spline
 
 from .root import Root
 from .biped_limb import Biped_Limb
@@ -56,6 +57,7 @@ from .ankle_cor import Ankle_Cor
 from .elbow_cor import Elbow_Cor
 from .wrist_cor import Wrist_Cor
 from .chest_cor import Chest_Cor
+from .matrix_spline import MatrixSpline
 
 
 
@@ -117,6 +119,8 @@ __all__ = [
 "Wrist_Cor",
 "chest_cor",
 "Chest_Cor",
+"matrix_spline",
+"MatrixSpline",
 ]
 
 MODULE_CLASSES = [
@@ -142,6 +146,7 @@ MODULE_CLASSES = [
     Cheek,
     Ear,
     Arbit,
+    MatrixSpline,
 ]
 
 

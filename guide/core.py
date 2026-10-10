@@ -527,22 +527,51 @@ def create_midpoint_guide(
 
 def is_guide(node: str) -> bool:
     """
-    Return whether a node is explicitly marked as a Workshop guide.
+    Return whether a node is a Workshop guide.
+
+    Supports:
+        - Joint guides
+        - Transform guides
+        - Curve guides
     """
 
     if not cmds.objExists(node):
         return False
 
-    if not cmds.attributeQuery(
+    # -----------------------------------------
+    # EXPLICIT GUIDE TAG
+    # -----------------------------------------
+
+    if cmds.attributeQuery(
         GUIDE_TAG,
         node=node,
         exists=True,
     ):
-        return False
+        return bool(
+            cmds.getAttr(f"{node}.{GUIDE_TAG}")
+        )
 
-    return bool(
-        cmds.getAttr(f"{node}.{GUIDE_TAG}")
-    )
+    # -----------------------------------------
+    # GUIDE TYPE METADATA
+    # -----------------------------------------
+
+    if cmds.attributeQuery(
+        "guideType",
+        node=node,
+        exists=True,
+    ):
+        guide_type = cmds.getAttr(
+            f"{node}.guideType"
+        )
+
+        if guide_type in (
+            "joint",
+            "transform",
+            "curve",
+        ):
+            return True
+
+    return False
 
 
 def set_guide_tag(

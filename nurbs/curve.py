@@ -1,4 +1,5 @@
 import maya.api.OpenMaya as om
+import maya.cmds as cmds
 
 
 def are_curves_mirrored(
@@ -79,3 +80,75 @@ def are_curves_mirrored(
         return True
 
     return False
+
+
+
+def get_curve_shape(curve: str) -> str:
+    """Return the non-intermediate NURBS curve shape."""
+
+    if not cmds.objExists(curve):
+        raise ValueError(f"Curve does not exist: {curve}")
+
+    if cmds.nodeType(curve) == "nurbsCurve":
+        return curve
+
+    shapes = cmds.listRelatives(
+        curve,
+        shapes=True,
+        noIntermediate=True,
+        fullPath=True,
+    ) or []
+
+    for shape in shapes:
+        if cmds.nodeType(shape) == "nurbsCurve":
+            return shape
+
+    raise ValueError(
+        f"Object does not contain a NURBS curve: {curve}"
+    )
+
+
+def resample_curve(
+    curve: str,
+    spans: int = 3,
+    degree: int = 3,
+) -> str:
+    """Rebuild a NURBS curve with the specified spans and degree."""
+
+    get_curve_shape(curve)
+
+    if spans < 1:
+        raise ValueError("Spans must be at least 1.")
+
+    if degree not in (1, 2, 3):
+        raise ValueError("Degree must be 1, 2, or 3.")
+
+    cmds.rebuildCurve(
+        curve,
+        ch=False,
+        rpo=True,
+        rt=0,
+        end=1,
+        kr=0,
+        kcp=False,
+        kep=True,
+        kt=False,
+        s=max(spans, degree),
+        d=degree,
+    )
+
+    return curve
+
+
+def reverse_curve(curve: str) -> str:
+    """Reverse the parameter direction of a NURBS curve."""
+
+    get_curve_shape(curve)
+
+    cmds.reverseCurve(
+        curve,
+        ch=False,
+        rpo=True,
+    )
+
+    return curve

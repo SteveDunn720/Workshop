@@ -5,6 +5,9 @@ import maya.cmds as cmds
 
 from Workshop.guide.module import get_module_relationships, get_module_settings, get_modules, set_module_setting, set_module_relationship
 from Workshop.guide.resolver import resolve_module_instances
+from Workshop.canon_autorigger.module_schema import ModuleCurveGuide
+from Workshop.guide.curve_gen import resample_curve, reverse_curve
+from Workshop.nurbs.curve import get_curve_shape
 
 try:
     from PySide6 import QtCore, QtWidgets, QtGui
@@ -1455,6 +1458,9 @@ class ModuleLibrary(QtWidgets.QDialog):
                 float(value)
             )
 
+        elif setting.setting_type == "int":
+            widget.setValue(int(value))
+
         elif setting.setting_type == "bool":
 
             widget.setChecked(
@@ -1529,6 +1535,9 @@ class ModuleLibrary(QtWidgets.QDialog):
                     widget.isChecked()
                 )
 
+            elif setting.setting_type == "int":
+                values[setting.name] = widget.value()
+
             elif setting.setting_type == "control_shape":
 
                 values[setting.name] = (
@@ -1561,6 +1570,18 @@ class ModuleLibrary(QtWidgets.QDialog):
         # --------------------------------------------------
         # FLOAT
         # --------------------------------------------------
+
+        if setting.setting_type == "int":
+            widget = QtWidgets.QSpinBox()
+            widget.setRange(1, 1000)
+            widget.setValue(int(setting.default or 1))
+
+            widget.valueChanged.connect(
+                lambda _value, name=setting.name:
+                self.mark_setting_dirty(name)
+            )
+
+            return widget
 
         if setting.setting_type == "float":
 
@@ -1716,99 +1737,233 @@ class ModuleLibrary(QtWidgets.QDialog):
 
         self.setting_widgets.clear()
 
-    def clear_guide_count_ui(
-        self,
-    ) -> None:
+    def clear_guide_count_ui(self) -> None:
+        """Remove all dynamic module creation widgets."""
 
-        if self.guide_count_spin is not None:
+        widgets = getattr(self, "_module_dynamic_widgets", [])
 
-            self.module_layout.removeRow(
-                self.guide_count_spin
-            )
+        for widget in widgets:
+            self.module_layout.removeRow(widget)
 
-            self.guide_count_spin = None
+        self._module_dynamic_widgets = []
 
-        if hasattr(
-            self,
-            "guide_count_label",
-        ):
+        self.guide_count_spin = None
+        self.guide_count_label = None
 
-            self.module_layout.removeRow(
-                self.guide_count_label
-            )
+        self.curve_mode_combo = None
+        self.curve_source_edit = None
+        self.curve_spans_spin = None
+        self.curve_degree_spin = None
+        self.curve_length_spin = None
 
-            self.guide_count_label = None
-
-    def refresh_module_ui(
-        self,
-        *args,
-    ) -> None:
+    def refresh_module_ui(self, *args) -> None:
+        """Refresh creation options for the selected module."""
 
         self.clear_guide_count_ui()
 
-        module_class = (
-            self.get_current_module_class()
+        module_class = self.get_current_module_class()
+
+        if module_class is None:
+            return
+
+        self._module_dynamic_widgets = []
+
+        def add_dynamic_row(label, widget):
+            row = self.module_layout.rowCount() - 1
+
+            self.module_layout.insertRow(
+                row,
+                label,
+                widget,
+            )
+
+            self._module_dynamic_widgets.append(widget)
+
+        # -----------------------------------------
+        # GUIDE COUNT
+        # -----------------------------------------
+
+        array_definition = next(
+            (
+                definition
+                for definition in module_class.GUIDES
+                if isinstance(definition, ModuleGuideArray)
+            ),
+            None,
         )
 
-        array_definition = None
-
-        for definition in module_class.GUIDES:
-
-            if isinstance(
-                definition,
-                ModuleGuideArray,
-            ):
-                array_definition = definition
-                break
-
-        # Variable guide count
         if array_definition is not None:
 
-            self.guide_count_spin = (
-                QtWidgets.QSpinBox()
-            )
+            self.guide_count_spin = QtWidgets.QSpinBox()
 
-            self.guide_count_spin.setMinimum(
-                array_definition.minimum_count
-            )
-
-            self.guide_count_spin.setMaximum(
-                100
+            self.guide_count_spin.setRange(
+                array_definition.minimum_count,
+                100,
             )
 
             self.guide_count_spin.setValue(
                 array_definition.default_count
             )
 
-            # Insert before Add To Scene.
-            row = self.module_layout.rowCount() - 1
-
-            self.module_layout.insertRow(
-                row,
+            add_dynamic_row(
                 "Guide Count",
                 self.guide_count_spin,
             )
 
-        # Fixed guide count
         else:
 
-            self.guide_count_label = (
-                QtWidgets.QLabel(
-                    str(
-                        len(
-                            module_class.GUIDES
-                        )
-                    )
-                )
+            self.guide_count_label = QtWidgets.QLabel(
+                str(len(module_class.GUIDES))
             )
 
-            row = self.module_layout.rowCount() - 1
-
-            self.module_layout.insertRow(
-                row,
+            add_dynamic_row(
                 "Guide Count",
                 self.guide_count_label,
             )
+
+        # -----------------------------------------
+        # CURVE GUIDE
+        # -----------------------------------------
+
+        curve_definition = next(
+            (
+                definition
+                for definition in module_class.GUIDES
+                if isinstance(definition, ModuleCurveGuide)
+            ),
+            None,
+        )
+
+        if curve_definition is None:
+            return
+
+        # Creation mode
+        self.curve_mode_combo = QtWidgets.QComboBox()
+
+        self.curve_mode_combo.addItems([
+            "Generate New",
+            "Duplicate Selected",
+            "Convert Selected",
+        ])
+
+        add_dynamic_row(
+            "Curve Mode",
+            self.curve_mode_combo,
+        )
+
+        # Source curve
+        self.curve_source_edit = QtWidgets.QLineEdit()
+        self.curve_source_edit.setReadOnly(True)
+        self.curve_source_edit.setPlaceholderText(
+            "Select a NURBS curve"
+        )
+
+        select_button = QtWidgets.QPushButton(
+            "Use Selection"
+        )
+
+        select_button.clicked.connect(
+            self.use_selected_curve
+        )
+
+        source_row = QtWidgets.QWidget()
+        source_layout = QtWidgets.QHBoxLayout(source_row)
+
+        source_layout.setContentsMargins(0, 0, 0, 0)
+        source_layout.setSpacing(4)
+
+        source_layout.addWidget(
+            self.curve_source_edit,
+            1,
+        )
+
+        source_layout.addWidget(select_button)
+
+        add_dynamic_row(
+            "Source Curve",
+            source_row,
+        )
+
+        # Spans
+        self.curve_spans_spin = QtWidgets.QSpinBox()
+        self.curve_spans_spin.setRange(1, 100)
+        self.curve_spans_spin.setValue(
+            curve_definition.spans
+        )
+
+        add_dynamic_row(
+            "Spans",
+            self.curve_spans_spin,
+        )
+
+        # Degree
+        self.curve_degree_spin = QtWidgets.QSpinBox()
+        self.curve_degree_spin.setRange(1, 3)
+        self.curve_degree_spin.setValue(
+            curve_definition.degree
+        )
+
+        add_dynamic_row(
+            "Degree",
+            self.curve_degree_spin,
+        )
+
+        # Length
+        self.curve_length_spin = QtWidgets.QDoubleSpinBox()
+        self.curve_length_spin.setRange(0.01, 100000.0)
+        self.curve_length_spin.setDecimals(2)
+        self.curve_length_spin.setValue(
+            curve_definition.length
+        )
+
+        add_dynamic_row(
+            "Length",
+            self.curve_length_spin,
+        )
+
+        # -----------------------------------------
+        # CURVE TOOLS
+        # -----------------------------------------
+
+        tools_row = QtWidgets.QWidget()
+        tools_layout = QtWidgets.QHBoxLayout(tools_row)
+
+        tools_layout.setContentsMargins(0, 0, 0, 0)
+        tools_layout.setSpacing(4)
+
+        resample_button = QtWidgets.QPushButton(
+            "Resample"
+        )
+
+        reverse_button = QtWidgets.QPushButton(
+            "Reverse"
+        )
+
+        tools_layout.addWidget(resample_button)
+        tools_layout.addWidget(reverse_button)
+
+        resample_button.clicked.connect(
+            self.resample_selected_curve
+        )
+
+        reverse_button.clicked.connect(
+            self.reverse_selected_curve
+        )
+
+        add_dynamic_row(
+            "Curve Tools",
+            tools_row,
+        )
+
+        # -----------------------------------------
+        # SIGNALS
+        # -----------------------------------------
+
+        self.curve_mode_combo.currentIndexChanged.connect(
+            self.update_curve_mode
+        )
+
+        self.update_curve_mode()
 
     def refresh_scene_guides(
         self,
@@ -1841,57 +1996,187 @@ class ModuleLibrary(QtWidgets.QDialog):
         )
 
         root_item.setExpanded(True)
+
     def _add_guide_children(
         self,
         parent_item,
         guide: str,
     ) -> None:
+        """Populate the guide tree with all tagged guide types."""
 
-        children = get_child_guides(
-            guide
-        )
+        children = cmds.listRelatives(
+            guide,
+            children=True,
+            type="transform",
+            fullPath=True,
+        ) or []
 
         for child in children:
 
-            item = QtWidgets.QTreeWidgetItem(
-                [child]
-            )
+            # Include all guide types, including curve guides.
+            if is_guide(child):
 
-            item.setData(
-                0,
-                QtCore.Qt.UserRole,
-                child,
-            )
+                name = child.split("|")[-1]
 
-            parent_item.addChild(
-                item
-            )
+                item = QtWidgets.QTreeWidgetItem([name])
 
-            self._add_guide_children(
-                parent_item=item,
-                guide=child,
-            )
+                item.setData(
+                    0,
+                    QtCore.Qt.UserRole,
+                    name,
+                )
+
+                parent_item.addChild(item)
+
+                self._add_guide_children(
+                    parent_item=item,
+                    guide=child,
+                )
+
+            else:
+                # Continue searching through non-guide groups.
+                self._add_guide_children(
+                    parent_item=parent_item,
+                    guide=child,
+                )
 
     # --------------------------------------------------
     # CREATE
     # --------------------------------------------------
 
-    def add_to_scene(self):
+    def update_curve_mode(self, *args) -> None:
+        """Update curve creation controls for the selected mode."""
 
-        module = (
-            self.get_current_module_name()
+        if self.curve_mode_combo is None:
+            return
+
+        mode = self.curve_mode_combo.currentIndex()
+
+        generating = mode == 0
+
+        self.curve_source_edit.setEnabled(
+            not generating
         )
 
-        part = (
-            self.part_edit
-            .text()
-            .strip()
+        self.curve_length_spin.setEnabled(
+            generating
         )
 
-        side = (
-            self.side_combo
-            .currentText()
-        )
+        self.curve_spans_spin.setEnabled(True)
+        self.curve_degree_spin.setEnabled(True)
+
+
+    def get_selected_curve(self) -> str | None:
+        """Get the selected NURBS curve transform."""
+
+        selection = cmds.ls(
+            selection=True,
+            long=True,
+            objectsOnly=True,
+        ) or []
+
+        if len(selection) != 1:
+            QtWidgets.QMessageBox.warning(
+                self,
+                "Select Curve",
+                "Please select exactly one NURBS curve.",
+            )
+            return None
+
+        node = selection[0]
+
+        try:
+            shape = get_curve_shape(node)
+
+        except ValueError as error:
+            QtWidgets.QMessageBox.warning(
+                self,
+                "Invalid Curve",
+                str(error),
+            )
+            return None
+
+        if cmds.nodeType(node) == "nurbsCurve":
+            parents = cmds.listRelatives(
+                shape,
+                parent=True,
+                fullPath=True,
+            ) or []
+
+            if not parents:
+                return None
+
+            node = parents[0]
+
+        return node
+
+
+    def use_selected_curve(self) -> None:
+        """Assign the selected Maya curve as the source."""
+
+        curve = self.get_selected_curve()
+
+        if curve is None:
+            return
+
+        if self.curve_source_edit is not None:
+            self.curve_source_edit.setText(curve)
+
+
+    def resample_selected_curve(self) -> None:
+        """Resample the currently selected NURBS curve."""
+
+        curve = self.get_selected_curve()
+
+        if curve is None:
+            return
+
+        try:
+            resample_curve(
+                curve=curve,
+                spans=self.curve_spans_spin.value(),
+                degree=self.curve_degree_spin.value(),
+            )
+
+        except Exception as error:
+            QtWidgets.QMessageBox.critical(
+                self,
+                "Resample Failed",
+                str(error),
+            )
+            return
+
+        print(f"Resampled curve: {curve}")
+
+
+    def reverse_selected_curve(self) -> None:
+            """Reverse the currently selected NURBS curve."""
+
+            curve = self.get_selected_curve()
+
+            if curve is None:
+                return
+
+            try:
+                reverse_curve(curve)
+
+            except Exception as error:
+                QtWidgets.QMessageBox.critical(
+                    self,
+                    "Reverse Failed",
+                    str(error),
+                )
+                return
+
+            print(f"Reversed curve: {curve}")
+
+    def add_to_scene(self) -> None:
+        """Create the selected module's guides in Maya."""
+
+        module = self.get_current_module_name()
+
+        part = self.part_edit.text().strip()
+        side = self.side_combo.currentText()
 
         if not part:
             QtWidgets.QMessageBox.warning(
@@ -1901,44 +2186,89 @@ class ModuleLibrary(QtWidgets.QDialog):
             )
             return
 
+        # -----------------------------------------
+        # GUIDE COUNT
+        # -----------------------------------------
+
         guide_count = None
 
         if self.guide_count_spin is not None:
-            guide_count = (
-                self.guide_count_spin.value()
-            )
+            guide_count = self.guide_count_spin.value()
+
+        # -----------------------------------------
+        # CURVE OPTIONS
+        # -----------------------------------------
+
+        curve_options = {}
+
+        if self.curve_mode_combo is not None:
+
+            mode = self.curve_mode_combo.currentIndex()
+
+            source_curve = None
+
+            if mode != 0:
+                source_curve = (
+                    self.curve_source_edit.text().strip()
+                )
+
+                if not source_curve:
+                    QtWidgets.QMessageBox.warning(
+                        self,
+                        "Missing Source Curve",
+                        "Select a source curve first.",
+                    )
+                    return
+
+                if not cmds.objExists(source_curve):
+                    QtWidgets.QMessageBox.warning(
+                        self,
+                        "Missing Source Curve",
+                        f"Curve no longer exists: {source_curve}",
+                    )
+                    return
+
+            curve_options = {
+                "source_curve": source_curve,
+                "duplicate": mode != 2,
+                "spans": self.curve_spans_spin.value(),
+                "degree": self.curve_degree_spin.value(),
+                "length": self.curve_length_spin.value(),
+            }
+
+        # -----------------------------------------
+        # CREATE GUIDES
+        # -----------------------------------------
 
         try:
-
             guides = create_module_guides(
                 module=module,
                 part=part,
                 side=side,
                 guide_count=guide_count,
+                **curve_options,
             )
 
         except Exception as error:
-
             QtWidgets.QMessageBox.critical(
                 self,
                 "Module Creation Failed",
                 str(error),
             )
-
             raise
+
+        # -----------------------------------------
+        # REFRESH UI
+        # -----------------------------------------
 
         self.refresh_scene_guides()
 
         print(
-            f"Created {module} / "
-            f"{part} / {side}"
+            f"Created {module} / {part} / {side}"
         )
 
         for guide in guides:
-            print(
-                f"    {guide.name}"
-            )
-
+            print(f"    {guide.name}")
     
 
 _module_library = None
