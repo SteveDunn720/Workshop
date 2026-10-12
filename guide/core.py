@@ -10,6 +10,9 @@ from Workshop.transform.utils import create_transform, match_location, match_tra
 from Workshop.transform.curve import create_line_curve, style_curve, curve_cvs
 from .module import get_modules
 
+from Workshop.color.outliner_overwrite import set_outliner_color
+
+
 GUIDE_TAG = "isGuide_TAG"
 
 @dataclass
@@ -192,6 +195,13 @@ def create_guide_from_position(
     )
 
     set_guide_tag(guide)
+
+    set_outliner_color(
+        object=guide,
+        hue=34.985,
+        saturation=0.750,
+        value=0.876,
+    )
 
     return GuideInfo(
         name=guide,

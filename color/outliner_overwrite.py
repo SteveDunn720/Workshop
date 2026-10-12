@@ -50,3 +50,29 @@ def set_children_outliner_color(
             *rgb,
             type="double3",
         )
+
+
+def set_outliner_color(
+    object: str,
+    hue: float,
+    saturation: float,
+    value: float,
+) -> None:
+    """Set an object's Outliner color using HSV."""
+
+    rgb = colorsys.hsv_to_rgb(
+        hue / 360.0,
+        saturation,
+        value,
+    )
+
+    cmds.setAttr(
+        f"{object}.useOutlinerColor",
+        True,
+    )
+
+    cmds.setAttr(
+        f"{object}.outlinerColor",
+        *rgb,
+        type="double3",
+    )

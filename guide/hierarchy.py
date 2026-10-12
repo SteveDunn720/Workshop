@@ -4,6 +4,7 @@ import maya.cmds as cmds
 
 from .core import is_guide
 
+from Workshop.transform.utils import clean_parent
 
 def get_parent_guide(guide: str) -> str | None:
     """
@@ -95,3 +96,23 @@ def get_guide_descendants(
         )
 
     return result
+
+
+def parent_guide_chain(
+    guides: list[str],
+) -> None:
+    """
+    Parent an ordered chain of guides.
+
+    Preserves each guide's world-space transform.
+    """
+
+    for parent, child in zip(
+        guides[:-1],
+        guides[1:],
+    ):
+        clean_parent(
+            transform=child,
+            parent=parent,
+            joint_orient=True,
+        )
