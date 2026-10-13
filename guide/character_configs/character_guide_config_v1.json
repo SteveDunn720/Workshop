@@ -1,0 +1,931 @@
+{
+  "schema_version": 1,
+  "source": "guide_hierarchy.json",
+  "mesh": "Canon_UBM_low",
+  "uv_set": "PG_Guides",
+  "notes": [
+    "Region names are proposed defaults; verify against actual PG_Guides polygroups.",
+    "Right-side orientation and behavior-mirror handling is deferred.",
+    "Spline endpoints and tangent guides are created by spline builders, not individually.",
+    "chest_root_M and cog_M are placed from regions; hip_M matches cog_M, chest_M matches chest_root_M.",
+    "Foot roll, head/face except future face anchor, non-spline curves and correctives excluded."
+  ],
+  "splines": [
+    {
+      "name": "spine",
+      "curve_name": "spine_curve",
+      "side": "M",
+      "parent": "cog_M_guide",
+      "lower_name": "hip",
+      "upper_name": "chest",
+      "lower_parent": "cog_M_guide",
+      "upper_parent": "chest_root_M_guide",
+      "lower_placement": {
+        "method": "match_parent",
+        "parent": "cog_M_guide"
+      },
+      "upper_placement": {
+        "method": "match_parent",
+        "parent": "chest_root_M_guide"
+      },
+      "tangents": "straight_default"
+    }
+  ],
+  "guides": [
+    {
+      "name": "root_M",
+      "parent": "guides",
+      "placement": {
+        "method": "origin"
+      },
+      "reference_position": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "name": "cog_M",
+      "parent": "root_M_guide",
+      "placement": {
+        "method": "region",
+        "region": "hip_M_guide"
+      },
+      "reference_position": [
+        0.0,
+        87.0103,
+        -0.1636
+      ]
+    },
+    {
+      "name": "chest_root_M",
+      "parent": "cog_M_guide",
+      "placement": {
+        "method": "region",
+        "region": "chest_M_guide"
+      },
+      "reference_position": [
+        0.0,
+        121.9684,
+        1.6258
+      ]
+    },
+    {
+      "name": "clav_L",
+      "parent": "chest_root_M_guide",
+      "placement": {
+        "method": "region",
+        "region": "clav_L"
+      },
+      "reference_position": [
+        2.4979,
+        130.8192,
+        -0.123
+      ]
+    },
+    {
+      "name": "shoulder_L",
+      "parent": "clav_L_guide",
+      "placement": {
+        "method": "region",
+        "region": "shoulder_L"
+      },
+      "reference_position": [
+        14.5498,
+        126.942,
+        -0.5567
+      ]
+    },
+    {
+      "name": "elbow_L",
+      "parent": "shoulder_L_guide",
+      "placement": {
+        "method": "region",
+        "region": "elbow_L"
+      },
+      "reference_position": [
+        31.1897,
+        111.3847,
+        -3.4503
+      ]
+    },
+    {
+      "name": "hand_L",
+      "parent": "elbow_L_guide",
+      "placement": {
+        "method": "region",
+        "region": "hand_L"
+      },
+      "reference_position": [
+        47.9086,
+        95.7261,
+        -0.3951
+      ]
+    },
+    {
+      "name": "upperleg_L",
+      "parent": "cog_M_guide",
+      "placement": {
+        "method": "region",
+        "region": "upperleg_L"
+      },
+      "reference_position": [
+        7.7586,
+        79.0725,
+        -0.8435
+      ]
+    },
+    {
+      "name": "knee_L",
+      "parent": "upperleg_L_guide",
+      "placement": {
+        "method": "region",
+        "region": "knee_L"
+      },
+      "reference_position": [
+        7.7586,
+        42.339,
+        -1.1349
+      ]
+    },
+    {
+      "name": "foot_L",
+      "parent": "knee_L_guide",
+      "placement": {
+        "method": "region",
+        "region": "foot_L"
+      },
+      "reference_position": [
+        7.7586,
+        7.5359,
+        -4.1855
+      ]
+    },
+    {
+      "name": "finger_ring_L_04",
+      "parent": "finger_ring_L_03_guide",
+      "placement": {
+        "method": "region",
+        "region": "finger_ring_L_04"
+      },
+      "reference_position": [
+        54.1674,
+        80.4942,
+        0.3065
+      ]
+    },
+    {
+      "name": "finger_ring_L_03",
+      "parent": "finger_ring_L_02_guide",
+      "placement": {
+        "method": "region",
+        "region": "finger_ring_L_03"
+      },
+      "reference_position": [
+        53.7295,
+        82.7242,
+        0.0155
+      ]
+    },
+    {
+      "name": "finger_ring_L_02",
+      "parent": "finger_ring_L_01_guide",
+      "placement": {
+        "method": "region",
+        "region": "finger_ring_L_02"
+      },
+      "reference_position": [
+        53.7746,
+        85.0089,
+        -0.2332
+      ]
+    },
+    {
+      "name": "finger_ring_L_01",
+      "parent": "finger_ring_L_00_guide",
+      "placement": {
+        "method": "region",
+        "region": "finger_ring_L_01"
+      },
+      "reference_position": [
+        52.6193,
+        88.4591,
+        -0.4419
+      ]
+    },
+    {
+      "name": "finger_ring_L_00",
+      "parent": "hand_L_guide",
+      "placement": {
+        "method": "region",
+        "region": "finger_ring_L_00"
+      },
+      "reference_position": [
+        49.4327,
+        94.2474,
+        -0.7756
+      ]
+    },
+    {
+      "name": "finger_pinky_L_04",
+      "parent": "finger_pinky_L_03_guide",
+      "placement": {
+        "method": "region",
+        "region": "finger_pinky_L_04"
+      },
+      "reference_position": [
+        53.7406,
+        82.3834,
+        -1.0668
+      ]
+    },
+    {
+      "name": "finger_pinky_L_03",
+      "parent": "finger_pinky_L_02_guide",
+      "placement": {
+        "method": "region",
+        "region": "finger_pinky_L_03"
+      },
+      "reference_position": [
+        53.287,
+        84.2144,
+        -1.5291
+      ]
+    },
+    {
+      "name": "finger_pinky_L_02",
+      "parent": "finger_pinky_L_01_guide",
+      "placement": {
+        "method": "region",
+        "region": "finger_pinky_L_02"
+      },
+      "reference_position": [
+        53.0864,
+        86.0329,
+        -1.8619
+      ]
+    },
+    {
+      "name": "finger_pinky_L_01",
+      "parent": "finger_pinky_L_00_guide",
+      "placement": {
+        "method": "region",
+        "region": "finger_pinky_L_01"
+      },
+      "reference_position": [
+        52.0503,
+        88.4974,
+        -2.0357
+      ]
+    },
+    {
+      "name": "finger_pinky_L_00",
+      "parent": "hand_L_guide",
+      "placement": {
+        "method": "region",
+        "region": "finger_pinky_L_00"
+      },
+      "reference_position": [
+        49.0114,
+        93.7156,
+        -2.0929
+      ]
+    },
+    {
+      "name": "finger_thumb_L_04",
+      "parent": "finger_thumb_L_03_guide",
+      "placement": {
+        "method": "region",
+        "region": "finger_thumb_L_04"
+      },
+      "reference_position": [
+        50.6363,
+        84.7476,
+        3.937
+      ]
+    },
+    {
+      "name": "finger_thumb_L_03",
+      "parent": "finger_thumb_L_02_guide",
+      "placement": {
+        "method": "region",
+        "region": "finger_thumb_L_03"
+      },
+      "reference_position": [
+        49.7256,
+        87.1997,
+        3.4044
+      ]
+    },
+    {
+      "name": "finger_thumb_L_02",
+      "parent": "finger_thumb_L_01_guide",
+      "placement": {
+        "method": "region",
+        "region": "finger_thumb_L_02"
+      },
+      "reference_position": [
+        48.6353,
+        89.9296,
+        2.833
+      ]
+    },
+    {
+      "name": "finger_thumb_L_01",
+      "parent": "hand_L_guide",
+      "placement": {
+        "method": "region",
+        "region": "finger_thumb_L_01"
+      },
+      "reference_position": [
+        47.4926,
+        94.2107,
+        0.8577
+      ]
+    },
+    {
+      "name": "finger_index_L_04",
+      "parent": "finger_index_L_03_guide",
+      "placement": {
+        "method": "region",
+        "region": "finger_index_L_04"
+      },
+      "reference_position": [
+        53.7498,
+        80.6661,
+        3.1401
+      ]
+    },
+    {
+      "name": "finger_index_L_03",
+      "parent": "finger_index_L_02_guide",
+      "placement": {
+        "method": "region",
+        "region": "finger_index_L_03"
+      },
+      "reference_position": [
+        53.452,
+        82.9305,
+        3.1426
+      ]
+    },
+    {
+      "name": "finger_index_L_02",
+      "parent": "finger_index_L_01_guide",
+      "placement": {
+        "method": "region",
+        "region": "finger_index_L_02"
+      },
+      "reference_position": [
+        53.366,
+        85.5089,
+        3.2356
+      ]
+    },
+    {
+      "name": "finger_index_L_01",
+      "parent": "finger_index_L_00_guide",
+      "placement": {
+        "method": "region",
+        "region": "finger_index_L_01"
+      },
+      "reference_position": [
+        52.3466,
+        88.4889,
+        3.132
+      ]
+    },
+    {
+      "name": "finger_index_L_00",
+      "parent": "hand_L_guide",
+      "placement": {
+        "method": "region",
+        "region": "finger_index_L_00"
+      },
+      "reference_position": [
+        48.9169,
+        94.1863,
+        1.9405
+      ]
+    },
+    {
+      "name": "finger_middle_L_04",
+      "parent": "finger_middle_L_03_guide",
+      "placement": {
+        "method": "region",
+        "region": "finger_middle_L_04"
+      },
+      "reference_position": [
+        54.3428,
+        79.8405,
+        1.8566
+      ]
+    },
+    {
+      "name": "finger_middle_L_03",
+      "parent": "finger_middle_L_02_guide",
+      "placement": {
+        "method": "region",
+        "region": "finger_middle_L_03"
+      },
+      "reference_position": [
+        54.0648,
+        82.1712,
+        1.6331
+      ]
+    },
+    {
+      "name": "finger_middle_L_02",
+      "parent": "finger_middle_L_01_guide",
+      "placement": {
+        "method": "region",
+        "region": "finger_middle_L_02"
+      },
+      "reference_position": [
+        53.9339,
+        84.9659,
+        1.4938
+      ]
+    },
+    {
+      "name": "finger_middle_L_01",
+      "parent": "finger_middle_L_00_guide",
+      "placement": {
+        "method": "region",
+        "region": "finger_middle_L_01"
+      },
+      "reference_position": [
+        52.9439,
+        88.4981,
+        1.2815
+      ]
+    },
+    {
+      "name": "finger_middle_L_00",
+      "parent": "hand_L_guide",
+      "placement": {
+        "method": "region",
+        "region": "finger_middle_L_00"
+      },
+      "reference_position": [
+        49.6228,
+        94.475,
+        0.5917
+      ]
+    },
+    {
+      "name": "clav_R",
+      "parent": "chest_root_M_guide",
+      "placement": {
+        "method": "region",
+        "region": "clav_R"
+      },
+      "reference_position": [
+        -2.4979,
+        130.8192,
+        -0.123
+      ]
+    },
+    {
+      "name": "shoulder_R",
+      "parent": "clav_R_guide",
+      "placement": {
+        "method": "region",
+        "region": "shoulder_R"
+      },
+      "reference_position": [
+        -14.5498,
+        126.942,
+        -0.5567
+      ]
+    },
+    {
+      "name": "elbow_R",
+      "parent": "shoulder_R_guide",
+      "placement": {
+        "method": "region",
+        "region": "elbow_R"
+      },
+      "reference_position": [
+        -31.1897,
+        111.3847,
+        -3.4503
+      ]
+    },
+    {
+      "name": "hand_R",
+      "parent": "elbow_R_guide",
+      "placement": {
+        "method": "region",
+        "region": "hand_R"
+      },
+      "reference_position": [
+        -47.9086,
+        95.7261,
+        -0.3951
+      ]
+    },
+    {
+      "name": "upperleg_R",
+      "parent": "cog_M_guide",
+      "placement": {
+        "method": "region",
+        "region": "upperleg_R"
+      },
+      "reference_position": [
+        -7.7586,
+        79.0725,
+        -0.8435
+      ]
+    },
+    {
+      "name": "knee_R",
+      "parent": "upperleg_R_guide",
+      "placement": {
+        "method": "region",
+        "region": "knee_R"
+      },
+      "reference_position": [
+        -7.7586,
+        42.339,
+        -1.1349
+      ]
+    },
+    {
+      "name": "foot_R",
+      "parent": "knee_R_guide",
+      "placement": {
+        "method": "region",
+        "region": "foot_R"
+      },
+      "reference_position": [
+        -7.7586,
+        7.5359,
+        -4.1855
+      ]
+    },
+    {
+      "name": "finger_ring_R_04",
+      "parent": "finger_ring_R_03_guide",
+      "placement": {
+        "method": "region",
+        "region": "finger_ring_R_04"
+      },
+      "reference_position": [
+        -54.1674,
+        80.4942,
+        0.3065
+      ]
+    },
+    {
+      "name": "finger_ring_R_03",
+      "parent": "finger_ring_R_02_guide",
+      "placement": {
+        "method": "region",
+        "region": "finger_ring_R_03"
+      },
+      "reference_position": [
+        -53.7295,
+        82.7242,
+        0.0155
+      ]
+    },
+    {
+      "name": "finger_ring_R_02",
+      "parent": "finger_ring_R_01_guide",
+      "placement": {
+        "method": "region",
+        "region": "finger_ring_R_02"
+      },
+      "reference_position": [
+        -53.7746,
+        85.0089,
+        -0.2332
+      ]
+    },
+    {
+      "name": "finger_ring_R_01",
+      "parent": "finger_ring_R_00_guide",
+      "placement": {
+        "method": "region",
+        "region": "finger_ring_R_01"
+      },
+      "reference_position": [
+        -52.6193,
+        88.4591,
+        -0.4419
+      ]
+    },
+    {
+      "name": "finger_ring_R_00",
+      "parent": "hand_R_guide",
+      "placement": {
+        "method": "region",
+        "region": "finger_ring_R_00"
+      },
+      "reference_position": [
+        -49.4327,
+        94.2474,
+        -0.7756
+      ]
+    },
+    {
+      "name": "finger_pinky_R_04",
+      "parent": "finger_pinky_R_03_guide",
+      "placement": {
+        "method": "region",
+        "region": "finger_pinky_R_04"
+      },
+      "reference_position": [
+        -53.7406,
+        82.3834,
+        -1.0668
+      ]
+    },
+    {
+      "name": "finger_pinky_R_03",
+      "parent": "finger_pinky_R_02_guide",
+      "placement": {
+        "method": "region",
+        "region": "finger_pinky_R_03"
+      },
+      "reference_position": [
+        -53.287,
+        84.2144,
+        -1.5291
+      ]
+    },
+    {
+      "name": "finger_pinky_R_02",
+      "parent": "finger_pinky_R_01_guide",
+      "placement": {
+        "method": "region",
+        "region": "finger_pinky_R_02"
+      },
+      "reference_position": [
+        -53.0864,
+        86.0329,
+        -1.8619
+      ]
+    },
+    {
+      "name": "finger_pinky_R_01",
+      "parent": "finger_pinky_R_00_guide",
+      "placement": {
+        "method": "region",
+        "region": "finger_pinky_R_01"
+      },
+      "reference_position": [
+        -52.0503,
+        88.4974,
+        -2.0357
+      ]
+    },
+    {
+      "name": "finger_pinky_R_00",
+      "parent": "hand_R_guide",
+      "placement": {
+        "method": "region",
+        "region": "finger_pinky_R_00"
+      },
+      "reference_position": [
+        -49.0114,
+        93.7156,
+        -2.0929
+      ]
+    },
+    {
+      "name": "finger_thumb_R_04",
+      "parent": "finger_thumb_R_03_guide",
+      "placement": {
+        "method": "region",
+        "region": "finger_thumb_R_04"
+      },
+      "reference_position": [
+        -50.6363,
+        84.7476,
+        3.937
+      ]
+    },
+    {
+      "name": "finger_thumb_R_03",
+      "parent": "finger_thumb_R_02_guide",
+      "placement": {
+        "method": "region",
+        "region": "finger_thumb_R_03"
+      },
+      "reference_position": [
+        -49.7256,
+        87.1997,
+        3.4044
+      ]
+    },
+    {
+      "name": "finger_thumb_R_02",
+      "parent": "finger_thumb_R_01_guide",
+      "placement": {
+        "method": "region",
+        "region": "finger_thumb_R_02"
+      },
+      "reference_position": [
+        -48.6353,
+        89.9296,
+        2.833
+      ]
+    },
+    {
+      "name": "finger_thumb_R_01",
+      "parent": "hand_R_guide",
+      "placement": {
+        "method": "region",
+        "region": "finger_thumb_R_01"
+      },
+      "reference_position": [
+        -47.4926,
+        94.2107,
+        0.8577
+      ]
+    },
+    {
+      "name": "finger_index_R_04",
+      "parent": "finger_index_R_03_guide",
+      "placement": {
+        "method": "region",
+        "region": "finger_index_R_04"
+      },
+      "reference_position": [
+        -53.7498,
+        80.6661,
+        3.1401
+      ]
+    },
+    {
+      "name": "finger_index_R_03",
+      "parent": "finger_index_R_02_guide",
+      "placement": {
+        "method": "region",
+        "region": "finger_index_R_03"
+      },
+      "reference_position": [
+        -53.452,
+        82.9305,
+        3.1426
+      ]
+    },
+    {
+      "name": "finger_index_R_02",
+      "parent": "finger_index_R_01_guide",
+      "placement": {
+        "method": "region",
+        "region": "finger_index_R_02"
+      },
+      "reference_position": [
+        -53.366,
+        85.5089,
+        3.2356
+      ]
+    },
+    {
+      "name": "finger_index_R_01",
+      "parent": "finger_index_R_00_guide",
+      "placement": {
+        "method": "region",
+        "region": "finger_index_R_01"
+      },
+      "reference_position": [
+        -52.3466,
+        88.4889,
+        3.132
+      ]
+    },
+    {
+      "name": "finger_index_R_00",
+      "parent": "hand_R_guide",
+      "placement": {
+        "method": "region",
+        "region": "finger_index_R_00"
+      },
+      "reference_position": [
+        -48.9169,
+        94.1863,
+        1.9405
+      ]
+    },
+    {
+      "name": "finger_middle_R_04",
+      "parent": "finger_middle_R_03_guide",
+      "placement": {
+        "method": "region",
+        "region": "finger_middle_R_04"
+      },
+      "reference_position": [
+        -54.3428,
+        79.8405,
+        1.8566
+      ]
+    },
+    {
+      "name": "finger_middle_R_03",
+      "parent": "finger_middle_R_02_guide",
+      "placement": {
+        "method": "region",
+        "region": "finger_middle_R_03"
+      },
+      "reference_position": [
+        -54.0648,
+        82.1712,
+        1.6331
+      ]
+    },
+    {
+      "name": "finger_middle_R_02",
+      "parent": "finger_middle_R_01_guide",
+      "placement": {
+        "method": "region",
+        "region": "finger_middle_R_02"
+      },
+      "reference_position": [
+        -53.9339,
+        84.9659,
+        1.4938
+      ]
+    },
+    {
+      "name": "finger_middle_R_01",
+      "parent": "finger_middle_R_00_guide",
+      "placement": {
+        "method": "region",
+        "region": "finger_middle_R_01"
+      },
+      "reference_position": [
+        -52.9439,
+        88.4981,
+        1.2815
+      ]
+    },
+    {
+      "name": "finger_middle_R_00",
+      "parent": "hand_R_guide",
+      "placement": {
+        "method": "region",
+        "region": "finger_middle_R_00"
+      },
+      "reference_position": [
+        -49.6228,
+        94.475,
+        0.5917
+      ]
+    }
+  ],
+  "orientation_groups": [
+    {
+      "name": "arm_L",
+      "chain": [
+        "shoulder_L_guide",
+        "elbow_L_guide",
+        "hand_L_guide"
+      ],
+      "aim_axis": "y",
+      "up_axis": "z"
+    },
+    {
+      "name": "arm_R",
+      "chain": [
+        "shoulder_R_guide",
+        "elbow_R_guide",
+        "hand_R_guide"
+      ],
+      "aim_axis": "y",
+      "up_axis": "z"
+    },
+    {
+      "name": "leg_L",
+      "chain": [
+        "upperleg_L_guide",
+        "knee_L_guide",
+        "foot_L_guide"
+      ],
+      "aim_axis": "y",
+      "up_axis": "z"
+    },
+    {
+      "name": "leg_R",
+      "chain": [
+        "upperleg_R_guide",
+        "knee_R_guide",
+        "foot_R_guide"
+      ],
+      "aim_axis": "y",
+      "up_axis": "z"
+    }
+  ],
+  "excluded": [
+    "correctives",
+    "head_and_face",
+    "foot_roll",
+    "toe_ball_and_toe_end",
+    "non_spline_curves",
+    "cluster_helpers",
+    "mirror_flip_transforms"
+  ]
+}

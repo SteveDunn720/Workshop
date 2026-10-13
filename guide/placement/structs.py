@@ -17,3 +17,14 @@ class GuidePlacement:
         0.0,
         0.0,
     )
+
+@dataclass
+class SplinePlacement:
+    name: str
+    side: str = "M"
+
+    lower_name: str = "lower"
+    upper_name: str = "upper"
+
+    lower_region: str = ""
+    upper_region: str = ""

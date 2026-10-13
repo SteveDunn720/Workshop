@@ -392,7 +392,7 @@ def create_spline_guide(parent:str, lower_name:str='lower', upper_name:str='uppe
             cmds.setAttr(f'{tform}.visibility', False)
             cmds.setAttr(f"{tform}.hiddenInOutliner", True)
 
-    info = spline_GuideInfo(curve=curve_guide, upper=upper, upper_tan=upper_tan, lower=lower, lower_tan=lower_tan)
+    info = SplineGuideInfo(curve=curve_guide, upper=upper, upper_tan=upper_tan, lower=lower, lower_tan=lower_tan)
     return info
 
 
