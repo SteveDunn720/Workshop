@@ -153,9 +153,17 @@ def orient_limb_guides(
             onto the last guide.
     """
 
-    if len(guides) < 3:
+    if len(guides) == 2:
+        orient_two_guides(
+            guides=guides,
+            aim_axis=aim_axis,
+            up_axis=up_axis,
+        )
+        return
+
+    if len(guides) < 2:
         raise ValueError(
-            "Limb orientation requires at least three guides."
+            "Limb orientation requires at least two guides."
         )
 
     for guide in guides:
@@ -219,3 +227,46 @@ def orient_limb_guides(
             matrix=end_matrix,
             use_joint_orient=True,
         )
+
+
+import maya.cmds as cmds
+
+
+def orient_two_guides(
+    guides: list[str],
+    aim_axis: str = "y",
+    up_axis: str = "x",
+    world_up: tuple[float, float, float] = (0, 0, 1),
+):
+    """
+    Orient the first guide toward the second guide.
+
+    The second guide is left unchanged, allowing it to be
+    oriented separately by another chain.
+    """
+
+    start, end = guides
+
+    constraint = cmds.aimConstraint(
+        end,
+        start,
+        aimVector=_axis_vector(aim_axis),
+        upVector=_axis_vector(up_axis),
+        worldUpType="vector",
+        worldUpVector=world_up,
+        maintainOffset=False,
+    )[0]
+
+    cmds.delete(constraint)
+
+
+def _axis_vector(axis: str):
+    vectors = {
+        "x": (1, 0, 0),
+        "y": (0, 1, 0),
+        "z": (0, 0, 1),
+        "-x": (-1, 0, 0),
+        "-y": (0, -1, 0),
+        "-z": (0, 0, -1),
+    }
+    return vectors[axis.lower()]

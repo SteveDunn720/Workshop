@@ -996,6 +996,24 @@
   ],
   "orientation_groups": [
     {
+      "name": "clav_L",
+      "chain": [
+        "clav_L_guide",
+        "shoulder_L_guide"
+      ],
+      "aim_axis": "y",
+      "up_axis": "z"
+    },
+    {
+      "name": "clav_R",
+      "chain": [
+        "clav_R_guide",
+        "shoulder_R_guide"
+      ],
+      "aim_axis": "y",
+      "up_axis": "z"
+    },
+    {
       "name": "arm_L",
       "chain": [
         "shoulder_L_guide",
@@ -1003,7 +1021,7 @@
         "hand_L_guide"
       ],
       "aim_axis": "y",
-      "up_axis": "z"
+      "up_axis": "x"
     },
     {
       "name": "arm_R",
@@ -1013,7 +1031,7 @@
         "hand_R_guide"
       ],
       "aim_axis": "y",
-      "up_axis": "z"
+      "up_axis": "x"
     },
     {
       "name": "leg_L",
@@ -1025,7 +1043,7 @@
         "toe_ee_L_guide"
       ],
       "aim_axis": "y",
-      "up_axis": "z",
+      "up_axis": "x",
       "force_planar": true
     },
     {
@@ -1038,7 +1056,7 @@
         "toe_ee_R_guide"
       ],
       "aim_axis": "y",
-      "up_axis": "z",
+      "up_axis": "x",
       "force_planar": true
     },
     {
@@ -1051,7 +1069,7 @@
         "finger_index_L_04_guide"
       ],
       "aim_axis": "y",
-      "up_axis": "z",
+      "up_axis": "x",
       "force_planar": true,
       "planar_chain": [
         "finger_index_L_01_guide",
@@ -1070,7 +1088,7 @@
         "finger_middle_L_04_guide"
       ],
       "aim_axis": "y",
-      "up_axis": "z",
+      "up_axis": "x",
       "force_planar": true,
       "planar_chain": [
         "finger_middle_L_01_guide",
@@ -1089,7 +1107,7 @@
         "finger_ring_L_04_guide"
       ],
       "aim_axis": "y",
-      "up_axis": "z",
+      "up_axis": "x",
       "force_planar": true,
       "planar_chain": [
         "finger_ring_L_01_guide",
@@ -1108,7 +1126,7 @@
         "finger_pinky_L_04_guide"
       ],
       "aim_axis": "y",
-      "up_axis": "z",
+      "up_axis": "x",
       "force_planar": true,
       "planar_chain": [
         "finger_pinky_L_01_guide",
@@ -1126,7 +1144,7 @@
         "finger_thumb_L_04_guide"
       ],
       "aim_axis": "y",
-      "up_axis": "z",
+      "up_axis": "x",
       "force_planar": false
     },
     {
@@ -1139,7 +1157,7 @@
         "finger_index_R_04_guide"
       ],
       "aim_axis": "y",
-      "up_axis": "z",
+      "up_axis": "x",
       "force_planar": true,
       "planar_chain": [
         "finger_index_R_01_guide",
@@ -1158,7 +1176,7 @@
         "finger_middle_R_04_guide"
       ],
       "aim_axis": "y",
-      "up_axis": "z",
+      "up_axis": "x",
       "force_planar": true,
       "planar_chain": [
         "finger_middle_R_01_guide",
@@ -1177,7 +1195,7 @@
         "finger_ring_R_04_guide"
       ],
       "aim_axis": "y",
-      "up_axis": "z",
+      "up_axis": "x",
       "force_planar": true,
       "planar_chain": [
         "finger_ring_R_01_guide",
@@ -1196,7 +1214,7 @@
         "finger_pinky_R_04_guide"
       ],
       "aim_axis": "y",
-      "up_axis": "z",
+      "up_axis": "x",
       "force_planar": true,
       "planar_chain": [
         "finger_pinky_R_01_guide",
@@ -1214,7 +1232,7 @@
         "finger_thumb_R_04_guide"
       ],
       "aim_axis": "y",
-      "up_axis": "z",
+      "up_axis": "x",
       "force_planar": false
     }
   ],
