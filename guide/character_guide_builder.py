@@ -1,3 +1,12 @@
+"""First-pass Workshop character guide builder (Maya Python).
+
+Requires Workshop.guide.core.create_guide_from_position/create_spline_guide,
+Workshop.guide.placement.solve.solve_position, and
+Workshop.guide.placement.limb.orient_limb_guides.
+
+Create all independent guides in world space, orient, then parent while
+preserving world matrices. Spline endpoints are created by the spline builder.
+"""
 from __future__ import annotations
 
 import json
@@ -11,7 +20,7 @@ from Workshop.guide.placement.structs import GuidePlacement
 from Workshop.guide.placement.solve import solve_position
 from Workshop.guide.placement.limb import orient_limb_guides
 from Workshop.guide.placement.force_planar import force_planar_guides
-from Workshop.guide.scene import prepare_guide_scene
+from Workshop.guide.placement.foot_roll import build_foot_roll_guides
 
 DEFAULT_CONFIG = Path(__file__).resolve().parent / "character_configs" / "character_guide_config_v1.json"
 
@@ -299,6 +308,34 @@ def build_character_guides(
                 raise ValueError(f"Unsupported spline placement method: {method}")
         spline_positions.append((spline, anchors[0], anchors[1]))
 
+    # Foot-roll landmarks: same symmetry decision as the legs. The target
+    # side is always staged in its leg flip group's unflipped coordinates.
+    foot_roll_positions = {}
+    foot_cfg = config.get('foot_roll', {})
+    if foot_cfg.get('enabled', False):
+        for side in ('L', 'R'):
+            region_side = source_side if (
+                side == target_side and 'legs' in mirrored_categories
+            ) else side
+            landmarks = {}
+            for key in ('heel', 'toeball_ground', 'bankout', 'bankin'):
+                region = foot_cfg['regions'][key].format(side=region_side)
+                try:
+                    pos = tuple(solve_position(
+                        GuidePlacement(name=f'{key}_{region_side}', region=region),
+                        mesh=mesh, uv_set=uv_set,
+                    ))
+                except (LookupError, KeyError, ValueError, RuntimeError) as exc:
+                    result.missing_regions.append(f'foot_roll {side}: {region} ({exc})')
+                    fallback = foot_cfg.get('reference_positions', {}).get(region_side, {}).get(key)
+                    if not allow_reference_fallback or fallback is None:
+                        raise RuntimeError(f'Cannot resolve foot-roll region {region!r}') from exc
+                    pos = tuple(fallback)
+                if side == target_side and 'legs' not in mirrored_categories:
+                    pos = _reflect_x(pos)
+                landmarks[key] = pos
+            foot_roll_positions[side] = landmarks
+
     if dry_run:
         print(f'[Workshop] Dry run: {len(positions)} regular guides, '
               f'{len(spline_positions)} splines, '
@@ -307,7 +344,8 @@ def build_character_guides(
             print(f'  REGION FALLBACK: {missing}')
         return result
 
-    scene = prepare_guide_scene()
+    if not cmds.objExists('guides'):
+        cmds.group(empty=True, world=True, name='guides')
 
     # Create guides unparented (under a world-space holder), so orientation
     # operations cannot move descendants. Parent in the final pass.
@@ -424,6 +462,19 @@ def build_character_guides(
             curve = _guide_name(f"{spline.get('curve_name', spline['name'])}_{side}")
             if cmds.objExists(curve):
                 _parent_preserve_world(curve, 'guides')
+
+        # Foot-roll guides inherit the leg flip hierarchy automatically.
+        # Build after legs/toes are parented, but before scaleX is flipped.
+        for side, landmarks in foot_roll_positions.items():
+            created_roll = build_foot_roll_guides(
+                side=side,
+                heel_position=landmarks['heel'],
+                toeball_position=landmarks['toeball_ground'],
+                bankout_position=landmarks['bankout'],
+                bankin_position=landmarks['bankin'],
+            )
+            result.created.extend(created_roll.values())
+            refresh_progress(f'Built foot roll {side}')
 
         # Flip each target-side component once, after every child is parented.
         for group in flip_groups.values():
