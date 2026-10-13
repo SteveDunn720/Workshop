@@ -21,6 +21,7 @@ from Workshop.guide.placement.solve import solve_position
 from Workshop.guide.placement.limb import orient_limb_guides
 from Workshop.guide.placement.force_planar import force_planar_guides
 from Workshop.guide.placement.foot_roll import build_foot_roll_guides
+from Workshop.guide.placement.head import head_guide_positions, style_head_guides
 
 DEFAULT_CONFIG = Path(__file__).resolve().parent / "character_configs" / "character_guide_config_v1.json"
 
@@ -82,7 +83,7 @@ def _category(name: str) -> str | None:
         return 'legs'
     if any(word in stem for word in ('clav_', 'shoulder_', 'elbow_', 'hand_', 'finger_')):
         return 'arms'
-    if any(word in stem for word in ('eye_', 'face_', 'jaw_', 'brow_')):
+    if any(word in stem for word in ('eye_', 'face_', 'jaw_', 'brow_', 'cheek_', 'nose_', 'mouth_', 'lip_', 'ear_', 'tongue_', 'nl_fold_', 'arch_')):
         return 'face'
     return None
 
@@ -135,7 +136,7 @@ def _resolve_positions(
         name = _guide_name(entry['name'])
         placement = entry['placement']
         method = placement['method']
-        if method == 'match_parent':
+        if method in ('match_parent', 'procedural_head'):
             continue
         if name in (skip_regions or set()):
             continue
@@ -147,7 +148,7 @@ def _resolve_positions(
                 pos = solve_position(
                     GuidePlacement(name=entry['name'], region=region),
                     mesh=mesh,
-                    uv_set=uv_set,
+                    uv_set=placement.get('uv_set', config.get('polygroup_layers', {}).get(placement.get('layer', 'body'), uv_set)),
                 )
                 positions[name] = tuple(pos)
             except (LookupError, KeyError, ValueError, RuntimeError) as exc:
@@ -222,6 +223,18 @@ def build_character_guides(
     dry_run validates placement without creating guides.
     """
     config = _load_config(DEFAULT_CONFIG if config is None else config)
+    # Optional facial entries join the SAME build; no separate face builder.
+    config = dict(config)
+    config['guides'] = list(config.get('guides', []))
+    config['orientation_groups'] = list(config.get('orientation_groups', []))
+    face_cfg = config.get('face_guides', {})
+    if face_cfg.get('enabled', False):
+        for entry in face_cfg.get('guides', []):
+            item = dict(entry)
+            item['placement'] = dict(entry['placement'])
+            item['placement'].setdefault('layer', 'face')
+            config['guides'].append(item)
+        config['orientation_groups'].extend(face_cfg.get('orientation_groups', []))
     _validate_config(config)
     mesh = mesh or config['mesh']
     uv_set = uv_set or config.get('uv_set', 'PG_Guides')
@@ -254,6 +267,22 @@ def build_character_guides(
         if source_name in positions:
             positions[name] = _reflect_x(positions[source_name])
     _resolve_match_parent_positions(config, positions)
+
+    # Head medium guides are procedural, not solved from body polygroups.
+    head_cfg = config.get('head_placement', {})
+    head_positions = {}
+    if head_cfg.get('enabled', False):
+        root_name = head_cfg.get('root', 'head_root_M_guide')
+        end_name = head_cfg.get('end', 'head_ee_M_guide')
+        if root_name not in positions or end_name not in positions:
+            raise RuntimeError('Head placement requires resolved head root and head end')
+        head_positions = head_guide_positions(
+            positions[root_name], positions[end_name],
+            start=head_cfg.get('start', 0.1),
+            stop=head_cfg.get('stop', 0.5),
+            forward_fraction=head_cfg.get('forward_fraction', 0.1),
+        )
+        positions.update(head_positions)
 
     # Compute the desired final positions first. Symmetric destinations
     # derive from the source; asymmetric destinations keep their own regions.
@@ -423,8 +452,10 @@ def build_character_guides(
         # Establish unscaled flip groups at world origin. All guides on
         # target side (mirrored OR independently solved) use these groups.
         flip_groups = {}
-        for category in ('arms', 'legs'):
-            parent = 'chest_root_M_guide' if category == 'arms' else 'cog_M_guide'
+        for category in ('arms', 'legs', 'face'):
+            if category == 'face' and not face_cfg.get('enabled', False):
+                continue
+            parent = {'arms': 'chest_root_M_guide', 'legs': 'cog_M_guide', 'face': 'head_root_M_guide'}[category]
             group = _make_flip_group(category, target_side, parent)
             flip_groups[category] = group
             result.flip_groups.append(group)
@@ -483,6 +514,8 @@ def build_character_guides(
 
         for item in config.get('big_guides', []):
             _set_big_guide(_guide_name(item), radius=5.0)
+        if head_positions:
+            style_head_guides(head_positions, radius=head_cfg.get('radius', 2.5))
 
         cmds.refresh(force=True)
         print(f'[Workshop] Built {len(result.created)} regular guides, '

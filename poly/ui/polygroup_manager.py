@@ -727,6 +727,10 @@ class PolyGroupManagerWindow(
             not self._display_colors
         )
 
+        if self._display_colors:
+            for polygroup in layer.polygroups:
+                polygroup.apply_color()
+
         layer.set_color_display(
             self._display_colors
         )
@@ -748,6 +752,10 @@ class PolyGroupManagerWindow(
         self.polygroup_browser.set_layer(
             layer
         )
+
+        if self._display_colors:
+            for polygroup in layer.polygroups:
+                polygroup.apply_color()
 
     # ------------------------------------------------------------------
     # Dummy Actions

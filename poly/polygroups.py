@@ -1,3 +1,7 @@
+from contextlib import contextmanager
+
+import maya.cmds as cmds
+
 from dataclasses import dataclass, field
 
 from Workshop.poly.convert import (
@@ -26,6 +30,19 @@ from .polygroup_metadata import (
 )
 
 POLYGROUP_UV_PREFIX = "PG_"
+
+
+@contextmanager
+def _active_polygroup_uv_set(mesh: str, uv_set: str):
+    """Keep the requested UV set active through component conversion."""
+    previous = (cmds.polyUVSet(mesh, q=True, currentUVSet=True) or [None])[0]
+    try:
+        if previous != uv_set:
+            cmds.polyUVSet(mesh, currentUVSet=True, uvSet=uv_set)
+        yield
+    finally:
+        if previous and previous != uv_set:
+            cmds.polyUVSet(mesh, currentUVSet=True, uvSet=previous)
 
 @dataclass
 class PolyGroup:
@@ -66,23 +83,20 @@ class PolyGroup:
     def get_faces(self) -> list[str]:
         """Get the current faces belonging to this polygroup."""
 
-        return uv_shell_to_faces(
-            self.get_uvs()
-        )
+        with _active_polygroup_uv_set(self.mesh, self.uv_set):
+            return uv_shell_to_faces(self.get_uvs())
 
     def get_edges(self) -> list[str]:
         """Get the current edges belonging to this polygroup."""
 
-        return uv_shell_to_edges(
-            self.get_uvs()
-        )
+        with _active_polygroup_uv_set(self.mesh, self.uv_set):
+            return uv_shell_to_edges(self.get_uvs())
 
     def get_verts(self) -> list[str]:
         """Get the current vertices belonging to this polygroup."""
 
-        return uv_shell_to_verts(
-            self.get_uvs()
-        )
+        with _active_polygroup_uv_set(self.mesh, self.uv_set):
+            return uv_shell_to_verts(self.get_uvs())
 
     def get_border_edges(self) -> list[str]:
         """Get the current border edges belonging to this polygroup."""

@@ -9,8 +9,9 @@
     "Spline endpoints and tangent guides are created by spline builders, not individually.",
     "chest_root_M and cog_M are placed from regions; hip_M matches cog_M, chest_M matches chest_root_M.",
     "Foot-roll pivots, head/face except future face anchor, non-spline curves and correctives excluded.",
-    "Neck spline and head root are initial estimates; adjust neck anchor regions and head guide placements as needed.",
-    "Leg planar and orientation groups include upperleg, knee, foot, toe_ball, toe_ee; foot-roll pivot guides remain excluded."
+    "Leg planar and orientation groups include upperleg, knee, foot, toe_ball, toe_ee; foot-roll pivot guides remain excluded.",
+    "Four medium head guides are procedural: 10%-50% of head root to head end, +Z offset 10% of head height.",
+    "Face ear/cheek/nose guides use PG_Face_Guides; historic right-side flip transforms are represented by the character builder mirroring workflow."
   ],
   "splines": [
     {
@@ -919,8 +920,7 @@
       "name": "upper_head_M",
       "parent": "head_root_M_guide",
       "placement": {
-        "method": "region",
-        "region": "upper_head_M"
+        "method": "procedural_head"
       },
       "reference_position": [
         0.0,
@@ -992,6 +992,27 @@
         1.636,
         12.3141
       ]
+    },
+    {
+      "name": "lower_head_M",
+      "parent": "head_root_M_guide",
+      "placement": {
+        "method": "procedural_head"
+      }
+    },
+    {
+      "name": "mid_head_M",
+      "parent": "head_root_M_guide",
+      "placement": {
+        "method": "procedural_head"
+      }
+    },
+    {
+      "name": "top_head_M",
+      "parent": "head_root_M_guide",
+      "placement": {
+        "method": "procedural_head"
+      }
     }
   ],
   "orientation_groups": [
@@ -1313,5 +1334,374 @@
         ]
       }
     }
+  },
+  "polygroup_layers": {
+    "body": "PG_Guides",
+    "face": "PG_Face_Guides"
+  },
+  "head_placement": {
+    "enabled": true,
+    "root": "head_root_M_guide",
+    "end": "head_ee_M_guide",
+    "start": 0.1,
+    "stop": 0.5,
+    "forward_fraction": 0.1,
+    "radius": 2.5
+  },
+  "face_guides": {
+    "enabled": true,
+    "guides": [
+      {
+        "name": "cheek_bone_R",
+        "parent": "upper_head_M_guide",
+        "placement": {
+          "method": "region",
+          "region": "cheek_bone_R",
+          "layer": "face"
+        },
+        "reference_position": [
+          -4.963741,
+          149.429896,
+          9.212366
+        ]
+      },
+      {
+        "name": "cheek_puff_R",
+        "parent": "cheek_bone_R_guide",
+        "placement": {
+          "method": "region",
+          "region": "cheek_puff_R",
+          "layer": "face"
+        },
+        "reference_position": [
+          -5.196729,
+          146.382249,
+          7.701881
+        ]
+      },
+      {
+        "name": "cheek_bone_L",
+        "parent": "upper_head_M_guide",
+        "placement": {
+          "method": "region",
+          "region": "cheek_bone_L",
+          "layer": "face"
+        },
+        "reference_position": [
+          4.963741,
+          149.429896,
+          9.212366
+        ]
+      },
+      {
+        "name": "cheek_puff_L",
+        "parent": "cheek_bone_L_guide",
+        "placement": {
+          "method": "region",
+          "region": "cheek_puff_L",
+          "layer": "face"
+        },
+        "reference_position": [
+          5.196729,
+          146.382249,
+          7.701881
+        ]
+      },
+      {
+        "name": "nose_Root_M",
+        "parent": "mid_head_M_guide",
+        "placement": {
+          "method": "region",
+          "region": "nose_Root_M",
+          "layer": "face"
+        },
+        "reference_position": [
+          0.000125,
+          148.870954,
+          11.623749
+        ]
+      },
+      {
+        "name": "nose_Nostril_Inner_M",
+        "parent": "nose_Root_M_guide",
+        "placement": {
+          "method": "region",
+          "region": "nose_Nostril_Inner_M",
+          "layer": "face"
+        },
+        "reference_position": [
+          -0.0,
+          147.309163,
+          12.714216
+        ]
+      },
+      {
+        "name": "nose_Tip_M",
+        "parent": "nose_Root_M_guide",
+        "placement": {
+          "method": "region",
+          "region": "nose_Tip_M",
+          "layer": "face"
+        },
+        "reference_position": [
+          1e-06,
+          149.046616,
+          13.636535
+        ]
+      },
+      {
+        "name": "nose_Bridge_M",
+        "parent": "nose_Root_M_guide",
+        "placement": {
+          "method": "region",
+          "region": "nose_Bridge_M",
+          "layer": "face"
+        },
+        "reference_position": [
+          0.0,
+          151.567088,
+          11.804938
+        ]
+      },
+      {
+        "name": "nose_Nostril_L",
+        "parent": "nose_Root_M_guide",
+        "placement": {
+          "method": "region",
+          "region": "nose_Nostril_L",
+          "layer": "face"
+        },
+        "reference_position": [
+          0.646258,
+          147.857586,
+          12.321852
+        ]
+      },
+      {
+        "name": "nose_UpperCorner_L",
+        "parent": "nose_Nostril_L_guide",
+        "placement": {
+          "method": "region",
+          "region": "nose_UpperCorner_L",
+          "layer": "face"
+        },
+        "reference_position": [
+          0.80437,
+          149.309011,
+          11.980771
+        ]
+      },
+      {
+        "name": "nose_NostrilOuter_L",
+        "parent": "nose_Nostril_L_guide",
+        "placement": {
+          "method": "region",
+          "region": "nose_NostrilOuter_L",
+          "layer": "face"
+        },
+        "reference_position": [
+          1.277834,
+          147.824889,
+          11.901124
+        ]
+      },
+      {
+        "name": "nose_Nostril_R",
+        "parent": "nose_Root_M_guide",
+        "placement": {
+          "method": "region",
+          "region": "nose_Nostril_R",
+          "layer": "face"
+        },
+        "reference_position": [
+          -0.646258,
+          147.857586,
+          12.321852
+        ]
+      },
+      {
+        "name": "nose_UpperCorner_R",
+        "parent": "nose_Nostril_R_guide",
+        "placement": {
+          "method": "region",
+          "region": "nose_UpperCorner_R",
+          "layer": "face"
+        },
+        "reference_position": [
+          -0.80437,
+          149.309011,
+          11.980771
+        ]
+      },
+      {
+        "name": "nose_NostrilOuter_R",
+        "parent": "nose_Nostril_R_guide",
+        "placement": {
+          "method": "region",
+          "region": "nose_NostrilOuter_R",
+          "layer": "face"
+        },
+        "reference_position": [
+          -1.277834,
+          147.824889,
+          11.901124
+        ]
+      },
+      {
+        "name": "ear_root_L",
+        "parent": "mid_head_M_guide",
+        "placement": {
+          "method": "region",
+          "region": "ear_root_L",
+          "layer": "face"
+        },
+        "reference_position": [
+          5.902761,
+          148.673051,
+          2.079499
+        ]
+      },
+      {
+        "name": "ear_lower_L",
+        "parent": "ear_root_L_guide",
+        "placement": {
+          "method": "region",
+          "region": "ear_lower_L",
+          "layer": "face"
+        },
+        "reference_position": [
+          6.366851,
+          146.819118,
+          2.033192
+        ]
+      },
+      {
+        "name": "ear_outer_L",
+        "parent": "ear_root_L_guide",
+        "placement": {
+          "method": "region",
+          "region": "ear_outer_L",
+          "layer": "face"
+        },
+        "reference_position": [
+          7.538251,
+          147.935083,
+          0.731818
+        ]
+      },
+      {
+        "name": "ear_upper_L",
+        "parent": "ear_root_L_guide",
+        "placement": {
+          "method": "region",
+          "region": "ear_upper_L",
+          "layer": "face"
+        },
+        "reference_position": [
+          7.705219,
+          150.696733,
+          1.04267
+        ]
+      },
+      {
+        "name": "ear_root_R",
+        "parent": "mid_head_M_guide",
+        "placement": {
+          "method": "region",
+          "region": "ear_root_R",
+          "layer": "face"
+        },
+        "reference_position": [
+          -5.902761,
+          148.673051,
+          2.079499
+        ]
+      },
+      {
+        "name": "ear_lower_R",
+        "parent": "ear_root_R_guide",
+        "placement": {
+          "method": "region",
+          "region": "ear_lower_R",
+          "layer": "face"
+        },
+        "reference_position": [
+          -6.366851,
+          146.819118,
+          2.033192
+        ]
+      },
+      {
+        "name": "ear_outer_R",
+        "parent": "ear_root_R_guide",
+        "placement": {
+          "method": "region",
+          "region": "ear_outer_R",
+          "layer": "face"
+        },
+        "reference_position": [
+          -7.538251,
+          147.935083,
+          0.731818
+        ]
+      },
+      {
+        "name": "ear_upper_R",
+        "parent": "ear_root_R_guide",
+        "placement": {
+          "method": "region",
+          "region": "ear_upper_R",
+          "layer": "face"
+        },
+        "reference_position": [
+          -7.705219,
+          150.696733,
+          1.04267
+        ]
+      },
+      {
+        "name": "jaw_M",
+        "parent": "lower_head_M_guide",
+        "placement": {
+          "method": "region",
+          "region": "jaw_M",
+          "layer": "face"
+        },
+        "reference_position": [
+          0.0,
+          145.870687,
+          2.853493
+        ]
+      },
+      {
+        "name": "jaw_ee_M",
+        "parent": "jaw_M_guide",
+        "placement": {
+          "method": "region",
+          "region": "jaw_ee_M",
+          "layer": "face"
+        },
+        "reference_position": [
+          1e-06,
+          142.035509,
+          10.85845
+        ]
+      },
+      {
+        "name": "larynx_M",
+        "parent": "jaw_ee_M_guide",
+        "placement": {
+          "method": "region",
+          "region": "larynx_M",
+          "layer": "face"
+        },
+        "reference_position": [
+          0.0,
+          140.274766,
+          5.943179
+        ]
+      }
+    ],
+    "orientation_groups": []
   }
 }
