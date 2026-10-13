@@ -4,6 +4,8 @@ import json
 
 import maya.cmds as cmds
 
+from .meshes import get_mesh_transform
+
 
 METADATA_PREFIX = "polygroupMetadata_"
 
@@ -22,7 +24,9 @@ def metadata_exists(
     mesh: str,
     uv_set: str,
 ) -> bool:
-    """Check whether metadata exists for a PolyGroup layer."""
+    """Check whether PolyGroup metadata exists."""
+
+    mesh = get_mesh_transform(mesh)
 
     attr = get_metadata_attr(
         uv_set=uv_set,
@@ -39,16 +43,17 @@ def get_polygroup_metadata(
     mesh: str,
     uv_set: str,
 ) -> dict:
-    """Read PolyGroup metadata from a mesh."""
+    """Read PolyGroup metadata from the mesh transform."""
+
+    mesh = get_mesh_transform(mesh)
 
     attr = get_metadata_attr(
         uv_set=uv_set,
     )
 
-    if not cmds.attributeQuery(
-        attr,
-        node=mesh,
-        exists=True,
+    if not metadata_exists(
+        mesh=mesh,
+        uv_set=uv_set,
     ):
         return {
             "version": 1,
@@ -73,16 +78,17 @@ def set_polygroup_metadata(
     uv_set: str,
     data: dict,
 ) -> None:
-    """Write PolyGroup metadata to a mesh."""
+    """Write PolyGroup metadata to the mesh transform."""
+
+    mesh = get_mesh_transform(mesh)
 
     attr = get_metadata_attr(
         uv_set=uv_set,
     )
 
-    if not cmds.attributeQuery(
-        attr,
-        node=mesh,
-        exists=True,
+    if not metadata_exists(
+        mesh=mesh,
+        uv_set=uv_set,
     ):
         cmds.addAttr(
             mesh,
