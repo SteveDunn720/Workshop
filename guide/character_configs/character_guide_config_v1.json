@@ -8,7 +8,9 @@
     "Right-side orientation and behavior-mirror handling is deferred.",
     "Spline endpoints and tangent guides are created by spline builders, not individually.",
     "chest_root_M and cog_M are placed from regions; hip_M matches cog_M, chest_M matches chest_root_M.",
-    "Foot roll, head/face except future face anchor, non-spline curves and correctives excluded."
+    "Foot-roll pivots, head/face except future face anchor, non-spline curves and correctives excluded.",
+    "Neck spline and head root are initial estimates; adjust neck anchor regions and head guide placements as needed.",
+    "Leg planar and orientation groups include upperleg, knee, foot, toe_ball, toe_ee; foot-roll pivot guides remain excluded."
   ],
   "splines": [
     {
@@ -27,6 +29,30 @@
       "upper_placement": {
         "method": "match_parent",
         "parent": "chest_root_M_guide"
+      },
+      "tangents": "straight_default"
+    },
+    {
+      "name": "neck",
+      "curve_name": "neck",
+      "side": "M",
+      "parent": "chest_root_M_guide",
+      "lower_name": "lower_neck",
+      "upper_name": "upper_neck",
+      "lower_parent": "chest_root_M_guide",
+      "upper_parent": "head_root_M_guide",
+      "lower_placement": {
+        "method": "region",
+        "region": "lower_neck_M",
+        "reference_position": [
+          -0.0,
+          134.2197,
+          0.8346
+        ]
+      },
+      "upper_placement": {
+        "method": "match_parent",
+        "parent": "head_root_M_guide"
       },
       "tangents": "straight_default"
     }
@@ -49,7 +75,7 @@
       "parent": "root_M_guide",
       "placement": {
         "method": "region",
-        "region": "hip_M_guide"
+        "region": "cog_M"
       },
       "reference_position": [
         0.0,
@@ -62,7 +88,7 @@
       "parent": "cog_M_guide",
       "placement": {
         "method": "region",
-        "region": "chest_M_guide"
+        "region": "chest_root_M"
       },
       "reference_position": [
         0.0,
@@ -875,6 +901,97 @@
         94.475,
         0.5917
       ]
+    },
+    {
+      "name": "head_root_M",
+      "parent": "chest_root_M_guide",
+      "placement": {
+        "method": "region",
+        "region": "head_root_M"
+      },
+      "reference_position": [
+        0.0,
+        146.962,
+        2.5897
+      ]
+    },
+    {
+      "name": "upper_head_M",
+      "parent": "head_root_M_guide",
+      "placement": {
+        "method": "region",
+        "region": "upper_head_M"
+      },
+      "reference_position": [
+        0.0,
+        151.9288,
+        4.0
+      ]
+    },
+    {
+      "name": "head_ee_M",
+      "parent": "head_root_M_guide",
+      "placement": {
+        "method": "region",
+        "region": "head_ee_M"
+      },
+      "reference_position": [
+        0.0,
+        161.2405,
+        2.5897
+      ]
+    },
+    {
+      "name": "toe_ball_L",
+      "parent": "foot_L_guide",
+      "placement": {
+        "method": "region",
+        "region": "toe_ball_L"
+      },
+      "reference_position": [
+        7.7586,
+        2.0099,
+        7.0697
+      ]
+    },
+    {
+      "name": "toe_ee_L",
+      "parent": "toe_ball_L_guide",
+      "placement": {
+        "method": "region",
+        "region": "toe_ee_L"
+      },
+      "reference_position": [
+        7.7586,
+        1.636,
+        12.3141
+      ]
+    },
+    {
+      "name": "toe_ball_R",
+      "parent": "foot_R_guide",
+      "placement": {
+        "method": "region",
+        "region": "toe_ball_R"
+      },
+      "reference_position": [
+        -7.7586,
+        2.0099,
+        7.0697
+      ]
+    },
+    {
+      "name": "toe_ee_R",
+      "parent": "toe_ball_R_guide",
+      "placement": {
+        "method": "region",
+        "region": "toe_ee_R"
+      },
+      "reference_position": [
+        -7.7586,
+        1.636,
+        12.3141
+      ]
     }
   ],
   "orientation_groups": [
@@ -903,29 +1020,225 @@
       "chain": [
         "upperleg_L_guide",
         "knee_L_guide",
-        "foot_L_guide"
+        "foot_L_guide",
+        "toe_ball_L_guide",
+        "toe_ee_L_guide"
       ],
       "aim_axis": "y",
-      "up_axis": "z"
+      "up_axis": "z",
+      "force_planar": true
     },
     {
       "name": "leg_R",
       "chain": [
         "upperleg_R_guide",
         "knee_R_guide",
-        "foot_R_guide"
+        "foot_R_guide",
+        "toe_ball_R_guide",
+        "toe_ee_R_guide"
       ],
       "aim_axis": "y",
-      "up_axis": "z"
+      "up_axis": "z",
+      "force_planar": true
+    },
+    {
+      "name": "index_L",
+      "chain": [
+        "finger_index_L_00_guide",
+        "finger_index_L_01_guide",
+        "finger_index_L_02_guide",
+        "finger_index_L_03_guide",
+        "finger_index_L_04_guide"
+      ],
+      "aim_axis": "y",
+      "up_axis": "z",
+      "force_planar": true,
+      "planar_chain": [
+        "finger_index_L_01_guide",
+        "finger_index_L_02_guide",
+        "finger_index_L_03_guide",
+        "finger_index_L_04_guide"
+      ]
+    },
+    {
+      "name": "middle_L",
+      "chain": [
+        "finger_middle_L_00_guide",
+        "finger_middle_L_01_guide",
+        "finger_middle_L_02_guide",
+        "finger_middle_L_03_guide",
+        "finger_middle_L_04_guide"
+      ],
+      "aim_axis": "y",
+      "up_axis": "z",
+      "force_planar": true,
+      "planar_chain": [
+        "finger_middle_L_01_guide",
+        "finger_middle_L_02_guide",
+        "finger_middle_L_03_guide",
+        "finger_middle_L_04_guide"
+      ]
+    },
+    {
+      "name": "ring_L",
+      "chain": [
+        "finger_ring_L_00_guide",
+        "finger_ring_L_01_guide",
+        "finger_ring_L_02_guide",
+        "finger_ring_L_03_guide",
+        "finger_ring_L_04_guide"
+      ],
+      "aim_axis": "y",
+      "up_axis": "z",
+      "force_planar": true,
+      "planar_chain": [
+        "finger_ring_L_01_guide",
+        "finger_ring_L_02_guide",
+        "finger_ring_L_03_guide",
+        "finger_ring_L_04_guide"
+      ]
+    },
+    {
+      "name": "pinky_L",
+      "chain": [
+        "finger_pinky_L_00_guide",
+        "finger_pinky_L_01_guide",
+        "finger_pinky_L_02_guide",
+        "finger_pinky_L_03_guide",
+        "finger_pinky_L_04_guide"
+      ],
+      "aim_axis": "y",
+      "up_axis": "z",
+      "force_planar": true,
+      "planar_chain": [
+        "finger_pinky_L_01_guide",
+        "finger_pinky_L_02_guide",
+        "finger_pinky_L_03_guide",
+        "finger_pinky_L_04_guide"
+      ]
+    },
+    {
+      "name": "thumb_L",
+      "chain": [
+        "finger_thumb_L_01_guide",
+        "finger_thumb_L_02_guide",
+        "finger_thumb_L_03_guide",
+        "finger_thumb_L_04_guide"
+      ],
+      "aim_axis": "y",
+      "up_axis": "z",
+      "force_planar": false
+    },
+    {
+      "name": "index_R",
+      "chain": [
+        "finger_index_R_00_guide",
+        "finger_index_R_01_guide",
+        "finger_index_R_02_guide",
+        "finger_index_R_03_guide",
+        "finger_index_R_04_guide"
+      ],
+      "aim_axis": "y",
+      "up_axis": "z",
+      "force_planar": true,
+      "planar_chain": [
+        "finger_index_R_01_guide",
+        "finger_index_R_02_guide",
+        "finger_index_R_03_guide",
+        "finger_index_R_04_guide"
+      ]
+    },
+    {
+      "name": "middle_R",
+      "chain": [
+        "finger_middle_R_00_guide",
+        "finger_middle_R_01_guide",
+        "finger_middle_R_02_guide",
+        "finger_middle_R_03_guide",
+        "finger_middle_R_04_guide"
+      ],
+      "aim_axis": "y",
+      "up_axis": "z",
+      "force_planar": true,
+      "planar_chain": [
+        "finger_middle_R_01_guide",
+        "finger_middle_R_02_guide",
+        "finger_middle_R_03_guide",
+        "finger_middle_R_04_guide"
+      ]
+    },
+    {
+      "name": "ring_R",
+      "chain": [
+        "finger_ring_R_00_guide",
+        "finger_ring_R_01_guide",
+        "finger_ring_R_02_guide",
+        "finger_ring_R_03_guide",
+        "finger_ring_R_04_guide"
+      ],
+      "aim_axis": "y",
+      "up_axis": "z",
+      "force_planar": true,
+      "planar_chain": [
+        "finger_ring_R_01_guide",
+        "finger_ring_R_02_guide",
+        "finger_ring_R_03_guide",
+        "finger_ring_R_04_guide"
+      ]
+    },
+    {
+      "name": "pinky_R",
+      "chain": [
+        "finger_pinky_R_00_guide",
+        "finger_pinky_R_01_guide",
+        "finger_pinky_R_02_guide",
+        "finger_pinky_R_03_guide",
+        "finger_pinky_R_04_guide"
+      ],
+      "aim_axis": "y",
+      "up_axis": "z",
+      "force_planar": true,
+      "planar_chain": [
+        "finger_pinky_R_01_guide",
+        "finger_pinky_R_02_guide",
+        "finger_pinky_R_03_guide",
+        "finger_pinky_R_04_guide"
+      ]
+    },
+    {
+      "name": "thumb_R",
+      "chain": [
+        "finger_thumb_R_01_guide",
+        "finger_thumb_R_02_guide",
+        "finger_thumb_R_03_guide",
+        "finger_thumb_R_04_guide"
+      ],
+      "aim_axis": "y",
+      "up_axis": "z",
+      "force_planar": false
     }
   ],
   "excluded": [
     "correctives",
     "head_and_face",
     "foot_roll",
-    "toe_ball_and_toe_end",
     "non_spline_curves",
     "cluster_helpers",
     "mirror_flip_transforms"
+  ],
+  "symmetry": {
+    "full": true,
+    "parts": {
+      "arms": true,
+      "legs": true,
+      "face": false
+    },
+    "direction": "L_to_R"
+  },
+  "big_guides": [
+    "cog_M",
+    "chest_root_M",
+    "lower_neck_M",
+    "head_root_M"
   ]
 }

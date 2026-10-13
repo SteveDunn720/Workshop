@@ -1,12 +1,3 @@
-"""First-pass Workshop character guide builder (Maya Python).
-
-Requires Workshop.guide.core.create_guide_from_position/create_spline_guide,
-Workshop.guide.placement.solve.solve_position, and
-Workshop.guide.placement.limb.orient_limb_guides.
-
-Create all independent guides in world space, orient, then parent while
-preserving world matrices. Spline endpoints are created by the spline builder.
-"""
 from __future__ import annotations
 
 import json
@@ -19,15 +10,10 @@ from Workshop.guide.core import create_guide_from_position, create_spline_guide
 from Workshop.guide.placement.structs import GuidePlacement
 from Workshop.guide.placement.solve import solve_position
 from Workshop.guide.placement.limb import orient_limb_guides
+from Workshop.guide.placement.force_planar import force_planar_guides
+from Workshop.guide.scene import prepare_guide_scene
 
-
-from pathlib import Path
-
-DEFAULT_CONFIG = (
-    Path(__file__).resolve().parent
-    / "character_configs"
-    / "character_guide_config_v1.json"
-)
+DEFAULT_CONFIG = Path(__file__).resolve().parent / "character_configs" / "character_guide_config_v1.json"
 
 
 @dataclass
@@ -37,6 +23,7 @@ class GuideBuildResult:
     missing_regions: list[str] = field(default_factory=list)
     warnings: list[str] = field(default_factory=list)
     splines: dict = field(default_factory=dict)
+    flip_groups: list[str] = field(default_factory=list)
 
 
 def _guide_name(name: str) -> str:
@@ -72,6 +59,58 @@ def _load_config(config: str | Path | dict) -> dict:
         return json.load(stream)
 
 
+def _side(name: str) -> str | None:
+    if '_L_' in name:
+        return 'L'
+    if '_R_' in name:
+        return 'R'
+    return None
+
+
+def _category(name: str) -> str | None:
+    stem = name.lower()
+    if any(word in stem for word in ('upperleg_', 'knee_', 'foot_', 'toe_', 'heel_', 'bank', 'toeball_', 'footroll_')):
+        return 'legs'
+    if any(word in stem for word in ('clav_', 'shoulder_', 'elbow_', 'hand_', 'finger_')):
+        return 'arms'
+    if any(word in stem for word in ('eye_', 'face_', 'jaw_', 'brow_')):
+        return 'face'
+    return None
+
+
+def _mirror_enabled(category: str | None, symmetry: dict) -> bool:
+    if not category:
+        return False
+    if symmetry.get('full', False):
+        return True
+    return bool(symmetry.get('parts', {}).get(category, False))
+
+
+def _reflect_x(position):
+    return (-position[0], position[1], position[2])
+
+
+def _set_big_guide(name: str, radius: float = 5.0) -> None:
+    if not cmds.objExists(name) or cmds.nodeType(name) != 'joint':
+        return
+    cmds.setAttr(f'{name}.radius', radius)
+    cmds.setAttr(f'{name}.drawStyle', 3)
+
+
+def _flip_group_name(category: str, side: str) -> str:
+    return {'arms': 'arm', 'legs': 'leg', 'face': 'face'}[category] + f'_{side}_flip'
+
+
+def _make_flip_group(category: str, side: str, parent: str) -> str:
+    """Create at WORLD origin; parent without moving, flip only at the end."""
+    name = _flip_group_name(category, side)
+    if cmds.objExists(name):
+        raise RuntimeError(f'Flip group already exists: {name}; use a clean guide scene')
+    group = cmds.group(empty=True, world=True, name=name)
+    _parent_preserve_world(group, parent)
+    return group
+
+
 def _resolve_positions(
     config: dict,
     mesh: str,
@@ -79,6 +118,7 @@ def _resolve_positions(
     *,
     allow_reference_fallback: bool,
     result: GuideBuildResult,
+    skip_regions: set[str] | None = None,
 ) -> dict[str, tuple[float, float, float]]:
     """Resolve independent positions; match_parent is resolved later."""
     positions = {}
@@ -87,6 +127,8 @@ def _resolve_positions(
         placement = entry['placement']
         method = placement['method']
         if method == 'match_parent':
+            continue
+        if name in (skip_regions or set()):
             continue
         if method == 'origin':
             positions[name] = (0.0, 0.0, 0.0)
@@ -162,29 +204,67 @@ def build_character_guides(
     allow_reference_fallback: bool = False,
     dry_run: bool = False,
     orient: bool = True,
+    refresh_every: int = 5,
+    symmetry: dict | None = None,
 ) -> GuideBuildResult:
     """Build a first-pass guide hierarchy from a JSON config.
 
     Run in an empty guide scene. Existing guide nodes are reused, not replaced.
     dry_run validates placement without creating guides.
     """
-    if config is None:
-        config = DEFAULT_CONFIG
-    config = _load_config(config)
+    config = _load_config(DEFAULT_CONFIG if config is None else config)
     _validate_config(config)
     mesh = mesh or config['mesh']
     uv_set = uv_set or config.get('uv_set', 'PG_Guides')
     result = GuideBuildResult()
+    symmetry = symmetry if symmetry is not None else config.get('symmetry', {})
+    direction = symmetry.get('direction', 'L_to_R')
+    if direction not in ('L_to_R', 'R_to_L'):
+        raise ValueError('symmetry.direction must be L_to_R or R_to_L')
+    source_side, target_side = direction.split('_to_')
+    mirrored_categories = {
+        cat for cat in ('arms', 'legs', 'face') if _mirror_enabled(cat, symmetry)
+    }
 
     if not cmds.objExists(mesh):
         raise RuntimeError(f'Mesh does not exist: {mesh}')
 
+    skipped = {
+        _guide_name(e['name']) for e in config.get('guides', [])
+        if _side(_guide_name(e['name'])) == target_side
+        and _category(_guide_name(e['name'])) in mirrored_categories
+    }
     positions = _resolve_positions(
         config, mesh, uv_set,
         allow_reference_fallback=allow_reference_fallback,
         result=result,
+        skip_regions=skipped,
     )
+    for name in skipped:
+        source_name = name.replace(f'_{target_side}_', f'_{source_side}_')
+        if source_name in positions:
+            positions[name] = _reflect_x(positions[source_name])
     _resolve_match_parent_positions(config, positions)
+
+    # Compute the desired final positions first. Symmetric destinations
+    # derive from the source; asymmetric destinations keep their own regions.
+    # ALL target-side guides are staged on the opposite side of the X-scale flip
+    # group, then flipped exactly once after parenting/orientation.
+    for entry in config.get('guides', []):
+        name = _guide_name(entry['name'])
+        if _side(name) != target_side:
+            continue
+        category = _category(name)
+        if category not in ('arms', 'legs', 'face'):
+            continue
+        if category in mirrored_categories:
+            source_name = name.replace(f'_{target_side}_', f'_{source_side}_')
+            if source_name not in positions:
+                raise RuntimeError(f'Missing symmetry source: {source_name}')
+            desired = _reflect_x(positions[source_name])
+        else:
+            desired = positions[name]
+        positions[name] = _reflect_x(desired)
 
     # Resolve compound spline endpoint positions from their declared anchors.
     spline_positions = []
@@ -192,15 +272,31 @@ def build_character_guides(
         anchors = []
         for key in ('lower_placement', 'upper_placement'):
             placement = spline[key]
-            if placement['method'] != 'match_parent':
-                raise ValueError(f"Only match_parent spline anchors supported in v1: {spline['name']}")
-            parent = placement['parent']
-            if parent in positions:
-                anchors.append(positions[parent])
-            elif cmds.objExists(parent):
-                anchors.append(_position(parent))
+            method = placement['method']
+            if method == 'match_parent':
+                parent = placement['parent']
+                if parent in positions:
+                    anchors.append(positions[parent])
+                elif cmds.objExists(parent):
+                    anchors.append(_position(parent))
+                else:
+                    raise RuntimeError(f"Missing spline anchor {parent!r} for {spline['name']}")
+            elif method == 'region':
+                region = placement['region']
+                try:
+                    pos = solve_position(
+                        GuidePlacement(name=key, region=region),
+                        mesh=mesh, uv_set=uv_set,
+                    )
+                    anchors.append(tuple(pos))
+                except (LookupError, KeyError, ValueError, RuntimeError) as exc:
+                    result.missing_regions.append(f"{spline['name']} {key}: {region} ({exc})")
+                    if allow_reference_fallback and 'reference_position' in placement:
+                        anchors.append(tuple(placement['reference_position']))
+                    else:
+                        raise RuntimeError(f"Cannot resolve spline anchor {region!r}") from exc
             else:
-                raise RuntimeError(f"Missing spline anchor {parent!r} for {spline['name']}")
+                raise ValueError(f"Unsupported spline placement method: {method}")
         spline_positions.append((spline, anchors[0], anchors[1]))
 
     if dry_run:
@@ -211,17 +307,26 @@ def build_character_guides(
             print(f'  REGION FALLBACK: {missing}')
         return result
 
-    if not cmds.objExists('guides'):
-        cmds.group(empty=True, world=True, name='guides')
+    scene = prepare_guide_scene()
 
     # Create guides unparented (under a world-space holder), so orientation
     # operations cannot move descendants. Parent in the final pass.
     holder = cmds.group(empty=True, world=True, name='guide_build_temp#')
+    step_count = 0
+
+    def refresh_progress(message: str) -> None:
+        nonlocal step_count
+        step_count += 1
+        if refresh_every > 0 and step_count % refresh_every == 0:
+            print(f'[Workshop] {message}')
+            cmds.refresh(force=True)
+
     try:
         for entry in config.get('guides', []):
             name = _guide_name(entry['name'])
             if cmds.objExists(name):
                 result.existing.append(name)
+                refresh_progress(f"Reusing {name}")
                 continue
             info = create_guide_from_position(
                 pos=positions[name],
@@ -232,6 +337,7 @@ def build_character_guides(
             if created != name:
                 raise RuntimeError(f'Expected {name}, builder returned {created}')
             result.created.append(name)
+            refresh_progress(f"Created {name}")
 
         # Spline creation owns endpoint/tangent guides and curve.
         # It is deliberately built after its independent anchor guides.
@@ -252,6 +358,7 @@ def build_character_guides(
                 position=[upper_pos, lower_pos],  # Workshop API expects upper first
             )
             result.splines[spline['name']] = info
+            cmds.refresh(force=True)
 
         # Orient independent chains before final parenting.
         if orient:
@@ -260,20 +367,48 @@ def build_character_guides(
                 if not all(cmds.objExists(node) for node in chain):
                     result.warnings.append(f"Skipped orientation: {group['name']} (missing guide)")
                     continue
+                if group.get('force_planar', False):
+                    try:
+                        force_planar_guides(
+                            guides=group.get('planar_chain', chain),
+                            keep_endpoints=group.get('keep_endpoints', False),
+                        )
+                    except ValueError as exc:
+                        result.warnings.append(f"Planar solve skipped for {group['name']}: {exc}")
                 orient_limb_guides(
                     guides=chain,
                     aim_axis=group.get('aim_axis', 'y'),
                     up_axis=group.get('up_axis', 'z'),
                 )
+                refresh_progress(f"Oriented {group['name']}")
+
+        # Establish unscaled flip groups at world origin. All guides on
+        # target side (mirrored OR independently solved) use these groups.
+        flip_groups = {}
+        for category in ('arms', 'legs'):
+            parent = 'chest_root_M_guide' if category == 'arms' else 'cog_M_guide'
+            group = _make_flip_group(category, target_side, parent)
+            flip_groups[category] = group
+            result.flip_groups.append(group)
 
         # Parent regular guides in dependency order. For splines, their
         # endpoint guides are handled below; tangent parents stay as built.
-        pending = { _guide_name(e['name']): e['parent'] for e in config.get('guides', []) }
+        pending = {}
+        for entry in config.get('guides', []):
+            child = _guide_name(entry['name'])
+            parent = entry['parent']
+            cat = _category(child)
+            if _side(child) == target_side and cat in flip_groups:
+                # Replace the first cross-category/root parent with flip group.
+                if _side(parent) != target_side or _category(parent) != cat:
+                    parent = flip_groups[cat]
+            pending[child] = parent
         while pending:
             progressed = False
             for child, parent in list(pending.items()):
                 if parent not in pending and cmds.objExists(parent):
                     _parent_preserve_world(child, parent)
+                    refresh_progress(f"Parented {child}")
                     del pending[child]
                     progressed = True
             if not progressed:
@@ -290,6 +425,15 @@ def build_character_guides(
             if cmds.objExists(curve):
                 _parent_preserve_world(curve, 'guides')
 
+        # Flip each target-side component once, after every child is parented.
+        for group in flip_groups.values():
+            cmds.setAttr(f'{group}.scaleX', -1.0)
+            cmds.refresh(force=True)
+
+        for item in config.get('big_guides', []):
+            _set_big_guide(_guide_name(item), radius=5.0)
+
+        cmds.refresh(force=True)
         print(f'[Workshop] Built {len(result.created)} regular guides, '
               f'{len(result.splines)} splines. '
               f'{len(result.missing_regions)} region fallbacks.')
