@@ -232,7 +232,10 @@ def _parent_curve_guide(curve: str, parent: str) -> None:
 def _build_curve_guides(config: dict, mesh: str, result: GuideBuildResult) -> None:
     """Create independent facial curves after guide hierarchy and flips are built."""
     from Workshop.poly.polygroup_boundary import create_polygroup_boundary_curve
-    from Workshop.nurbs.curve import reverse_curve
+    from Workshop.nurbs.curve import (
+        create_curve_through_positions,
+        reverse_curve,
+    )
 
     curve_cfg = config.get('curve_guides', {})
     if not curve_cfg.get('enabled', False):
@@ -274,11 +277,23 @@ def _build_curve_guides(config: dict, mesh: str, result: GuideBuildResult) -> No
                 mesh=mesh,
                 uv_set=uv_set,
             )) for i, region in enumerate(regions)]
-            curve = cmds.curve(name=name, degree=degree, point=points)
             if 'spans' in entry:
                 raise ValueError(
-                    f'{name}: region_points uses one CV per region; '
-                    'spans/resampling is not supported'
+                    f'{name}: region_points does not support spans/resampling'
+                )
+            curve_mode = entry.get('curve_mode', 'cv')
+            if curve_mode == 'interpolate':
+                curve = create_curve_through_positions(
+                    name=name,
+                    positions=points,
+                    degree=degree,
+                )
+            elif curve_mode == 'cv':
+                curve = cmds.curve(name=name, degree=degree, point=points)
+            else:
+                raise ValueError(
+                    f'{name}: unknown curve_mode {curve_mode!r}; '
+                    'expected interpolate or cv'
                 )
         else:
             raise ValueError(f'{name}: unknown curve method {method!r}')

@@ -206,41 +206,42 @@ def initialize_polygroup_layer(
     return layer
 
 
+
 def initialize_default_polygroup(
     layer: PolyGroupLayer,
     name: str = "default",
 ) -> PolyGroup:
-    """Initialize the entire mesh as the default polygroup."""
+    """Initialize the entire mesh as the default polygroup.
 
-    shell_count = get_uv_shell_count(
-        mesh=layer.mesh,
-        uv_set=layer.uv_set,
-    )
-
-    if shell_count != 1:
-        raise RuntimeError(
-            f"Expected one UV shell when initializing default "
-            f"polygroup, found {shell_count}."
-        )
+    Supports meshes with multiple UV shells.
+    All shells are assigned to the same default PolyGroup UDIM.
+    """
 
     polygroup = initialize_polygroup(
         layer=layer,
         name=name,
     )
 
-    uvs = get_uv_shell_from_id(
+    shell_count = get_uv_shell_count(
         mesh=layer.mesh,
-        shell_id=0,
         uv_set=layer.uv_set,
     )
 
-    fit_uvs_to_udim(
-        uvs=uvs,
-        udim=polygroup.udim,
-        uv_set=layer.uv_set,
-    )
+    for shell_id in range(shell_count):
+        uvs = get_uv_shell_from_id(
+            mesh=layer.mesh,
+            shell_id=shell_id,
+            uv_set=layer.uv_set,
+        )
+
+        fit_uvs_to_udim(
+            uvs=uvs,
+            udim=polygroup.udim,
+            uv_set=layer.uv_set,
+        )
 
     return polygroup
+
 
 
 def initialize_polygroup_sublayer(

@@ -1798,6 +1798,7 @@
       {
         "name": "lip_L",
         "method": "region_points",
+        "curve_mode": "cv",
         "layer": "face",
         "regions": [
           "lip_M",
@@ -1805,6 +1806,82 @@
           "lip_corner_L"
         ],
         "degree": 2,
+        "direction": "outward_x",
+        "parent": "head_root_M_guide"
+      },
+      {
+        "name": "mouth_path_L",
+        "method": "region_points",
+        "curve_mode": "interpolate",
+        "layer": "face",
+        "regions": [
+          "path_mid_M",
+          "lip_corner_L",
+          "lip_pathmid_L",
+          "lip_pathend_L"
+        ],
+        "degree": 3,
+        "direction": "as_built",
+        "parent": "head_root_M_guide"
+      },
+      {
+        "name": "brow_L",
+        "method": "region_points",
+        "curve_mode": "cv",
+        "layer": "face",
+        "regions": [
+          "brow_L_00",
+          "brow_L_01",
+          "brow_L_02",
+          "brow_L_03",
+          "brow_L_04"
+        ],
+        "degree": 3,
+        "direction": "outward_x",
+        "parent": "head_root_M_guide"
+      },
+      {
+        "name": "lip_R",
+        "method": "region_points",
+        "curve_mode": "cv",
+        "layer": "face",
+        "regions": [
+          "lip_M",
+          "lip_mid_R",
+          "lip_corner_R"
+        ],
+        "degree": 2,
+        "direction": "outward_x",
+        "parent": "head_root_M_guide"
+      },
+      {
+        "name": "mouth_path_R",
+        "method": "region_points",
+        "curve_mode": "interpolate",
+        "layer": "face",
+        "regions": [
+          "path_mid_M",
+          "lip_corner_R",
+          "lip_pathmid_R",
+          "lip_pathend_R"
+        ],
+        "degree": 3,
+        "direction": "as_built",
+        "parent": "head_root_M_guide"
+      },
+      {
+        "name": "brow_R",
+        "method": "region_points",
+        "curve_mode": "cv",
+        "layer": "face",
+        "regions": [
+          "brow_R_00",
+          "brow_R_01",
+          "brow_R_02",
+          "brow_R_03",
+          "brow_R_04"
+        ],
+        "degree": 3,
         "direction": "outward_x",
         "parent": "head_root_M_guide"
       }
