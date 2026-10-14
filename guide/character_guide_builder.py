@@ -34,6 +34,7 @@ class GuideBuildResult:
     warnings: list[str] = field(default_factory=list)
     splines: dict = field(default_factory=dict)
     flip_groups: list[str] = field(default_factory=list)
+    curves: dict[str, str] = field(default_factory=dict)
 
 
 def _guide_name(name: str) -> str:
@@ -204,6 +205,103 @@ def _validate_config(config: dict) -> None:
     overlap = set(names) & generated
     if overlap:
         raise ValueError(f'Spline endpoints also listed as regular guides: {sorted(overlap)}')
+
+
+def _style_curve_guide(curve: str) -> None:
+    """Keep all visible NURBS curve shapes on top of shaded geometry."""
+    for shape in cmds.listRelatives(curve, shapes=True, fullPath=True) or []:
+        if cmds.nodeType(shape) != 'nurbsCurve':
+            continue
+        plug = f'{shape}.alwaysDrawOnTop'
+        if cmds.objExists(plug):
+            cmds.setAttr(plug, 1)
+
+
+def _parent_curve_guide(curve: str, parent: str) -> None:
+    """Parent curve transform without altering its world-space shape."""
+    if not cmds.objExists(parent):
+        raise RuntimeError(f'{curve}: missing curve parent {parent!r}')
+    if curve == parent:
+        raise ValueError(f'{curve}: cannot parent curve to itself')
+    current = cmds.listRelatives(curve, parent=True, fullPath=True) or []
+    if current and cmds.ls(current[0], long=True)[0] == cmds.ls(parent, long=True)[0]:
+        return
+    cmds.parent(curve, parent, absolute=True)
+
+
+def _build_curve_guides(config: dict, mesh: str, result: GuideBuildResult) -> None:
+    """Create independent facial curves after guide hierarchy and flips are built."""
+    from Workshop.poly.polygroup_boundary import create_polygroup_boundary_curve
+    from Workshop.nurbs.curve import reverse_curve
+
+    curve_cfg = config.get('curve_guides', {})
+    if not curve_cfg.get('enabled', False):
+        return
+
+    for entry in curve_cfg.get('curves', []):
+        name = _guide_name(entry['name'])
+        if cmds.objExists(name):
+            _parent_curve_guide(name, entry.get('parent', 'head_root_M_guide'))
+            _style_curve_guide(name)
+            result.existing.append(name)
+            result.curves[name] = name
+            continue
+
+        method = entry['method']
+        uv_set = entry.get('uv_set', config.get('polygroup_layers', {}).get(
+            entry.get('layer', 'face'), config.get('uv_set', 'PG_Guides')
+        ))
+        degree = entry.get('degree', 3)
+
+        if method == 'polygroup_boundary':
+            curve = create_polygroup_boundary_curve(
+                mesh=mesh,
+                uv_set=uv_set,
+                region_a=entry['region_a'],
+                region_b=entry['region_b'],
+                name=name,
+                degree=degree,
+                spans=entry.get('spans', 8),
+            )
+        elif method == 'region_points':
+            regions = entry['regions']
+            if len(regions) < degree + 1:
+                raise ValueError(
+                    f'{name}: need at least {degree + 1} regions for degree {degree}'
+                )
+            points = [tuple(solve_position(
+                GuidePlacement(name=f'{name}_{i}', region=region),
+                mesh=mesh,
+                uv_set=uv_set,
+            )) for i, region in enumerate(regions)]
+            curve = cmds.curve(name=name, degree=degree, point=points)
+            if 'spans' in entry:
+                raise ValueError(
+                    f'{name}: region_points uses one CV per region; '
+                    'spans/resampling is not supported'
+                )
+        else:
+            raise ValueError(f'{name}: unknown curve method {method!r}')
+
+        # Orient open curves from the center line outwards, by default.
+        direction = entry.get('direction', 'outward_x')
+        if direction == 'outward_x':
+            cvs = cmds.ls(f'{curve}.cv[*]', flatten=True) or []
+            if len(cvs) >= 2:
+                start_x = cmds.pointPosition(cvs[0], world=True)[0]
+                end_x = cmds.pointPosition(cvs[-1], world=True)[0]
+                if abs(start_x) > abs(end_x):
+                    reverse_curve(curve)
+        elif direction == 'reverse':
+            reverse_curve(curve)
+        elif direction != 'as_built':
+            raise ValueError(f'{name}: unknown direction {direction!r}')
+
+        parent = entry.get('parent', 'head_root_M_guide')
+        _parent_curve_guide(curve, parent)
+        _style_curve_guide(curve)
+        result.created.append(name)
+        result.curves[name] = curve
 
 
 def build_character_guides(
@@ -449,16 +547,17 @@ def build_character_guides(
                 )
                 refresh_progress(f"Oriented {group['name']}")
 
-        # Establish unscaled flip groups at world origin. All guides on
-        # target side (mirrored OR independently solved) use these groups.
+        # Body uses category flip groups. Face uses one flip group per
+        # non-target-side parent, so nose/ears/cheeks remain organized
+        # beneath their actual anatomical parent guides.
         flip_groups = {}
-        for category in ('arms', 'legs', 'face'):
-            if category == 'face' and not face_cfg.get('enabled', False):
-                continue
-            parent = {'arms': 'chest_root_M_guide', 'legs': 'cog_M_guide', 'face': 'head_root_M_guide'}[category]
+        for category in ('arms', 'legs'):
+            parent = {'arms': 'chest_root_M_guide', 'legs': 'cog_M_guide'}[category]
             group = _make_flip_group(category, target_side, parent)
             flip_groups[category] = group
             result.flip_groups.append(group)
+
+        face_flip_groups = {}
 
         # Parent regular guides in dependency order. For splines, their
         # endpoint guides are handled below; tangent parents stay as built.
@@ -467,10 +566,34 @@ def build_character_guides(
             child = _guide_name(entry['name'])
             parent = entry['parent']
             cat = _category(child)
-            if _side(child) == target_side and cat in flip_groups:
-                # Replace the first cross-category/root parent with flip group.
+
+            if _side(child) == target_side and cat == 'face':
+                # Keep target-side descendants under their own guides.
+                # A flip group is needed only where a target-side
+                # facial branch attaches to a non-target-side parent.
+                if _side(parent) != target_side or _category(parent) != 'face':
+                    if parent not in face_flip_groups:
+                        stem = parent.removesuffix('_guide')
+                        group_name = f'{stem}_{target_side}_flip'
+                        if cmds.objExists(group_name):
+                            raise RuntimeError(
+                                f'Flip group already exists: {group_name}; '
+                                'use a clean guide scene'
+                            )
+                        group = cmds.group(
+                            empty=True, world=True, name=group_name
+                        )
+                        # Parent without inheriting an offset transform:
+                        # these groups must remain at the origin until flipped.
+                        _parent_preserve_world(group, parent)
+                        face_flip_groups[parent] = group
+                        result.flip_groups.append(group)
+                    parent = face_flip_groups[parent]
+
+            elif _side(child) == target_side and cat in flip_groups:
                 if _side(parent) != target_side or _category(parent) != cat:
                     parent = flip_groups[cat]
+
             pending[child] = parent
         while pending:
             progressed = False
@@ -489,10 +612,12 @@ def build_character_guides(
             upper = _guide_name(f"{spline['upper_name']}_{side}")
             _parent_preserve_world(lower, spline['lower_parent'])
             _parent_preserve_world(upper, spline['upper_parent'])
-            # Curve itself stays under the guides root, independent of endpoint parents.
+            # Cluster-deformed spline curves must stay directly under guides
+            # to avoid inheriting parent motion a second time.
             curve = _guide_name(f"{spline.get('curve_name', spline['name'])}_{side}")
             if cmds.objExists(curve):
-                _parent_preserve_world(curve, 'guides')
+                _parent_curve_guide(curve, 'guides')
+                _style_curve_guide(curve)
 
         # Foot-roll guides inherit the leg flip hierarchy automatically.
         # Build after legs/toes are parented, but before scaleX is flipped.
@@ -508,14 +633,22 @@ def build_character_guides(
             refresh_progress(f'Built foot roll {side}')
 
         # Flip each target-side component once, after every child is parented.
-        for group in flip_groups.values():
+        for group in (*flip_groups.values(), *face_flip_groups.values()):
             cmds.setAttr(f'{group}.scaleX', -1.0)
             cmds.refresh(force=True)
 
+        # Explicit styling pass: keep large and medium head guides visible
+        # with the established Workshop radius/drawStyle convention.
         for item in config.get('big_guides', []):
             _set_big_guide(_guide_name(item), radius=5.0)
+
         if head_positions:
-            style_head_guides(head_positions, radius=head_cfg.get('radius', 2.5))
+            style_head_guides(
+                head_positions,
+                radius=head_cfg.get('radius', 2.5),
+            )
+
+        _build_curve_guides(config, mesh, result)
 
         cmds.refresh(force=True)
         print(f'[Workshop] Built {len(result.created)} regular guides, '

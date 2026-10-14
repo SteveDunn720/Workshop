@@ -224,3 +224,40 @@ def orient_curve(
         reverse_curve(curve)
 
     return curve
+
+
+from maya import cmds
+from maya.api import OpenMaya as om
+
+
+def create_curve_through_positions(
+    name: str,
+    positions: list[tuple[float, float, float]],
+) -> str:
+    """Create a degree-2 curve passing through three positions."""
+
+    if len(positions) != 3:
+        raise ValueError("Expected exactly three positions")
+
+    start = om.MVector(positions[0])
+    middle = om.MVector(positions[1])
+    end = om.MVector(positions[2])
+
+    middle_cv = 2.0 * middle - 0.5 * (start + end)
+
+    curve = cmds.curve(
+        name=name,
+        degree=2,
+        point=[
+            tuple(start),
+            tuple(middle_cv),
+            tuple(end),
+        ],
+    )
+
+    for shape in cmds.listRelatives(
+        curve, shapes=True, noIntermediate=True
+    ) or []:
+        cmds.setAttr(f"{shape}.alwaysDrawOnTop", 1)
+
+    return curve

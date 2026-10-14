@@ -1090,7 +1090,7 @@
         "finger_index_L_04_guide"
       ],
       "aim_axis": "y",
-      "up_axis": "x",
+      "up_axis": "z",
       "force_planar": true,
       "planar_chain": [
         "finger_index_L_01_guide",
@@ -1109,7 +1109,7 @@
         "finger_middle_L_04_guide"
       ],
       "aim_axis": "y",
-      "up_axis": "x",
+      "up_axis": "z",
       "force_planar": true,
       "planar_chain": [
         "finger_middle_L_01_guide",
@@ -1128,7 +1128,7 @@
         "finger_ring_L_04_guide"
       ],
       "aim_axis": "y",
-      "up_axis": "x",
+      "up_axis": "z",
       "force_planar": true,
       "planar_chain": [
         "finger_ring_L_01_guide",
@@ -1147,7 +1147,7 @@
         "finger_pinky_L_04_guide"
       ],
       "aim_axis": "y",
-      "up_axis": "x",
+      "up_axis": "z",
       "force_planar": true,
       "planar_chain": [
         "finger_pinky_L_01_guide",
@@ -1165,7 +1165,7 @@
         "finger_thumb_L_04_guide"
       ],
       "aim_axis": "y",
-      "up_axis": "x",
+      "up_axis": "z",
       "force_planar": false
     },
     {
@@ -1178,7 +1178,7 @@
         "finger_index_R_04_guide"
       ],
       "aim_axis": "y",
-      "up_axis": "x",
+      "up_axis": "z",
       "force_planar": true,
       "planar_chain": [
         "finger_index_R_01_guide",
@@ -1197,7 +1197,7 @@
         "finger_middle_R_04_guide"
       ],
       "aim_axis": "y",
-      "up_axis": "x",
+      "up_axis": "z",
       "force_planar": true,
       "planar_chain": [
         "finger_middle_R_01_guide",
@@ -1216,7 +1216,7 @@
         "finger_ring_R_04_guide"
       ],
       "aim_axis": "y",
-      "up_axis": "x",
+      "up_axis": "z",
       "force_planar": true,
       "planar_chain": [
         "finger_ring_R_01_guide",
@@ -1235,7 +1235,7 @@
         "finger_pinky_R_04_guide"
       ],
       "aim_axis": "y",
-      "up_axis": "x",
+      "up_axis": "z",
       "force_planar": true,
       "planar_chain": [
         "finger_pinky_R_01_guide",
@@ -1253,7 +1253,7 @@
         "finger_thumb_R_04_guide"
       ],
       "aim_axis": "y",
-      "up_axis": "x",
+      "up_axis": "z",
       "force_planar": false
     }
   ],
@@ -1703,5 +1703,111 @@
       }
     ],
     "orientation_groups": []
+  },
+  "curve_guides": {
+    "enabled": true,
+    "curves": [
+      {
+        "name": "socket_lower_L",
+        "method": "polygroup_boundary",
+        "layer": "face",
+        "region_a": "lower_eyelid_L",
+        "region_b": "lower_socket_L",
+        "degree": 3,
+        "spans": 8,
+        "direction": "outward_x",
+        "parent": "head_root_M_guide"
+      },
+      {
+        "name": "eyelid_lower_L",
+        "method": "polygroup_boundary",
+        "layer": "face",
+        "region_a": "lower_eyelid_L",
+        "region_b": "lower_eyelidedge_L",
+        "degree": 3,
+        "spans": 8,
+        "direction": "outward_x",
+        "parent": "head_root_M_guide"
+      },
+      {
+        "name": "socket_upper_L",
+        "method": "polygroup_boundary",
+        "layer": "face",
+        "region_a": "upper_eyelid_L",
+        "region_b": "upper_socket_L",
+        "degree": 3,
+        "spans": 8,
+        "direction": "outward_x",
+        "parent": "head_root_M_guide"
+      },
+      {
+        "name": "eyelid_upper_L",
+        "method": "polygroup_boundary",
+        "layer": "face",
+        "region_a": "upper_eyelid_L",
+        "region_b": "upper_eyelidedge_L",
+        "degree": 3,
+        "spans": 8,
+        "direction": "outward_x",
+        "parent": "head_root_M_guide"
+      },
+      {
+        "name": "socket_lower_R",
+        "method": "polygroup_boundary",
+        "layer": "face",
+        "region_a": "lower_eyelid_R",
+        "region_b": "lower_socket_R",
+        "degree": 3,
+        "spans": 8,
+        "direction": "outward_x",
+        "parent": "head_root_M_guide"
+      },
+      {
+        "name": "eyelid_lower_R",
+        "method": "polygroup_boundary",
+        "layer": "face",
+        "region_a": "lower_eyelid_R",
+        "region_b": "lower_eyelidedge_R",
+        "degree": 3,
+        "spans": 8,
+        "direction": "outward_x",
+        "parent": "head_root_M_guide"
+      },
+      {
+        "name": "socket_upper_R",
+        "method": "polygroup_boundary",
+        "layer": "face",
+        "region_a": "upper_eyelid_R",
+        "region_b": "upper_socket_R",
+        "degree": 3,
+        "spans": 8,
+        "direction": "outward_x",
+        "parent": "head_root_M_guide"
+      },
+      {
+        "name": "eyelid_upper_R",
+        "method": "polygroup_boundary",
+        "layer": "face",
+        "region_a": "upper_eyelid_R",
+        "region_b": "upper_eyelidedge_R",
+        "degree": 3,
+        "spans": 8,
+        "direction": "outward_x",
+        "parent": "head_root_M_guide"
+      },
+      {
+        "name": "lip_L",
+        "method": "region_points",
+        "layer": "face",
+        "regions": [
+          "lip_M",
+          "lip_mid_L",
+          "lip_corner_L"
+        ],
+        "degree": 2,
+        "direction": "outward_x",
+        "parent": "head_root_M_guide"
+      }
+    ]
   }
 }
