@@ -152,3 +152,75 @@ def reverse_curve(curve: str) -> str:
     )
 
     return curve
+
+
+def orient_curve(
+    curve: str,
+    direction: str = "outward",
+    axis: str = "X",
+    reverse: bool = False,
+) -> str:
+    """
+    Orient an open curve using its world-space endpoints.
+
+    outward: smaller absolute axis coordinate -> larger
+    inward:  larger absolute axis coordinate -> smaller
+    positive: negative axis -> positive axis
+    negative: positive axis -> negative axis
+    preserve: leave the original direction unchanged
+    """
+
+    get_curve_shape(curve)
+
+    axis = axis.upper()
+
+    if axis not in ("X", "Y", "Z"):
+        raise ValueError(f"Invalid axis: {axis}")
+
+    if direction not in (
+        "outward",
+        "inward",
+        "positive",
+        "negative",
+        "preserve",
+    ):
+        raise ValueError(f"Invalid direction: {direction}")
+
+    shape = get_curve_shape(curve)
+
+    if cmds.getAttr(f"{shape}.form") != 0:
+        raise ValueError(
+            "Automatic endpoint orientation requires an open curve."
+        )
+
+    cvs = cmds.ls(f"{curve}.cv[*]", flatten=True)
+
+    if len(cvs) < 2:
+        return curve
+
+    start = cmds.pointPosition(cvs[0], world=True)
+    end = cmds.pointPosition(cvs[-1], world=True)
+
+    index = {"X": 0, "Y": 1, "Z": 2}[axis]
+
+    a = start[index]
+    b = end[index]
+
+    should_reverse = False
+
+    if direction == "outward":
+        should_reverse = abs(a) > abs(b)
+
+    elif direction == "inward":
+        should_reverse = abs(a) < abs(b)
+
+    elif direction == "positive":
+        should_reverse = a > b
+
+    elif direction == "negative":
+        should_reverse = a < b
+
+    if should_reverse != reverse:
+        reverse_curve(curve)
+
+    return curve

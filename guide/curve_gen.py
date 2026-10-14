@@ -4,6 +4,7 @@ import maya.cmds as cmds
 
 from Workshop.nurbs.curve import (
     get_curve_shape,
+    orient_curve,
     resample_curve as nurbs_resample_curve,
     reverse_curve as nurbs_reverse_curve,
 )
@@ -25,6 +26,9 @@ def create_curve_guide(
     source_curve: str | None = None,
     duplicate: bool = True,
     parent: str | None = None,
+    direction: str = "outward",
+    direction_axis: str = "X",
+    reverse: bool = False,
 ) -> GuideInfo:
     """
     Create a Workshop curve guide.
@@ -156,52 +160,20 @@ def create_curve_guide(
             degree=degree,
         )
 
-        # -----------------------------------------
-        # PARENT
-        # -----------------------------------------
+    # Finalize both new curves and converted source curves.
+    if parent:
+        if not cmds.objExists(parent):
+            raise ValueError(f"Parent does not exist: {parent}")
+        current = cmds.listRelatives(curve, parent=True, fullPath=True) or []
+        target = cmds.ls(parent, long=True) or []
+        if not current or current[0] != target[0]:
+            curve = cmds.parent(curve, parent)[0]
 
-        if parent:
+    orient_curve(curve, direction=direction, axis=direction_axis, reverse=reverse)
+    add_guide_metadata(guide=curve, descriptor=descriptor, guide_type="curve")
+    set_guide_tag(curve)
+    return read_guide(curve)
 
-            if not cmds.objExists(parent):
-                raise ValueError(
-                    f"Parent does not exist: {parent}"
-                )
-
-            current_parent = cmds.listRelatives(
-                curve,
-                parent=True,
-                fullPath=True,
-            ) or []
-
-            target_parent = cmds.ls(
-                parent,
-                long=True,
-            ) or []
-
-            if not current_parent or current_parent[0] != target_parent[0]:
-                curve = cmds.parent(
-                    curve,
-                    parent,
-                )[0]
-
-        # -----------------------------------------
-        # GUIDE METADATA
-        # -----------------------------------------
-
-        add_guide_metadata(
-            guide=curve,
-            descriptor=descriptor,
-            guide_type="curve",
-        )
-
-        set_guide_tag(curve)
-
-        # -----------------------------------------
-        # RETURN
-        # -----------------------------------------
-
-        return read_guide(curve)
-    
 
 
 def resample_curve(
