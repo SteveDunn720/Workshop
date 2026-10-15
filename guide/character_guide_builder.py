@@ -258,13 +258,17 @@ def _build_curve_guides(config: dict, mesh: str, result: GuideBuildResult) -> No
 
         if method == 'polygroup_boundary':
             curve = create_polygroup_boundary_curve(
-                mesh=mesh,
+                mesh=entry.get('mesh', mesh),
                 uv_set=uv_set,
                 region_a=entry['region_a'],
                 region_b=entry['region_b'],
                 name=name,
                 degree=degree,
                 spans=entry.get('spans', 8),
+                direction=(
+                    'preserve' if entry.get('direction') in ('preserve', 'as_built')
+                    else 'outward'
+                ),
             )
         elif method == 'region_points':
             regions = entry['regions']
@@ -274,7 +278,7 @@ def _build_curve_guides(config: dict, mesh: str, result: GuideBuildResult) -> No
                 )
             points = [tuple(solve_position(
                 GuidePlacement(name=f'{name}_{i}', region=region),
-                mesh=mesh,
+                mesh=entry.get('mesh', mesh),
                 uv_set=uv_set,
             )) for i, region in enumerate(regions)]
             if 'spans' in entry:
@@ -309,7 +313,7 @@ def _build_curve_guides(config: dict, mesh: str, result: GuideBuildResult) -> No
                     reverse_curve(curve)
         elif direction == 'reverse':
             reverse_curve(curve)
-        elif direction != 'as_built':
+        elif direction not in ('as_built', 'preserve'):
             raise ValueError(f'{name}: unknown direction {direction!r}')
 
         parent = entry.get('parent', 'head_root_M_guide')
@@ -318,6 +322,79 @@ def _build_curve_guides(config: dict, mesh: str, result: GuideBuildResult) -> No
         result.created.append(name)
         result.curves[name] = curve
 
+
+
+def _build_eyeball_guides(config: dict, result: GuideBuildResult) -> None:
+    """Place eye pivots from equator curves, then parent diameter curves.
+
+    Eye curves must have been built by _build_curve_guides first. Existing
+    pivot/look guides are reused, but newly created guides use Workshop tags.
+    """
+    eye_cfg = config.get('eyeball_guides', {})
+    if not eye_cfg.get('enabled', False):
+        return
+
+    head_start = eye_cfg.get('head_start', 'head_root_M_guide')
+    head_end = eye_cfg.get('head_end', 'head_ee_M_guide')
+    if not cmds.objExists(head_start) or not cmds.objExists(head_end):
+        raise RuntimeError('Eye look placement requires head start/end guides')
+    a = _position(head_start)
+    b = _position(head_end)
+    head_length = sum((b[i] - a[i]) ** 2 for i in range(3)) ** 0.5
+    if head_length <= 0:
+        raise RuntimeError('Cannot calculate eye look offset from zero head length')
+    look_distance = head_length * eye_cfg.get('look_distance_factor', 1.0)
+    parent = eye_cfg.get('parent', 'head_root_M_guide')
+    if not cmds.objExists(parent):
+        raise RuntimeError(f'Missing eyeball guide parent: {parent}')
+
+    for side in eye_cfg.get('sides', ['L', 'R']):
+        equator = f'eyeball_{side}_guide'
+        if not cmds.objExists(equator):
+            raise RuntimeError(f'Missing eyeball equator curve: {equator}')
+
+        # Bounding-box midpoint is the sphere center for a centered circular
+        # equator loop; use it before parenting any eye curves.
+        bbox = cmds.exactWorldBoundingBox(equator)
+        center_pos = tuple((bbox[i] + bbox[i + 3]) * 0.5 for i in range(3))
+        center = f'eye_center_{side}_guide'
+        look = f'eye_look_{side}_guide'
+
+        if not cmds.objExists(center):
+            info = create_guide_from_position(
+                pos=center_pos,
+                guide_name=f'eye_center_{side}',
+                parent=None,
+            )
+            if info.name != center:
+                raise RuntimeError(f'Unexpected eye center guide: {info.name}')
+            result.created.append(center)
+        else:
+            result.existing.append(center)
+        _parent_preserve_world(center, parent)
+        # Display the eye center as a joint instead of a bone.
+        if cmds.nodeType(center) == "joint":
+            cmds.setAttr(f"{center}.drawStyle", 3)
+
+        # Parent each measured loop beneath the center pivot without moving it.
+        for curve in (equator, f'iris_{side}_guide', f'pupil_{side}_guide'):
+            if not cmds.objExists(curve):
+                raise RuntimeError(f'Missing eye diameter curve: {curve}')
+            _parent_curve_guide(curve, center)
+            _style_curve_guide(curve)
+
+        if not cmds.objExists(look):
+            info = create_guide_from_position(
+                pos=(center_pos[0], center_pos[1], center_pos[2] + look_distance),
+                guide_name=f'eye_look_{side}',
+                parent=None,
+            )
+            if info.name != look:
+                raise RuntimeError(f'Unexpected eye look guide: {info.name}')
+            result.created.append(look)
+        else:
+            result.existing.append(look)
+        _parent_preserve_world(look, center)
 
 def build_character_guides(
     config: str | Path | dict | None = None,
@@ -664,6 +741,7 @@ def build_character_guides(
             )
 
         _build_curve_guides(config, mesh, result)
+        _build_eyeball_guides(config, result)
 
         cmds.refresh(force=True)
         print(f'[Workshop] Built {len(result.created)} regular guides, '

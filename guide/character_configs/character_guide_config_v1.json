@@ -1812,10 +1812,10 @@
       {
         "name": "mouth_path_L",
         "method": "region_points",
-        "curve_mode": "interpolate",
+        "curve_mode": "cv",
         "layer": "face",
         "regions": [
-          "path_mid_M",
+          "lip_M",
           "lip_corner_L",
           "lip_pathmid_L",
           "lip_pathend_L"
@@ -1857,10 +1857,10 @@
       {
         "name": "mouth_path_R",
         "method": "region_points",
-        "curve_mode": "interpolate",
+        "curve_mode": "cv",
         "layer": "face",
         "regions": [
-          "path_mid_M",
+          "lip_M",
           "lip_corner_R",
           "lip_pathmid_R",
           "lip_pathend_R"
@@ -1884,7 +1884,90 @@
         "degree": 3,
         "direction": "outward_x",
         "parent": "head_root_M_guide"
+      },
+      {
+        "name": "eyeball_L",
+        "method": "polygroup_boundary",
+        "mesh": "Eyes",
+        "uv_set": "PG_Eye_Guides",
+        "region_a": "eye_back_L",
+        "region_b": "eye_front_L",
+        "degree": 3,
+        "spans": 8,
+        "direction": "preserve",
+        "parent": "guides"
+      },
+      {
+        "name": "iris_L",
+        "method": "polygroup_boundary",
+        "mesh": "Eyes",
+        "uv_set": "PG_Eye_Guides",
+        "region_a": "eye_front_L",
+        "region_b": "eye_iris_L",
+        "degree": 3,
+        "spans": 8,
+        "direction": "preserve",
+        "parent": "guides"
+      },
+      {
+        "name": "pupil_L",
+        "method": "polygroup_boundary",
+        "mesh": "Eyes",
+        "uv_set": "PG_Eye_Guides",
+        "region_a": "eye_iris_L",
+        "region_b": "eye_pupil_L",
+        "degree": 3,
+        "spans": 8,
+        "direction": "preserve",
+        "parent": "guides"
+      },
+      {
+        "name": "eyeball_R",
+        "method": "polygroup_boundary",
+        "mesh": "Eyes",
+        "uv_set": "PG_Eye_Guides",
+        "region_a": "eye_back_R",
+        "region_b": "eye_front_R",
+        "degree": 3,
+        "spans": 8,
+        "direction": "preserve",
+        "parent": "guides"
+      },
+      {
+        "name": "iris_R",
+        "method": "polygroup_boundary",
+        "mesh": "Eyes",
+        "uv_set": "PG_Eye_Guides",
+        "region_a": "eye_front_R",
+        "region_b": "eye_iris_R",
+        "degree": 3,
+        "spans": 8,
+        "direction": "preserve",
+        "parent": "guides"
+      },
+      {
+        "name": "pupil_R",
+        "method": "polygroup_boundary",
+        "mesh": "Eyes",
+        "uv_set": "PG_Eye_Guides",
+        "region_a": "eye_iris_R",
+        "region_b": "eye_pupil_R",
+        "degree": 3,
+        "spans": 8,
+        "direction": "preserve",
+        "parent": "guides"
       }
     ]
+  },
+  "eyeball_guides": {
+    "enabled": true,
+    "sides": [
+      "L",
+      "R"
+    ],
+    "parent": "head_root_M_guide",
+    "head_start": "head_root_M_guide",
+    "head_end": "head_ee_M_guide",
+    "look_distance_factor": 1.0
   }
 }
