@@ -1956,6 +1956,86 @@
         "spans": 8,
         "direction": "preserve",
         "parent": "guides"
+      },
+      {
+        "name": "tongue_M",
+        "method": "polygroup_boundary",
+        "mesh": "Tongue",
+        "uv_set": "PG_Tongue_Guides",
+        "region_a": "L_top",
+        "region_b": "R_top",
+        "degree": 3,
+        "spans": 8,
+        "direction": "as_built",
+        "parent": "head_root_M_guide"
+      },
+      {
+        "name": "teeth_top_L",
+        "method": "region_points",
+        "mesh": "TopTeeth",
+        "uv_set": "PG_TopTeeth_Guides",
+        "regions": [
+          "Top_M_00",
+          "Top_L_01",
+          "Top_L_02",
+          "Top_L_03",
+          "Top_L_04"
+        ],
+        "degree": 3,
+        "curve_mode": "interpolate",
+        "direction": "as_built",
+        "parent": "head_root_M_guide"
+      },
+      {
+        "name": "teeth_top_R",
+        "method": "region_points",
+        "mesh": "TopTeeth",
+        "uv_set": "PG_TopTeeth_Guides",
+        "regions": [
+          "Top_M_00",
+          "Top_R_01",
+          "Top_R_02",
+          "Top_R_03",
+          "Top_R_04"
+        ],
+        "degree": 3,
+        "curve_mode": "interpolate",
+        "direction": "as_built",
+        "parent": "head_root_M_guide"
+      },
+      {
+        "name": "teeth_bot_L",
+        "method": "region_points",
+        "mesh": "BotTeeth",
+        "uv_set": "PG_BotTeeth_Guides",
+        "regions": [
+          "Bot_M_00",
+          "Bot_L_01",
+          "Bot_L_02",
+          "Bot_L_03",
+          "Bot_L_04"
+        ],
+        "degree": 3,
+        "curve_mode": "interpolate",
+        "direction": "as_built",
+        "parent": "head_root_M_guide"
+      },
+      {
+        "name": "teeth_bot_R",
+        "method": "region_points",
+        "mesh": "BotTeeth",
+        "uv_set": "PG_BotTeeth_Guides",
+        "regions": [
+          "Bot_M_00",
+          "Bot_R_01",
+          "Bot_R_02",
+          "Bot_R_03",
+          "Bot_R_04"
+        ],
+        "degree": 3,
+        "curve_mode": "interpolate",
+        "direction": "as_built",
+        "parent": "head_root_M_guide"
       }
     ]
   },
