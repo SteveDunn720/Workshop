@@ -82,7 +82,7 @@ def _category(name: str) -> str | None:
     stem = name.lower()
     if any(word in stem for word in ('upperleg_', 'knee_', 'foot_', 'toe_', 'heel_', 'bank', 'toeball_', 'footroll_')):
         return 'legs'
-    if any(word in stem for word in ('clav_', 'shoulder_', 'elbow_', 'hand_', 'finger_')):
+    if any(word in stem for word in ('clav_', 'shoulder_', 'elbow_', 'hand_', 'finger_', 'breast_', 'scap_')):
         return 'arms'
     if any(word in stem for word in ('eye_', 'face_', 'jaw_', 'brow_', 'cheek_', 'nose_', 'mouth_', 'lip_', 'ear_', 'tongue_', 'nl_fold_', 'arch_')):
         return 'face'
@@ -515,6 +515,109 @@ def _build_chest_corrective_guides(
             cmds.setAttr(f'{flip}.scaleX', -1.0)
 
 
+
+def _build_surface_corrective_guides(
+    config: dict,
+    mesh: str,
+    result: GuideBuildResult,
+    symmetry: dict,
+) -> None:
+    """Build elbow/wrist/ankle/knee/hip correctives, oriented to surface normals."""
+    cfg = config.get('surface_corrective_guides', {})
+    if not cfg.get('enabled', False):
+        return
+    from Workshop.guide.placement.surface_correctives_orient import orient_surface_corrective
+
+    parent = cfg.get('parent', 'root_M_guide')
+    group = cfg.get('group', 'corrective_guides')
+    if not cmds.objExists(parent):
+        raise RuntimeError(f'Missing corrective parent: {parent}')
+    if not cmds.objExists(group):
+        cmds.group(empty=True, world=True, name=group)
+        result.created.append(group)
+    _parent_preserve_world(group, parent)
+
+    region_mesh = cfg.get('mesh', mesh)
+    uv_set = cfg.get('uv_set', config.get('polygroup_layers', {}).get('body', 'PG_Guides'))
+    if not cmds.objExists(region_mesh):
+        raise RuntimeError(f'Missing corrective mesh: {region_mesh}')
+
+    source, target = symmetry.get('direction', 'L_to_R').split('_to_')
+    mirror = bool(symmetry.get('parts', {}).get('correctives', False))
+    regions = cfg.get('region_overrides', {})
+    orientation = cfg.get('orientation', {})
+    defaults = orientation.get('default', {})
+    root_radius = cfg.get('root_radius', 5.0)
+    for family, spec in cfg.get('families', {}).items():
+        root_stem = spec['root']
+        parts = spec['parts']
+        positions = {}
+        for side in (source, target):
+            for part in parts:
+                name = f'{part}_{side}_guide'
+                if side == target and mirror:
+                    positions[name] = positions[f'{part}_{source}_guide']
+                    continue
+                region = regions.get(part, f'{part}_{{side}}').format(side=side)
+                pos = tuple(solve_position(
+                    GuidePlacement(name=name, region=region),
+                    mesh=region_mesh, uv_set=uv_set,
+                ))
+                positions[name] = pos
+
+        for side in (source, target):
+            side_parent = group
+            flip = None
+            if side == target and mirror:
+                flip = f'corrective_{side}_flip'
+                if not cmds.objExists(flip):
+                    cmds.group(empty=True, world=True, name=flip)
+                    result.created.append(flip)
+                _parent_preserve_world(flip, group)
+                # The chest builder may already have flipped this group.
+                # Temporarily unflip to create and orient in source-side space.
+                cmds.setAttr(f'{flip}.scaleX', 1.0)
+                side_parent = flip
+                if flip not in result.flip_groups:
+                    result.flip_groups.append(flip)
+
+            root = f'{root_stem}_{side}_guide'
+            anchor = spec['anchor'].format(side=side)
+            if not cmds.objExists(anchor):
+                raise RuntimeError(f'Missing {family} corrective root anchor: {anchor}')
+            root_pos = _position(anchor)
+            if side == target and mirror:
+                root_pos = _reflect_x(root_pos)
+            if not cmds.objExists(root):
+                info = create_guide_from_position(pos=root_pos, guide_name=f'{root_stem}_{side}', parent=None)
+                if info.name != root:
+                    raise RuntimeError(f'Unexpected corrective root: {info.name}')
+                result.created.append(root)
+            else:
+                result.existing.append(root)
+            _parent_preserve_world(root, side_parent)
+            cmds.setAttr(f'{root}.radius', root_radius)
+            cmds.setAttr(f'{root}.drawStyle', 3)
+
+            for part in parts:
+                name = f'{part}_{side}_guide'
+                if not cmds.objExists(name):
+                    info = create_guide_from_position(pos=positions[name], guide_name=f'{part}_{side}', parent=None)
+                    if info.name != name:
+                        raise RuntimeError(f'Unexpected corrective guide: {info.name}')
+                    result.created.append(name)
+                else:
+                    result.existing.append(name)
+                _parent_preserve_world(name, root)
+                if cfg.get('orient', True):
+                    opts = dict(defaults)
+                    opts.update(orientation.get(family, {}))
+                    opts.update(orientation.get(part, {}))
+                    orient_surface_corrective(name, region_mesh, **opts)
+
+            if flip:
+                cmds.setAttr(f'{flip}.scaleX', -1.0)
+
 def build_character_guides(
     config: str | Path | dict | None = None,
     mesh: str | None = None,
@@ -853,6 +956,8 @@ def build_character_guides(
         for item in config.get('big_guides', []):
             _set_big_guide(_guide_name(item), radius=5.0)
 
+        _set_big_guide('root_M_guide', radius=config.get('root_guide_radius', 7.0))
+
         if head_positions:
             style_head_guides(
                 head_positions,
@@ -860,6 +965,7 @@ def build_character_guides(
             )
 
         _build_chest_corrective_guides(config, mesh, result, symmetry)
+        _build_surface_corrective_guides(config, mesh, result, symmetry)
         _build_curve_guides(config, mesh, result)
         _build_eyeball_guides(config, result)
 

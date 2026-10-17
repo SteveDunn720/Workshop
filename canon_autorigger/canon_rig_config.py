@@ -137,10 +137,10 @@ def read_guides(rig_name:str='Canon')->cannon_guide_config:
     nose['Tip'] = read_guide('nose_Tip_M_guide')
     nose['Bridge'] = read_guide('nose_Bridge_M_guide')
     nose['Root'] = read_guide('nose_Root_M_guide')
-    teeth = [read_guide('teeth_upper_L_guides'),read_guide('teeth_upper_R_guides'), read_guide('teeth_lower_L_guides'), read_guide('teeth_lower_R_guides') ]
+    teeth = [read_guide('teeth_upper_L_guide'),read_guide('teeth_upper_R_guide'), read_guide('teeth_lower_L_guide'), read_guide('teeth_lower_R_guide') ]
     tongue = read_guide('tongue_M_guide')
     nl = [read_guide('nl_L_guide'), read_guide('nl_R_guide')]
-    brow = [read_guide('brow_L_guides'), read_guide('brow_R_guides')]
+    brow = [read_guide('brow_L_guide'), read_guide('brow_R_guide')]
 
 
 

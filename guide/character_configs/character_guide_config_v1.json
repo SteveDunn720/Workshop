@@ -1013,6 +1013,42 @@
       "placement": {
         "method": "procedural_head"
       }
+    },
+    {
+      "name": "breast_L",
+      "parent": "chest_root_M_guide",
+      "placement": {
+        "method": "region",
+        "region": "breast_L",
+        "layer": "body"
+      }
+    },
+    {
+      "name": "scap_L",
+      "parent": "chest_root_M_guide",
+      "placement": {
+        "method": "region",
+        "region": "scap_L",
+        "layer": "body"
+      }
+    },
+    {
+      "name": "breast_R",
+      "parent": "chest_root_M_guide",
+      "placement": {
+        "method": "region",
+        "region": "breast_R",
+        "layer": "body"
+      }
+    },
+    {
+      "name": "scap_R",
+      "parent": "chest_root_M_guide",
+      "placement": {
+        "method": "region",
+        "region": "scap_R",
+        "layer": "body"
+      }
     }
   ],
   "orientation_groups": [
@@ -1971,7 +2007,7 @@
         "parent": "head_root_M_guide"
       },
       {
-        "name": "teeth_top_L",
+        "name": "teeth_upper_L",
         "method": "region_points",
         "mesh": "TopTeeth",
         "uv_set": "PG_TopTeeth_Guides",
@@ -1988,7 +2024,7 @@
         "parent": "head_root_M_guide"
       },
       {
-        "name": "teeth_top_R",
+        "name": "teeth_upper_R",
         "method": "region_points",
         "mesh": "TopTeeth",
         "uv_set": "PG_TopTeeth_Guides",
@@ -2005,7 +2041,7 @@
         "parent": "head_root_M_guide"
       },
       {
-        "name": "teeth_bot_L",
+        "name": "teeth_lower_L",
         "method": "region_points",
         "mesh": "BotTeeth",
         "uv_set": "PG_BotTeeth_Guides",
@@ -2022,7 +2058,7 @@
         "parent": "head_root_M_guide"
       },
       {
-        "name": "teeth_bot_R",
+        "name": "teeth_lower_R",
         "method": "region_points",
         "mesh": "BotTeeth",
         "uv_set": "PG_BotTeeth_Guides",
@@ -2035,6 +2071,34 @@
         ],
         "degree": 3,
         "curve_mode": "interpolate",
+        "direction": "as_built",
+        "parent": "head_root_M_guide"
+      },
+      {
+        "name": "nl_L",
+        "method": "region_points",
+        "curve_mode": "cv",
+        "layer": "face",
+        "regions": [
+          "NL_L_01",
+          "NL_L_02",
+          "NL_L_03"
+        ],
+        "degree": 2,
+        "direction": "as_built",
+        "parent": "head_root_M_guide"
+      },
+      {
+        "name": "nl_R",
+        "method": "region_points",
+        "curve_mode": "cv",
+        "layer": "face",
+        "regions": [
+          "NL_R_01",
+          "NL_R_02",
+          "NL_R_03"
+        ],
+        "degree": 2,
         "direction": "as_built",
         "parent": "head_root_M_guide"
       }
@@ -2073,6 +2137,81 @@
     "region_overrides": {
       "pec_insert": "shoulder_insert_{side}",
       "trap_insert": "shoulder_insert_{side}"
+    }
+  },
+  "root_guide_radius": 7.0,
+  "surface_corrective_guides": {
+    "enabled": true,
+    "parent": "root_M_guide",
+    "group": "corrective_guides",
+    "mesh": "Canon_UBM_low",
+    "uv_set": "PG_Face_Guides",
+    "root_radius": 5.0,
+    "orient": true,
+    "families": {
+      "elbow": {
+        "root": "ElbowCorRoot",
+        "anchor": "elbow_{side}_guide",
+        "parts": [
+          "lowertricep",
+          "lowerbicep",
+          "elbowin",
+          "pronator"
+        ]
+      },
+      "wrist": {
+        "root": "WristCorRoot",
+        "anchor": "hand_{side}_guide",
+        "parts": [
+          "wristup",
+          "wristdown",
+          "wristin",
+          "wristout"
+        ]
+      },
+      "ankle": {
+        "root": "AnkleCorRoot",
+        "anchor": "foot_{side}_guide",
+        "parts": [
+          "lateralmalleolus",
+          "medialmalleolus",
+          "tibialis",
+          "achilles"
+        ]
+      },
+      "knee": {
+        "root": "KneeCorRoot",
+        "anchor": "knee_{side}_guide",
+        "parts": [
+          "kneecap",
+          "calf",
+          "hamstring"
+        ]
+      },
+      "hip": {
+        "root": "HipCorRoot",
+        "anchor": "upperleg_{side}_guide",
+        "parts": [
+          "psoasup",
+          "psoasdown",
+          "trochanter",
+          "gluteup",
+          "glutemid",
+          "glutelow"
+        ]
+      }
+    },
+    "orientation": {
+      "default": {
+        "primary_axis": "+Y",
+        "secondary_axis": "+X",
+        "secondary_reference": [
+          0,
+          0,
+          1
+        ],
+        "normal_direction": "outward"
+      }
     }
   }
 }
