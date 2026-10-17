@@ -1270,7 +1270,8 @@
     "parts": {
       "arms": true,
       "legs": true,
-      "face": false
+      "face": false,
+      "correctives": true
     },
     "direction": "L_to_R"
   },
@@ -2049,5 +2050,29 @@
     "head_start": "head_root_M_guide",
     "head_end": "head_ee_M_guide",
     "look_distance_factor": 1.0
+  },
+  "corrective_guides": {
+    "enabled": true,
+    "parent": "root_M_guide",
+    "group": "corrective_guides",
+    "mesh": "Canon_UBM_low",
+    "uv_set": "PG_Face_Guides",
+    "root_radius": 2.5,
+    "parts": [
+      "pec_01",
+      "pec_02",
+      "pec_insert",
+      "trap_01",
+      "trap_02",
+      "trap_insert",
+      "necktrap_insert",
+      "necktrap_01"
+    ],
+    "orient": true,
+    "root_anchor": "clav_{side}_guide",
+    "region_overrides": {
+      "pec_insert": "shoulder_insert_{side}",
+      "trap_insert": "shoulder_insert_{side}"
+    }
   }
 }

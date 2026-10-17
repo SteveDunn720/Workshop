@@ -372,9 +372,6 @@ def _build_eyeball_guides(config: dict, result: GuideBuildResult) -> None:
         else:
             result.existing.append(center)
         _parent_preserve_world(center, parent)
-        # Display the eye center as a joint instead of a bone.
-        if cmds.nodeType(center) == "joint":
-            cmds.setAttr(f"{center}.drawStyle", 3)
 
         # Parent each measured loop beneath the center pivot without moving it.
         for curve in (equator, f'iris_{side}_guide', f'pupil_{side}_guide'):
@@ -395,6 +392,128 @@ def _build_eyeball_guides(config: dict, result: GuideBuildResult) -> None:
         else:
             result.existing.append(look)
         _parent_preserve_world(look, center)
+
+def _build_chest_corrective_guides(
+    config: dict,
+    mesh: str,
+    result: GuideBuildResult,
+    symmetry: dict,
+) -> None:
+    """Build chest correctives beneath root, with one optional mirrored side."""
+    cfg = config.get('corrective_guides', {})
+    if not cfg.get('enabled', False):
+        return
+
+    parent = cfg.get('parent', 'root_M_guide')
+    group_name = cfg.get('group', 'corrective_guides')
+    if not cmds.objExists(parent):
+        raise RuntimeError(f'Missing corrective parent: {parent}')
+    if not cmds.objExists(group_name):
+        cmds.group(empty=True, world=True, name=group_name)
+        result.created.append(group_name)
+    _parent_preserve_world(group_name, parent)
+
+    direction = symmetry.get('direction', 'L_to_R')
+    source_side, target_side = direction.split('_to_')
+    # This explicit part flag overrides symmetry.full for correctives.
+    mirror = bool(symmetry.get('parts', {}).get('correctives', False))
+    uv_set = cfg.get('uv_set', config.get('polygroup_layers', {}).get('face', 'PG_Face_Guides'))
+    region_mesh = cfg.get('mesh', mesh)
+    if not cmds.objExists(region_mesh):
+        raise RuntimeError(f'Missing corrective mesh: {region_mesh}')
+
+    from Workshop.guide.placement.ik_correctives_orient import orient_ik_correctives
+
+    # Pec and trap inserts are distinct guides, but may share a placement region.
+    parts = cfg.get('parts', [
+        'pec_01', 'pec_02', 'pec_insert', 'trap_01',
+        'trap_02', 'trap_insert', 'necktrap_insert', 'necktrap_01',
+    ])
+    region_overrides = cfg.get('region_overrides', {})
+    positions = {}
+    for side in (source_side, target_side):
+        for part in parts:
+            name = f'{part}_{side}_guide'
+            if side == target_side and mirror:
+                # Stage at source coordinates; the flip group reflects once.
+                positions[name] = positions[f'{part}_{source_side}_guide']
+                continue
+            region = region_overrides.get(part, f'{part}_{{side}}').format(side=side)
+            pos = tuple(solve_position(
+                GuidePlacement(name=name, region=region),
+                mesh=region_mesh, uv_set=uv_set,
+            ))
+            positions[name] = _reflect_x(pos) if side == target_side else pos
+
+    for side in (source_side, target_side):
+        side_parent = group_name
+        flip = None
+        if side == target_side:
+            flip = f'corrective_{side}_flip'
+            if not cmds.objExists(flip):
+                cmds.group(empty=True, world=True, name=flip)
+                result.created.append(flip)
+            _parent_preserve_world(flip, group_name)
+            side_parent = flip
+            if flip not in result.flip_groups:
+                result.flip_groups.append(flip)
+
+        root = f'ChestCorRoot_{side}_guide'
+        # Match the clavicle position, staged before the corrective flip.
+        clav = f'clav_{side}_guide'
+        if not cmds.objExists(clav):
+            raise RuntimeError(f'Missing chest corrective root anchor: {clav}')
+        root_position = _position(clav)
+        if side == target_side:
+            root_position = _reflect_x(root_position)
+        if not cmds.objExists(root):
+            info = create_guide_from_position(
+                pos=root_position,
+                guide_name=f'ChestCorRoot_{side}',
+                parent=None,
+            )
+            if info.name != root:
+                raise RuntimeError(f'Unexpected corrective root: {info.name}')
+            result.created.append(root)
+        else:
+            result.existing.append(root)
+        _parent_preserve_world(root, side_parent)
+        # Workshop's medium guide display (joint drawStyle 3).
+        if cmds.nodeType(root) == 'joint':
+            cmds.setAttr(f'{root}.radius', cfg.get('root_radius', 2.5))
+            cmds.setAttr(f'{root}.drawStyle', 3)
+
+        for part in parts:
+            name = f'{part}_{side}_guide'
+            if not cmds.objExists(name):
+                info = create_guide_from_position(
+                    pos=positions[name], guide_name=f'{part}_{side}', parent=None,
+                )
+                if info.name != name:
+                    raise RuntimeError(f'Unexpected corrective guide: {info.name}')
+                result.created.append(name)
+            else:
+                result.existing.append(name)
+            _parent_preserve_world(name, root)
+
+        # Each corrective family owns a separate insert and orientation.
+        corrective_sets = (
+            ('pec_insert', ('pec_01', 'pec_02')),
+            ('trap_insert', ('trap_01', 'trap_02')),
+            ('necktrap_insert', ('necktrap_01',)),
+        )
+        for insert_part, child_parts in corrective_sets:
+            insert = f'{insert_part}_{side}_guide'
+            children = [f'{part}_{side}_guide' for part in child_parts]
+            if cfg.get('orient', True):
+                orient_ik_correctives(insert, children)
+            else:
+                for child in children:
+                    _parent_preserve_world(child, insert)
+
+        if flip:
+            cmds.setAttr(f'{flip}.scaleX', -1.0)
+
 
 def build_character_guides(
     config: str | Path | dict | None = None,
@@ -740,6 +859,7 @@ def build_character_guides(
                 radius=head_cfg.get('radius', 2.5),
             )
 
+        _build_chest_corrective_guides(config, mesh, result, symmetry)
         _build_curve_guides(config, mesh, result)
         _build_eyeball_guides(config, result)
 
