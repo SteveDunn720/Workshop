@@ -5,6 +5,7 @@ import maya.cmds as cmds
 from Workshop.control import create_control
 from Workshop.transform.utils import get_position, match_transform
 from Workshop.transform.constraint import constraint
+from .ik import auto_pv_space
 from .module_initialize import module_prep, module_space
 from Workshop.joint import create_joint
 from Workshop.maya_api.node import ReverseNode
@@ -21,6 +22,7 @@ class module_info:
 class Hand:
     def __init__(
         self,
+        arm_info,
         guides:GuideInfo,
         joint_parent:str,
         part: str = "hand",
@@ -59,6 +61,7 @@ class Hand:
         self.ik_offset_shape = ik_offset_shape
         self.fk_control_shape = fk_control_shape
         self.prop_shape = prop_shape
+        self.arm_info = arm_info
         
 
     # -------------------
@@ -167,6 +170,10 @@ class Hand:
         self.bind_jnt = create_joint(name=f'def_{self.part}_{self.side}', transform=self.guides.name, parent=self.joint_parent, connect=False)
 
         constraint(driven=self.bind_jnt, drivers=self.switch_joints[0], constraint_type='parent', parent=self.guts)
+
+        if self.arm_info.auto_pv_driven:
+            pv_auto = auto_pv_space(end_control=self.ik_hand, pv_control=self.arm_info.ik_controls[1], parent_space=self.ik_control_space[0], parent=self.guts)
+            cmds.parent(self.arm_info.auto_pv_driven, pv_auto.driver)
 
 
         info = module_info(fk_control=self.fk_controls[0], ik_control=self.ik_controls[1], switch=self.switch_joints[0], joint=self.bind_jnt)    

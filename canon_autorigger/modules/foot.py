@@ -10,7 +10,7 @@ from Workshop.guide.core import GuideInfo
 from Workshop.transform.constraint import constraint
 
 from .roll import Roll
-from .ik import create_IK_single_chain
+from .ik import auto_pv_space, create_IK_single_chain
 from .module_initialize import module_prep, module_space
 from .module_shared import fkik_switch
 
@@ -291,12 +291,18 @@ class Foot:
 
         jnt_par = self.joint_parent
 
+
         #bind joints
         for i,jnt in enumerate(self.guides):
             switch_jnt = create_joint(name=f'def_{jnt.descriptor}', transform=jnt.name, parent=jnt_par, connect=False)
             self.bind_joints.append(switch_jnt)
             jnt_par = switch_jnt
             constraint(drivers=[self.switch_joints[i]], driven=switch_jnt, parent=self.guts, constraint_type="parent")
+
+
+        if self.leg_info.auto_pv_driven:
+            pv_auto = auto_pv_space(end_control=self.ik_foot, pv_control=self.leg_info.ik_controls[1], parent_space=self.ik_control_space[0], parent=self.guts)
+            cmds.parent(self.leg_info.auto_pv_driven, pv_auto.driver)
 
 
         feet_info = module_info(fk_control=self.fk_controls, ik_controls=self.ik_controls, swtich_joints=self.switch_joints, fk_joints=self.fk_joints, ik_joints=self.ik_joints, bind_joints=self.bind_joints)

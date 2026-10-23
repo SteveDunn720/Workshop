@@ -39,6 +39,7 @@ class moudle_info:
     fk_hook:str
     upper_sub_joints:list
     lower_sub_joints:list
+    auto_pv_driven:str | None
 
 
 
@@ -63,8 +64,9 @@ class Biped_Limb:
         fk_ctrl_shapes:str = 'fk',
         ik_ctrl_shapes:str = 'box',
         pv_ctrl_shapes:str = 'sphere',
-        bendy_control_shape = 'round_square',
-        twist_count = 4
+        bendy_control_shape:str = 'round_square',
+        twist_count:int = 4, 
+        auto_pv_space:bool = True
 
 
     ):
@@ -89,6 +91,7 @@ class Biped_Limb:
         self.pv_ctrl_shapes = pv_ctrl_shapes
         self.bendy_control_shape = bendy_control_shape
         self.twist_count = twist_count
+        self.auto_pv_space = auto_pv_space
 
     def build(self):
 
@@ -146,7 +149,7 @@ class Biped_Limb:
 
             self.fk_joints.append(fk_jnt)
             self.fk_controls.append(ctrl)
-            self.controls.append(ctrl.ctrl)
+            self.controls.append(ctrl)
             jnt_par = fk_jnt
             ctrl_par = ctrl.ctrl
         fk_hook = self.fk_joints[-1]
@@ -182,8 +185,8 @@ class Biped_Limb:
                 color_type=self.main_control_color
             )
         module_space(space_list=self.ik_root_control_space, control=self.ik_root_ctrl)
-        self.controls.append(self.ik_root_ctrl.ctrl)
-        self.ik_controls.append(self.ik_root_ctrl.ctrl)
+        self.controls.append(self.ik_root_ctrl)
+        self.ik_controls.append(self.ik_root_ctrl)
         constraint(drivers=[self.ik_root_ctrl.ctrl], driven=self.ik_handle.start_joint, parent=self.guts, constraint_type="parent")
         self.ik_pv_ctrl = create_control(
                 name=f'{self.part}_IK_PV_{self.side}',
@@ -194,9 +197,17 @@ class Biped_Limb:
                 direction="y",
                 color_type=self.main_control_color,
             )
-        module_space(space_list=self.ik_pv_control_space, control=self.ik_pv_ctrl)
-        self.controls.append(self.ik_pv_ctrl.ctrl)
-        self.ik_controls.append(self.ik_pv_ctrl.ctrl)
+
+        if self.auto_pv_space:
+            pv_driven = create_transform(name=f'{self.part}_IK_PV_{self.side}_auto_driven', transform=self.guides[2].name, parent=self.guts)
+            pv_space = [pv_driven, *self.ik_pv_control_space]
+        else:
+            pv_driven = None
+            pv_space =self.ik_pv_control_space
+
+        module_space(space_list=pv_space, control=self.ik_pv_ctrl)
+        self.controls.append(self.ik_pv_ctrl)
+        self.ik_controls.append(self.ik_pv_ctrl)
         constraint(drivers=[self.ik_pv_ctrl.ctrl], driven=self.ik_handle.pole_vector, parent=self.guts, constraint_type="parent")
 
         if self.ik_end_control:
@@ -212,8 +223,8 @@ class Biped_Limb:
             constraint(drivers=[self.ik_end_ctrl.ctrl], driven=self.ik_handle.handle, parent=self.guts, constraint_type="parent")
             cmds.orientConstraint(self.ik_end_ctrl.ctrl, self.ik_joints[2], maintainOffset=True) #REPLACE
             module_space(space_list=self.ik_end_control_space, control=self.ik_end_ctrl)
-            self.controls.append(self.ik_end_ctrl.ctrl)
-            self.ik_controls.append(self.ik_end_ctrl.ctrl)
+            self.controls.append(self.ik_end_ctrl)
+            self.ik_controls.append(self.ik_end_ctrl)
             self.ik_hook = None
         else:
             self.ik_end_ctrl = create_control(
@@ -227,8 +238,8 @@ class Biped_Limb:
             )
             constraint(drivers=[self.ik_end_ctrl.ctrl], driven=self.ik_handle.handle, parent=self.guts, constraint_type="parent")
             cmds.orientConstraint(self.ik_end_ctrl.ctrl, self.ik_joints[2], maintainOffset=True) #REPLACE
-            self.controls.append(self.ik_end_ctrl.ctrl)
-            self.ik_controls.append(self.ik_end_ctrl.ctrl)
+            self.controls.append(self.ik_end_ctrl)
+            self.ik_controls.append(self.ik_end_ctrl)
             cmds.hide(self.ik_end_ctrl.ctrl)
             self.ik_hook = self.ik_end_ctrl.ctrl
 
@@ -360,6 +371,7 @@ class Biped_Limb:
                 fk_hook = fk_hook,
                 upper_sub_joints=self.upper_twists,
                 lower_sub_joints=self.lower_twists,
+                auto_pv_driven = pv_driven,
                 )
         
         return self.info
