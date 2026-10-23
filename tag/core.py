@@ -170,7 +170,7 @@ def obj_ref_tag(object:str, ref_type:str = 'template'):
 
 
 def get_tags(object):
-    tag_lib = ['LOCK_TAG', 'HIDE_TAG', 'NOT_KEYABLE_TAG', 'CONTROL_COLOR_TAG', 'OBJECT_VISIBILITY_TAG', 'SETS_TAG', 'OBJECT_REF_TAG']
+    tag_lib = ['CONTROL_COLOR_TAG', 'OBJECT_VISIBILITY_TAG', 'SETS_TAG', 'OBJECT_REF_TAG', 'LOCK_TAG', 'HIDE_TAG', 'NOT_KEYABLE_TAG',]
 
     for tag_type in tag_lib:
         if not cmds.attributeQuery(tag_type, node=object, exists=True):

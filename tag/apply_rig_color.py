@@ -62,7 +62,7 @@ def apply_color_tag(object: str) -> None:
     # Don't add proxies to color_options_ctrl
     # --------------------------------------------------------------
 
-    if object == "color_options_ctrl":
+    if object in ["color_options_ctrl", "visibility_options_ctrl"]:
         return
 
     # --------------------------------------------------------------
