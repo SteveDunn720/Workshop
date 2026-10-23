@@ -2,7 +2,7 @@ from attr import dataclass
 import maya.cmds as cmds
 from Workshop.transform.utils import create_transform, match_location, get_distance_between, get_plane_normal, get_position, convert_to_matrix
 from Workshop.control.core import Control
-from Workshop.maya_api.node import MultiplyDivideNode, SumNode
+from Workshop.maya_api.node import MultiplyDivideNode, RemapValueNode, SumNode
 from Workshop.transform.constraint import constraint, Constraint
 
 
@@ -87,7 +87,7 @@ def generate_autoPV(joints: list, name: str = "pv_name", mirror:bool=False) -> s
 
     return pv_object
 
-def auto_pv_space(end_control:Control, pv_control:Control, parent:str, parent_space:str, ignore_end_orient:bool=False) -> AutoPvData:
+def auto_pv_space(end_control:Control, pv_control:Control, parent:str, parent_space:str, ignore_end_orient:bool=True, swing_range: tuple[tuple[float, float], tuple[float, float]] = ((-90, 90),(-10, 10),),) -> AutoPvData:
     top = create_transform(name=f'{pv_control.name}_auto_pv_top', parent=parent, transform=end_control.ctrl)
     if ignore_end_orient:
         for axis in ['X', 'Y', 'Z']:
@@ -100,13 +100,21 @@ def auto_pv_space(end_control:Control, pv_control:Control, parent:str, parent_sp
     offset = create_transform(name=f'{pv_control.name}_auto_pv_offset', parent=top, transform=top)
     driver = create_transform(name=f'{pv_control.name}_auto_pv_driver', parent=offset, transform=top)
 
-    for attr in ['translate', 'rotate',]:
+    for attr in ['translate', ]:
         for axis in ['X', 'Y', 'Z']:
             cmds.connectAttr(f'{end_control.ctrl}.{attr}{axis}', f'{offset}.{attr}{axis}') # probably need a more fool proof set up here, but this works for now
     
 
     mult = MultiplyDivideNode(name=f'{pv_control.name}_auto_pv_mult')
     sum = SumNode(name=f'{pv_control.name}_auto_pv_sumY')
+    swing_remap = RemapValueNode(name=f'{pv_control.name}_auto_pv_swingX')
+
+    swing_remap.input_max.set(swing_range[0][1])
+    swing_remap.input_min.set(swing_range[0][0])
+    swing_remap.output_max.set(swing_range[1][1])
+    swing_remap.output_min.set(swing_range[1][0])
+    swing_remap.input_value.connect_from(f'{end_control.ctrl}.rotateX')
+
 
     sum.output.connect_to(f"{driver}.translateY")
 
@@ -114,11 +122,12 @@ def auto_pv_space(end_control:Control, pv_control:Control, parent:str, parent_sp
     mult.input2.x.set(-1)
     mult.output.x.connect_to(sum.input[0])
 
-    sum.input[1].connect_from(f'{end_control.ctrl}.rotateX')
+    #sum.input[1].connect_from(f'{end_control.ctrl}.rotateX')
+    sum.input[1].connect_from(swing_remap.output)
 
     mult.input1.y.connect_from(f'{end_control.ctrl}.translateZ')
     mult.input2.y.set(-.75)
-    mult.output.z.connect_to(f"{driver}.translateZ")
+    mult.output.y.connect_to(f"{driver}.translateZ")
 
     mult.input1.z.connect_from(f'{end_control.ctrl}.rotateY')
     mult.input2.z.connect_from(twist_attr)

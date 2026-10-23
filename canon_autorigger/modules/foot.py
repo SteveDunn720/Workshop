@@ -301,11 +301,11 @@ class Foot:
 
 
         if self.leg_info.auto_pv_driven:
-            pv_auto = auto_pv_space(end_control=self.ik_foot, pv_control=self.leg_info.ik_controls[1], parent_space=self.ik_control_space[0], parent=self.guts)
+            pv_auto = auto_pv_space(end_control=self.ik_foot, pv_control=self.leg_info.ik_controls[1], parent_space=self.ik_control_space[0], parent=self.guts, swing_range=((-90, 90),(-self.control_size/10, self.control_size/10)))
             cmds.parent(self.leg_info.auto_pv_driven, pv_auto.driver)
 
 
-        feet_info = module_info(fk_control=self.fk_controls, ik_controls=self.ik_controls, swtich_joints=self.switch_joints, fk_joints=self.fk_joints, ik_joints=self.ik_joints, bind_joints=self.bind_joints)
+        feet_info = module_info(fk_control=self.fk_controls, ik_controls=self.ik_controls, swtich_joints=self.switch_joints, fk_joints=self.fk_joints, ik_joints=self.ik_joints, bind_joints=self.bind_joints,)
         return feet_info
 
 

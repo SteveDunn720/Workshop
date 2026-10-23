@@ -172,7 +172,7 @@ class Hand:
         constraint(driven=self.bind_jnt, drivers=self.switch_joints[0], constraint_type='parent', parent=self.guts)
 
         if self.arm_info.auto_pv_driven:
-            pv_auto = auto_pv_space(end_control=self.ik_hand, pv_control=self.arm_info.ik_controls[1], parent_space=self.ik_control_space[0], parent=self.guts)
+            pv_auto = auto_pv_space(end_control=self.ik_hand, pv_control=self.arm_info.ik_controls[1], parent_space=self.ik_control_space[0], parent=self.guts, swing_range=((-90, 90),(-self.control_size/10, self.control_size/10)))
             cmds.parent(self.arm_info.auto_pv_driven, pv_auto.driver)
 
 
