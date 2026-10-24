@@ -1,11 +1,14 @@
 from dataclasses import dataclass
 
 import maya.cmds as cmds
+from maya.api.OpenMaya import MPoint, MMatrix
 
 from Workshop.control import create_control
 from Workshop.joint import create_joint
 from Workshop.skin.split.tag import tag_for_weight_split
 from Workshop.transform.constraint import constraint
+from Workshop.guide.core import create_guide_from_position
+from Workshop.name import get_side
 
 
 @dataclass
@@ -250,29 +253,34 @@ def create_twist_control(
     # Temporary placement transform
     # ---------------------------------------------------------
 
-    midpoint = cmds.createNode(
-        "transform",
-        name=f"{descriptor}_twist_mid_tmp",
-    )
+    midpoint = create_guide_from_position(guide_name=f"{descriptor}_twist_mid", pos=start_driver)
 
-    # Start with the exact orientation of the start driver.
-    cmds.matchTransform(
-        midpoint,
-        start_driver,
-        position=True,
-        rotation=True,
-    )
 
-    # Position only:
-    # place halfway between start and end.
-    point_cst = cmds.pointConstraint(
-        start_driver,
+    # Get the end driver's world position.
+    end_position = cmds.xform(
         end_driver,
-        midpoint,
-        maintainOffset=False,
-    )[0]
+        query=True,
+        worldSpace=True,
+        translation=True,
+    )
 
-    cmds.delete(point_cst)
+    # Convert the end position into the start driver's local space.
+
+    start_inverse = MMatrix(
+        cmds.getAttr(f"{start_driver}.worldInverseMatrix[0]")
+    )
+
+    local_end = MPoint(*end_position) * start_inverse
+
+    # Move halfway toward the end in local space.
+    cmds.move(
+        local_end.x * 0.5,
+        local_end.y * 0.5,
+        local_end.z * 0.5,
+        midpoint.name,
+        relative=True,
+        objectSpace=True,
+    )
 
     # ---------------------------------------------------------
     # Create control
@@ -280,14 +288,14 @@ def create_twist_control(
 
     control = create_control(
         name=f"{descriptor}_twist",
-        transform=midpoint,
+        transform=midpoint.name,
         parent=control_parent,
         size=control_size,
         control_shape=control_shape,
         direction=primary_axis.lower(),
     )
 
-    cmds.delete(midpoint)
+    #cmds.delete(midpoint)
 
     # ---------------------------------------------------------
     # POSITION
@@ -1148,9 +1156,11 @@ def _drive_twist_translation(
                 force=True,
             )
 
+            side = get_side(twist_joint)
+
             cmds.setAttr(
                 f"{control_mult}.input2",
-                control_weight,
+                -control_weight if side == "R" else control_weight ,
             )
 
             add = cmds.createNode(

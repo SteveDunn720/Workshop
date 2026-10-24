@@ -149,7 +149,7 @@ def create_guide_from_position(
             print(f"{pos} does not exist")
             return None
 
-        match_location(
+        match_transform(
             transform=guide,
             target_transform=pos,
         )
