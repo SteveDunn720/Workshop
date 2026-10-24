@@ -222,11 +222,11 @@ class Foot:
                 name=f'IK_{self.guides[0].descriptor}_main',
                 parent=ctrl_par,
                 transform=temp_guide,
-                size=self.control_size/8,
+                size=self.control_size/4,
                 control_shape="foot",
                 direction="y",
                 color_type=self.main_control_color,
-                shape_position_offset=(0, -ground_offset, 0),
+                shape_position_offset=(0, -ground_offset, -self.control_size/10),
                 shape_rotation_offset=(0,180,0)
             )
 

@@ -295,7 +295,7 @@ def create_twist_control(
         direction=primary_axis.lower(),
     )
 
-    #cmds.delete(midpoint)
+    cmds.delete(midpoint.name)
 
     # ---------------------------------------------------------
     # POSITION

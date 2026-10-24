@@ -64,7 +64,7 @@ class Metacarpal:
                             parent=self.control_grp,
                             transform=self.guides[0].name,
                             size=self.control_size/32,
-                            control_shape="cube",
+                            control_shape="four_star",
                             direction="y",
                             color_type=self.sub_control_color,
                             shape_position_offset=(-(self.control_size/16), 0, 0)

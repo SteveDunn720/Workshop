@@ -51,7 +51,7 @@ class Chain:
         ModuleSetting(
             name="roll_control_shape",
             setting_type="control_shape",
-            default="sphere",
+            default="four_star",
         ),
         ModuleSetting(
             name="roll_control_color",
@@ -96,7 +96,7 @@ class Chain:
         control_space:list = [],
         main_control_shape: str = "circle",
         main_control_color: str | None = None,
-        roll_control_shape: str = "sphere",
+        roll_control_shape: str = "four_star",
         roll_control_color: str | None = None,
         roll: bool = True,
         driver_name:str = 'curl'
