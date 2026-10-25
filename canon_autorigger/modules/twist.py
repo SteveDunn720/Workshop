@@ -9,6 +9,8 @@ from Workshop.skin.split.tag import tag_for_weight_split
 from Workshop.transform.constraint import constraint
 from Workshop.guide.core import create_guide_from_position
 from Workshop.name import get_side
+from Workshop.transform.quat import twist_extract_quat
+from Workshop.maya_api.node import QuatToEulerNode
 
 
 @dataclass
@@ -27,6 +29,36 @@ class TwistData:
 # ----------------------------------------------------------------------
 # Helpers
 # ----------------------------------------------------------------------
+
+def _extract_segment_twist(
+    start_driver: str,
+    end_driver: str,
+    primary_axis: str,
+) -> str:
+    """
+    Extract the end driver's axial twist relative to the start driver.
+
+    Returns:
+        Maya attribute containing the signed twist angle.
+    """
+
+    descriptor = start_driver.removesuffix("_jnt")
+
+    twist_quat = twist_extract_quat(
+        transform=end_driver,
+        reference_space=start_driver,
+        axis=primary_axis.lower(),
+    )
+
+    euler = QuatToEulerNode(
+        name=f"{descriptor}_segment_twist_euler"
+    )
+
+    euler.input_quat.connect_from(
+        twist_quat
+    )
+
+    return f"{euler.name}.outputRotate{primary_axis}"
 
 def _validate_axis(primary_axis: str) -> str:
     """
@@ -454,6 +486,7 @@ def _drive_twist_rotation(
     primary_axis: str,
     weight: float,
     control=None,
+    twist_source: str | None = None,
 ):
     """
     Drive one twist joint's primary-axis rotation.
@@ -468,9 +501,8 @@ def _drive_twist_rotation(
         automatic + control
     """
 
-    twist_source = (
-        f"{end_driver}.rotate{primary_axis}"
-    )
+    if twist_source is None:
+        twist_source = f"{end_driver}.rotate{primary_axis}"
 
     # ---------------------------------------------------------
     # Automatic twist
@@ -1401,6 +1433,12 @@ def drive_twist_joints(
         twist_joints
     )
 
+    twist_source = _extract_segment_twist(
+        start_driver=start_driver,
+        end_driver=end_driver,
+        primary_axis=primary_axis,
+    )
+
     for i, twist_joint in enumerate(
         twist_joints
     ):
@@ -1420,6 +1458,7 @@ def drive_twist_joints(
             primary_axis=primary_axis,
             weight=weight,
             control=control,
+            twist_source=twist_source,
         )
 
         # -----------------------------------------------------
