@@ -66,7 +66,7 @@ class Biped_Limb:
         pv_ctrl_shapes:str = 'sphere',
         bendy_control_shape:str = 'round_square',
         twist_count:int = 4, 
-        auto_pv_space:bool = True
+        auto_pv_space:bool = False
 
 
     ):
@@ -200,9 +200,9 @@ class Biped_Limb:
 
         if self.auto_pv_space:
             pv_driven = create_transform(name=f'{self.part}_IK_PV_{self.side}_auto_driven', transform=self.guides[2].name, parent=self.guts)
-            for axis in ["X", "Y", "Z"]:
+            """for axis in ["X", "Y", "Z"]:
                 cmds.setAttr(f'{pv_driven}.rotate{axis}', 0)
-                cmds.setAttr(f'{pv_driven}.scale{axis}', 1)
+                cmds.setAttr(f'{pv_driven}.scale{axis}', 1)"""
             pv_space = [pv_driven, *self.ik_pv_control_space]
         else:
             pv_driven = None
