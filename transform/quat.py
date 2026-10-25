@@ -1,14 +1,34 @@
-from Workshop.maya_api.attribute import QuatAttribute
+from dataclasses import dataclass
+
+import math
+import maya.cmds as cmds
+from maya.api.OpenMaya import MMatrix, MTransformationMatrix
+
+
+from Workshop.maya_api.attribute import QuatAttribute, Vector3Attribute
 from Workshop.maya_api.node import (
     QuatInvertNode,
     QuatNormalizeNode,
     QuatProdNode,
+    QuatSlerpNode,
     QuatToEulerNode,
+    DecomposeMatrixNode,
+    MultMatrixNode,
 )
 from Workshop.name import get_short_name
 from Workshop.transform.matrix import localize_and_decompose_matrix, matrix_constraint
 from Workshop.transform.structs import Axis
 from Workshop.transform.utils import create_transform, match_transform
+
+
+
+
+@dataclass
+class RelativeRotation:
+    """Live rest-relative motion expressed in a reference space."""
+
+    rotation: QuatAttribute
+    translation: Vector3Attribute
 
 
 def drive_rotation_with_quat(transform: str, quat_attribute: QuatAttribute) -> None:
@@ -137,3 +157,217 @@ def create_swing_only_transform(
         )
     drive_rotation_with_quat(swing_transform, swing_quat)
     return swing_transform
+
+
+def relative_rotation(
+    driver: str,
+    reference: str,
+    name: str,
+) -> RelativeRotation:
+    """
+    Calculate the driver's motion relative to a reference transform.
+
+    The current pose is captured as rest when this function is called.
+
+    Rotation:
+        Current relative orientation * inverse(rest orientation)
+
+    Translation:
+        Current relative position - rest relative position
+
+    Uses Maya's row-vector matrix convention.
+    """
+
+    relative = MultMatrixNode(f"{name}_relative_mm")
+
+    relative.matrix_in[0].connect_from(
+        f"{driver}.worldMatrix[0]"
+    )
+    relative.matrix_in[1].connect_from(
+        f"{reference}.worldInverseMatrix[0]"
+    )
+
+    # Capture rest pose before building the live delta network.
+    rest_values = cmds.getAttr(
+        f"{relative.name}.matrixSum"
+    )
+
+    rest_matrix = MMatrix(rest_values)
+    rest_transform = MTransformationMatrix(rest_matrix)
+
+    rest_translation = rest_transform.translation(
+        4  # MSpace.kWorld
+    )
+
+    rest_rotation = rest_transform.rotation(
+        asQuaternion=True
+    )
+
+    # Extract live translation in reference space.
+    relative_decompose = DecomposeMatrixNode(
+        f"{name}_relative_dm"
+    )
+    relative_decompose.input_matrix.connect_from(
+        relative.matrix_sum
+    )
+
+    # Rotation-only matrix. Strip translation, scale and shear
+    # before extracting the rotational delta.
+    pick_rotation = cmds.createNode(
+        "pickMatrix",
+        name=f"{name}_rotation_pick",
+    )
+
+    cmds.connectAttr(
+        f"{relative.name}.matrixSum",
+        f"{pick_rotation}.inputMatrix",
+    )
+
+    cmds.setAttr(f"{pick_rotation}.useTranslate", False)
+    cmds.setAttr(f"{pick_rotation}.useScale", False)
+    cmds.setAttr(f"{pick_rotation}.useShear", False)
+
+    rotation_delta = MultMatrixNode(
+        f"{name}_rotation_delta_mm"
+    )
+
+    rotation_delta.matrix_in[0].connect_from(
+        f"{pick_rotation}.outputMatrix"
+    )
+
+    rotation_delta.matrix_in[1].set(
+        rest_rotation.inverse().asMatrix()
+    )
+
+    rotation_decompose = DecomposeMatrixNode(
+        f"{name}_rotation_delta_dm"
+    )
+
+    rotation_decompose.input_matrix.connect_from(
+        rotation_delta.matrix_sum
+    )
+
+    # Subtract the rest-relative translation.
+    translation_delta = cmds.createNode(
+        "plusMinusAverage",
+        name=f"{name}_translation_delta",
+    )
+
+    cmds.setAttr(
+        f"{translation_delta}.operation",
+        2,  # Subtract
+    )
+
+    cmds.connectAttr(
+        f"{relative_decompose.name}.outputTranslate",
+        f"{translation_delta}.input3D[0]",
+    )
+
+    cmds.setAttr(
+        f"{translation_delta}.input3D[1]",
+        rest_translation.x,
+        rest_translation.y,
+        rest_translation.z,
+        type="double3",
+    )
+
+    return RelativeRotation(
+        rotation=rotation_decompose.output_quat,
+        translation=Vector3Attribute(
+            f"{translation_delta}.output3D"
+        ),
+    )
+
+
+def weighted_rotation_quat(
+    rotation: QuatAttribute,
+    name: str,
+    weight: float = 0.5,
+) -> QuatAttribute:
+    """
+    Interpolate from identity to the supplied quaternion.
+
+    The input should represent a rest-relative rotation.
+    """
+
+    slerp = QuatSlerpNode(f"{name}_slerp")
+
+    slerp.input1_quat.x.set(0.0)
+    slerp.input1_quat.y.set(0.0)
+    slerp.input1_quat.z.set(0.0)
+    slerp.input1_quat.w.set(1.0)
+
+    slerp.input2_quat.connect_from(rotation)
+    slerp.input_t.set(weight)
+
+    return slerp.output_quat
+
+
+def signed_relative_twist(
+    rotation,
+    axis: str,
+    name: str,
+) -> str:
+    """
+    Return a signed twist angle in degrees from a rest-relative quaternion.
+
+    rotation:
+        QuatAttribute representing the rest-relative rotation.
+
+    axis:
+        Local X, Y, or Z.
+
+    Returns:
+        Attribute path containing the signed angle in degrees.
+    """
+
+    axis = axis.upper()
+
+    if axis not in ("X", "Y", "Z"):
+        raise ValueError(f"Invalid twist axis: {axis}")
+
+    # Extract the selected quaternion component.
+    component = {
+        "X": "X",
+        "Y": "Y",
+        "Z": "Z",
+    }[axis]
+
+    # atan2(q_axis, q_w) * 2, converted to degrees.
+    #
+    # Maya's floatMath node supports atan2 in versions that
+    # provide that operation, but compatibility varies.
+    #
+    # This implementation uses an expression for the signed angle.
+
+    expression_node = cmds.createNode(
+        "expression",
+        name=f"{name}_signed_twist_expr",
+    )
+
+    output_node = cmds.createNode(
+        "network",
+        name=f"{name}_signed_twist_output",
+    )
+
+    cmds.addAttr(
+        output_node,
+        longName="angle",
+        attributeType="double",
+    )
+
+    q_axis = f"{rotation.attr_path}{component}"
+    q_w = f"{rotation.attr_path}W"
+
+    cmds.expression(
+        expression_node,
+        edit=True,
+        string=(
+            f"{output_node}.angle = "
+            f"2 * atan2({q_axis}, {q_w}) * 57.29577951308232;"
+        ),
+        alwaysEvaluate=False,
+        unitConversion="all",
+    )
+
+    return f"{output_node}.angle"

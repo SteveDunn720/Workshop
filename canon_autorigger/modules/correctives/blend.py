@@ -2,12 +2,14 @@ import maya.cmds as cmds
 
 from Workshop.joint import create_joint
 from Workshop.transform.constraint import constraint
-from Workshop.maya_api.node import (
-    EulerToQuatNode,
-    QuatSlerpNode,
-    QuatToEulerNode,
-    RemapValueNode,
+from Workshop.transform.utils import create_transform
+from Workshop.transform.quat import (
+    relative_rotation,
+    weighted_rotation_quat,
+    drive_rotation_with_quat,
+    signed_relative_twist,
 )
+from Workshop.maya_api.node import MultiplyDivideNode, RemapValueNode
 
 from ..module_initialize import module_prep
 
@@ -20,13 +22,14 @@ class Blend:
         part: str = "blend",
         side: str = "M",
         parent: str = "rig",
-        guides: list = [],
+        guides: list | None = None,
         joint_parent: str = "skel",
 
-        # Base rotation blend
+        # Corrective motion weights
         blend: float = 0.5,
+        translate_blend: float = 1.0,
 
-        # Optional rotation-driven activation
+        # Optional activation
         driver_axis: str | None = None,
         driver_rot_range: tuple = (-90, 90),
         mult_range: tuple = (0.0, 1.0),
@@ -35,15 +38,16 @@ class Blend:
         pop_amount: float | None = None,
         pop_axis: str = "Y",
     ):
-        self.driver = driver
 
+        self.driver = driver
         self.part = part
         self.side = side
         self.parent = parent
-        self.guides = guides
+        self.guides = guides or []
         self.joint_parent = joint_parent
 
         self.blend = blend
+        self.translate_blend = translate_blend
 
         self.driver_axis = driver_axis
         self.driver_rot_range = driver_rot_range
@@ -52,15 +56,7 @@ class Blend:
         self.pop_amount = pop_amount
         self.pop_axis = pop_axis
 
-    # --------------------------------------------------
-    # Build
-    # --------------------------------------------------
-
     def build(self):
-
-        # ==================================================
-        # MODULE PREP
-        # ==================================================
 
         prep = module_prep(
             part=self.part,
@@ -77,50 +73,16 @@ class Blend:
         guide = self.guides[0]
         descriptor = guide.descriptor
 
-        # ==================================================
-        # SWITCH HIERARCHY
-        #
-        # guts
-        #   |
-        #   switch_parent
-        #       |
-        #       switch_blend
-        #           |
-        #           switch_joint
-        #               |
-        #               switch_pop (optional)
-        #
-        # switch_parent:
-        #     follows joint_parent
-        #
-        # switch_blend:
-        #     receives corrective rotation
-        #
-        # switch_joint:
-        #     stores the guide position/orientation
-        #
-        # switch_pop:
-        #     receives optional corrective translation
-        # ==================================================
-
         # --------------------------------------------------
-        # Parent switch
-        #
-        # Match the joint parent in world space.
-        # This becomes the base space for the entire
-        # corrective system.
+        # Parent follow
         # --------------------------------------------------
 
-        switch_parent = create_joint(
+        switch_parent = create_transform(
             name=f"switch_parent_{descriptor}",
-            transform=self.driver,
-            connect=False,
             parent=self.guts,
-            bind_set=False,
-            ue_set=False,
+            transform=self.joint_parent,
         )
 
-        # Follow the actual skeleton joint.
         constraint(
             drivers=[self.joint_parent],
             driven=switch_parent,
@@ -128,32 +90,29 @@ class Blend:
         )
 
         # --------------------------------------------------
-        # Blend switch
-        #
-        # Starts at exactly the same transform as
-        # switch_parent.
-        #
-        # Because it is parented underneath switch_parent,
-        # it should begin with an identity local transform.
-        #
-        # Corrective rotation is applied here.
+        # Corrective motion layer
         # --------------------------------------------------
 
-        switch_blend = create_joint(
+        switch_blend = create_transform(
             name=f"switch_blend_{descriptor}",
-            transform=switch_parent,
-            connect=False,
             parent=switch_parent,
-            bind_set=False,
-            ue_set=False,
+            transform=switch_parent,
+        )
+
+        cmds.setAttr(
+            f"{switch_blend}.translate",
+            0, 0, 0,
+            type="double3",
+        )
+
+        cmds.setAttr(
+            f"{switch_blend}.rotate",
+            0, 0, 0,
+            type="double3",
         )
 
         # --------------------------------------------------
-        # Main switch
-        #
-        # This is positioned/oriented from the guide.
-        # It stores the corrective's offset from the
-        # parent joint.
+        # Guide offset
         # --------------------------------------------------
 
         switch_joint = create_joint(
@@ -169,170 +128,140 @@ class Blend:
         self.switch_blend = switch_blend
         self.switch_joint = switch_joint
 
-        # ==================================================
-        # DRIVER ROTATION -> QUATERNION
-        # ==================================================
+        # --------------------------------------------------
+        # Shared relative motion
+        # --------------------------------------------------
 
-        euler_to_quat = EulerToQuatNode(
-            name=f"{descriptor}_blend_etq"
+        relative = relative_rotation(
+            driver=self.driver,
+            reference=self.joint_parent,
+            name=f"{descriptor}_blend",
         )
 
-        euler_to_quat.input_rotate.connect_from(
-            f"{self.driver}.rotate"
-        )
+        self.relative_motion = relative
 
-        euler_to_quat.input_rotate_order.connect_from(
-            f"{self.driver}.rotateOrder"
-        )
+        # --------------------------------------------------
+        # Signed rest-relative activation
+        # --------------------------------------------------
 
-        # ==================================================
-        # QUATERNION BLEND
-        #
-        # Identity -> Driver Rotation
-        #
-        # input1 remains identity.
-        # input2 receives the driver rotation.
-        #
-        # inputT controls the amount of corrective rotation.
-        # ==================================================
-
-        quat_slerp = QuatSlerpNode(
-            name=f"{descriptor}_blend_slerp"
-        )
-
-        quat_slerp.input2_quat.connect_from(
-            euler_to_quat.output_quat
-        )
-
-        cmds.setAttr(
-            f"{quat_slerp.name}.angleInterpolation",
-            1,
-        )
-
-        # ==================================================
-        # OPTIONAL ACTIVATION RAMP
-        #
-        # driver rotation
-        #       |
-        #       v
-        #   RemapValue
-        #       |
-        #       v
-        #  activation 0-1
-        #
-        # This activation can drive both:
-        #
-        #   rotation blend
-        #   pop
-        # ==================================================
-
-        activation_remap = None
+        activation_angle = None
+        activation = None
 
         if self.driver_axis is not None:
 
-            activation_remap = RemapValueNode(
-                name=f"{descriptor}_blend_activation_remap"
+            axis = self.driver_axis.upper()
+
+            if axis not in ("X", "Y", "Z"):
+                raise ValueError(
+                    f"Invalid driver axis: {axis}"
+                )
+
+            activation_angle = signed_relative_twist(
+                rotation=relative.rotation,
+                axis=axis,
+                name=f"{descriptor}_activation",
             )
 
-            # Driver rotation range
+            self.activation_angle = activation_angle
 
-            activation_remap.input_min.set(
+            activation = RemapValueNode(
+                name=f"{descriptor}_activation_remap"
+            )
+
+            activation.input_min.set(
                 self.driver_rot_range[0]
             )
 
-            activation_remap.input_max.set(
+            activation.input_max.set(
                 self.driver_rot_range[1]
             )
 
-            # Activation multiplier range
-
-            activation_remap.output_min.set(
+            activation.output_min.set(
                 self.mult_range[0]
             )
 
-            activation_remap.output_max.set(
+            activation.output_max.set(
                 self.mult_range[1]
             )
 
-            activation_remap.input_value.connect_from(
-                f"{self.driver}.rotate{self.driver_axis}"
+            activation.input_value.connect_from(
+                activation_angle
             )
 
-            # --------------------------------------------------
-            # activation * base blend
-            # --------------------------------------------------
+        # --------------------------------------------------
+        # Weighted quaternion rotation
+        # --------------------------------------------------
 
-            blend_mult = cmds.createNode(
-                "multDoubleLinear",
-                name=f"{descriptor}_blend_mult",
+        weighted_quat = weighted_rotation_quat(
+            rotation=relative.rotation,
+            name=f"{descriptor}_weighted",
+            weight=self.blend,
+        )
+
+        if activation is not None:
+
+            rotation_mult = MultiplyDivideNode(
+                name=f"{descriptor}_rotation_weight_mult"
             )
 
-            cmds.connectAttr(
-                f"{activation_remap.name}.outValue",
-                f"{blend_mult}.input1",
+            rotation_mult.operation.set(1)
+
+            rotation_mult.input1.x.connect_from(
+                activation.output
             )
 
-            cmds.setAttr(
-                f"{blend_mult}.input2",
-                self.blend,
-            )
-
-            cmds.connectAttr(
-                f"{blend_mult}.output",
-                f"{quat_slerp.name}.inputT",
-            )
-
-        else:
-
-            # No activation ramp.
-            # Always use the base blend amount.
-
-            quat_slerp.input_t.set(
+            rotation_mult.input2.x.set(
                 self.blend
             )
 
-        # ==================================================
-        # QUATERNION -> EULER
-        #
-        # Apply the corrective rotation to switch_blend.
-        #
-        # switch_parent handles skeleton motion.
-        # switch_blend handles corrective motion.
-        # ==================================================
+            rotation_mult.output.x.connect_to(
+                f"{descriptor}_weighted_slerp.inputT"
+            )
 
-        quat_to_euler = QuatToEulerNode(
-            name=f"{descriptor}_blend_qte"
+        drive_rotation_with_quat(
+            transform=switch_blend,
+            quat_attribute=weighted_quat,
         )
 
-        quat_to_euler.input_quat.connect_from(
-            quat_slerp.output_quat
+        # --------------------------------------------------
+        # Relative translation
+        # --------------------------------------------------
+
+        translation_mult = MultiplyDivideNode(
+            name=f"{descriptor}_translation_mult"
         )
 
-        quat_to_euler.input_rotate_order.connect_from(
-            f"{switch_blend}.rotateOrder"
+        translation_mult.operation.set(1)
+
+        translation_mult.input1.connect_from(
+            relative.translation
         )
 
-        quat_to_euler.output_rotate.connect_to(
-            f"{switch_blend}.rotate"
+        translation_mult.input2.set(
+            (
+                self.translate_blend,
+                self.translate_blend,
+                self.translate_blend,
+            )
         )
 
-        # ==================================================
-        # OPTIONAL POP
-        # ==================================================
+        translation_mult.output.connect_to(
+            f"{switch_blend}.translate"
+        )
+
+        # --------------------------------------------------
+        # Optional pop
+        # --------------------------------------------------
 
         output_switch = switch_joint
         self.pop_joint = None
 
         if self.pop_amount is not None:
 
-            # --------------------------------------------------
-            # Pop switch
-            #
-            # Match switch_joint rather than the guide.
-            #
-            # Because this is parented directly underneath
-            # switch_joint, it begins as a zeroed local offset.
-            # --------------------------------------------------
+            if activation_angle is None:
+                raise ValueError(
+                    "pop_amount requires driver_axis."
+                )
 
             pop_joint = create_joint(
                 name=f"switch_pop_{descriptor}",
@@ -345,49 +274,42 @@ class Blend:
 
             self.pop_joint = pop_joint
 
-            pop_mult = RemapValueNode(
+            pop_remap = RemapValueNode(
                 name=f"{descriptor}_pop_remap"
             )
 
-            pop_mult.input_min.set(
-                            self.driver_rot_range[0]
-                        )
+            pop_remap.input_min.set(
+                self.driver_rot_range[0]
+            )
 
-            pop_mult.input_min.set(
-                            self.driver_rot_range[0]
-                        )
-            
-            pop_mult.input_max.set(
+            pop_remap.input_max.set(
                 self.driver_rot_range[1]
             )
-            
-            
-            pop_mult.output_max.set(
+
+            pop_remap.output_min.set(0.0)
+
+            pop_remap.output_max.set(
                 self.pop_amount
             )
-            
-            pop_mult.input_value.connect_from(
-                f"{self.driver}.rotate{self.driver_axis}"
+
+            pop_remap.input_value.connect_from(
+                activation_angle
             )
 
-            pop_mult.output.connect_to(f"{pop_joint}.translate{self.pop_axis}")
+            pop_remap.output.connect_to(
+                f"{pop_joint}.translate{self.pop_axis.upper()}"
+            )
 
             output_switch = pop_joint
 
-        # ==================================================
-        # BIND JOINT
-        #
-        # The actual deformation joint contains none of the
-        # corrective logic.
-        #
-        # It simply follows the final output of the switch
-        # hierarchy.
-        # ==================================================
+        # --------------------------------------------------
+        # Final deformation joint
+        # --------------------------------------------------
 
         self.blend_joint = create_joint(
             name=f"def_{descriptor}",
             transform=guide.name,
-            connect=True,
+            connect=False,
             parent=self.driver,
         )
 
