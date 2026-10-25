@@ -93,10 +93,16 @@ class Blend:
         # Corrective motion layer
         # --------------------------------------------------
 
+        switch_offset = create_transform(
+            name=f"switch_offset_{descriptor}",
+            parent=switch_parent,
+            transform=self.driver,
+        )
+
         switch_blend = create_transform(
             name=f"switch_blend_{descriptor}",
-            parent=switch_parent,
-            transform=switch_parent,
+            parent=switch_offset,
+            transform=self.driver,
         )
 
         cmds.setAttr(
