@@ -130,6 +130,20 @@ class Ik_correctives:
             # IK driver joints
             # ----------------------------------------------
 
+            root_driver = create_transform(
+                name=f"{descriptor}_root_driver",
+                parent=self.guts,
+                transform=guide.name,
+            )
+
+            if self.root_ik_space:
+                constraint(
+                    drivers=self.root_ik_space,
+                    driven=root_driver,
+                    constraint_type="parent",
+                    parent=self.guts,
+                )
+
             root_ik = create_joint(
                 name=f"ik_{descriptor}",
                 transform=guide.name,
@@ -177,7 +191,7 @@ class Ik_correctives:
             )
 
             ik_dist.input_matrix1.connect_from(
-                f"{root_ik}.worldMatrix[0]"
+                f"{root_driver}.worldMatrix[0]"
             )
 
             ik_dist.input_matrix2.connect_from(

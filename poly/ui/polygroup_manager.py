@@ -40,6 +40,9 @@ from Workshop.poly.polygroups import (
     get_polygroup_layers_from_scene,
 )
 from Workshop.poly.meshes import get_selected_mesh
+from Workshop.poly.polygroups_io import (
+    write_polygroup_layers, read_polygroup_layers, RIG_BUILD_DIRECTORY,
+)
 
 from Workshop.poly.ui.authoring import (
     PolyGroupAuthoringWidget,
@@ -494,17 +497,9 @@ class PolyGroupManagerWindow(
             )
         )
 
-        self.io_widget.write_clicked.connect(
-            lambda: self._dummy(
-                "Write JSON"
-            )
-        )
+        self.io_widget.write_clicked.connect(self._write_json)
 
-        self.io_widget.read_clicked.connect(
-            lambda: self._dummy(
-                "Read JSON"
-            )
-        )
+        self.io_widget.read_clicked.connect(self._read_json)
 
         self.authoring.fix_shells_clicked.connect(
             self._fix_polygroup_shells
@@ -591,6 +586,62 @@ class PolyGroupManagerWindow(
         remove_components_from_selection(
             components=faces,
         )
+
+    def _write_json(self) -> None:
+        """Write all layers of the active mesh to a single JSON file."""
+        if not self.mesh:
+            QtWidgets.QMessageBox.warning(self, "Write JSON", "Select a mesh first.")
+            return
+        import os
+        default = os.path.join(RIG_BUILD_DIRECTORY, f"{self.mesh.split('|')[-1]}.json")
+        path, _ = QtWidgets.QFileDialog.getSaveFileName(
+            self, "Save Polygroup Layers", default, "JSON Files (*.json)"
+        )
+        if not path:
+            return
+        try:
+            write_polygroup_layers(self.mesh, path)
+        except Exception as exc:
+            QtWidgets.QMessageBox.critical(self, "Write JSON Failed", str(exc))
+            return
+        print(f"PolyGroup Manager: saved {path}")
+
+    def _read_json(self) -> None:
+        """Load all layers onto the active mesh."""
+        if not self.mesh:
+            QtWidgets.QMessageBox.warning(self, "Read JSON", "Select a mesh first.")
+            return
+        path, _ = QtWidgets.QFileDialog.getOpenFileName(
+            self, "Load Polygroup Layers", RIG_BUILD_DIRECTORY, "JSON Files (*.json)"
+        )
+        if not path:
+            return
+        from pathlib import Path
+        import json
+        try:
+            with open(path, encoding="utf-8") as handle:
+                data = json.load(handle)
+            existing = set(get_uv_sets(self.mesh))
+            conflicts = [layer["uv_set"] for layer in data.get("layers", [])
+                         if layer["uv_set"] in existing]
+            overwrite = False
+            if conflicts:
+                reply = QtWidgets.QMessageBox.question(
+                    self, "Replace Existing Layers?",
+                    "These UV sets already exist and will be replaced:\n"
+                    + "\n".join(conflicts) + "\nContinue?",
+                    QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No,
+                    QtWidgets.QMessageBox.No,
+                )
+                if reply != QtWidgets.QMessageBox.Yes:
+                    return
+                overwrite = True
+            read_polygroup_layers(self.mesh, path, overwrite=overwrite)
+            self.refresh_from_selection()
+        except Exception as exc:
+            QtWidgets.QMessageBox.critical(self, "Read JSON Failed", str(exc))
+            return
+        print(f"PolyGroup Manager: loaded {path}")
 
     def _fix_polygroup_shells(
         self,
