@@ -150,37 +150,37 @@ class Spine:
         # Control Sizes
 
         ModuleSetting(
-            name="chest_rig_size",
+            name="chest_control_size",
             setting_type="float",
             default=1 / 3,
         ),
 
         ModuleSetting(
-            name="chest_off_rig_size",
+            name="chest_off_control_size",
             setting_type="float",
             default=1 / 3.5,
         ),
 
         ModuleSetting(
-            name="cog_rig_size",
+            name="cog_control_size",
             setting_type="float",
             default=1 / 5,
         ),
 
         ModuleSetting(
-            name="hip_rig_size",
+            name="hip_control_size",
             setting_type="float",
             default=1 / 4,
         ),
 
         ModuleSetting(
-            name="hybrid_mid_rig_size",
+            name="hybrid_mid_control_size",
             setting_type="float",
             default=1 / 3,
         ),
 
         ModuleSetting(
-            name="hybrid_sub_rig_size",
+            name="hybrid_sub_control_size",
             setting_type="float",
             default=1 / 30,
         ),
@@ -247,12 +247,12 @@ class Spine:
         cog_des:str = 'cog',
         chest_shape:str = 'chest',
         chest_off_shape:str = "hexagon",
-        chest_rig_size:float = 1/3,
+        chest_control_size:float = 1/3,
         chest_control_pos_offset:tuple = (0, 1/8 ,0) , 
-        chest_off_rig_size:float = 1/3.5,
-        cog_rig_size:float = 1/5,
-        hip_rig_size:float = 1/4,
-        hyrbid_mid_rig_size:float = 1/3,
+        chest_off_control_size:float = 1/3.5,
+        cog_control_size:float = 1/5,
+        hip_control_size:float = 1/4,
+        hyrbid_mid_control_size:float = 1/3,
         hybrid_sub_size:float = 1/30,
         hybrid_sub_offset:tuple = (0,0,1/4)
     ):
@@ -285,12 +285,12 @@ class Spine:
         self.hip_shape = hip_shape
         self.chest_shape = chest_shape
         self.chest_off_shape = chest_off_shape
-        self.chest_rig_size = chest_rig_size
+        self.chest_control_size = chest_control_size
         self.chest_control_pos_offset = chest_control_pos_offset
-        self.chest_off_rig_size = chest_off_rig_size
-        self.cog_rig_size = cog_rig_size
-        self.hip_rig_size = hip_rig_size
-        self.hyrbid_mid_rig_size = hyrbid_mid_rig_size
+        self.chest_off_control_size = chest_off_control_size
+        self.cog_control_size = cog_control_size
+        self.hip_control_size = hip_control_size
+        self.hyrbid_mid_control_size = hyrbid_mid_control_size
         self.hybrid_sub_size = hybrid_sub_size
         self.hybrid_sub_offset = hybrid_sub_offset 
 
@@ -582,7 +582,7 @@ class Spine:
             name=f'{self.chest_des}_{self.side}',
             parent=self.control_grp ,
             transform=self.guides.lower.name,
-            size=self.rig_size * self.chest_rig_size,
+            size=self.rig_size * self.chest_control_size,
             control_shape=self.chest_shape,
             direction="y",
             color_type=self.sub_control_color,
@@ -602,7 +602,7 @@ class Spine:
             name=f'{self.chest_des}_off_{self.side}',
             parent=self.chest.ctrl,
             transform=self.guides.upper.name,
-            size=self.rig_size * self.chest_off_rig_size,
+            size=self.rig_size * self.chest_off_control_size,
             control_shape=self.chest_off_shape,
             direction="y",
             color_type=self.main_control_color
@@ -617,7 +617,7 @@ class Spine:
                 name=f'{self.cog_des}_{self.side}',
                 parent=self.control_grp,
                 transform=self.guides.lower.name,
-                size=self.rig_size * self.cog_rig_size,
+                size=self.rig_size * self.cog_control_size,
                 control_shape=self.hip_shape,
                 direction="y",
                 color_type=self.main_control_color
@@ -626,7 +626,7 @@ class Spine:
                 name=f'{self.hip_des}_{self.side}',
                 parent=self.cog.ctrl,
                 transform=self.guides.lower.name,
-                size=self.rig_size * self.hip_rig_size,
+                size=self.rig_size * self.hip_control_size,
                 control_shape=self.hip_shape,
                 direction="y",
                 color_type=self.main_control_color
@@ -642,7 +642,7 @@ class Spine:
             
 
         if self.hybrid:
-            hyrbid = build_hybrid(part=self.part, guts=self.guts, side=self.side, control_grp=self.control_grp, guide_curve=self.curve, guide_list=self.curve.locator_list, cv_transforms=[self.hip.ctrl, self.chest_off.ctrl,],  rig_size=self.rig_size, hip=self.hip, hip_des=self.hip_des, hybrid_mid_shape=self.hybrid_mid_shape, main_color=self.main_control_color, mid_rig_size = self.hyrbid_mid_rig_size, sub_spine_rig_size = self.hybrid_sub_size, sub_offset =self.hybrid_sub_offset)
+            hyrbid = build_hybrid(part=self.part, guts=self.guts, side=self.side, control_grp=self.control_grp, guide_curve=self.curve, guide_list=self.curve.locator_list, cv_transforms=[self.hip.ctrl, self.chest_off.ctrl,],  rig_size=self.rig_size, hip=self.hip, hip_des=self.hip_des, hybrid_mid_shape=self.hybrid_mid_shape, main_color=self.main_control_color, mid_control_size = self.hyrbid_mid_control_size, sub_spine_control_size = self.hybrid_sub_size, sub_offset =self.hybrid_sub_offset)
             constraint(drivers=[self.hip.ctrl, self.chest_off.ctrl], driven=hyrbid.mid.top, constraint_type='parent', maintain_offset=True)
 
             #cmds.parentConstraint(self.hip.ctrl, hyrbid.mid.top, maintainOffset=True)

@@ -10,7 +10,7 @@ class SimpleFkInfo:
     joints:list
     controls:list
 
-def build_simple_fk(fk_joint_parent:str, fk_control_grp:str, guide_list:list, rig_size:float, control_color:str, rig_size:float = .25, control_shape:str="circle"):
+def build_simple_fk(fk_joint_parent:str, fk_control_grp:str, guide_list:list, rig_size:float, control_color:str, control_size:float = .25, control_shape:str="circle"):
     jnt_par = fk_joint_parent
     ctrl_par = fk_control_grp
 
@@ -21,7 +21,7 @@ def build_simple_fk(fk_joint_parent:str, fk_control_grp:str, guide_list:list, ri
             name=f'FK_{jnt.descriptor}',
             parent=ctrl_par,
             transform=jnt.name,
-            size=rig_size * rig_size,
+            size=rig_size * control_size,
             control_shape=control_shape,
             direction="y",
             color_type=control_color
