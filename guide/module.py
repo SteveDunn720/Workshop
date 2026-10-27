@@ -14,11 +14,77 @@ PART_NAME_ATTR = "part"
 
 SETTINGS_ATTR = "settings"
 RELATIONSHIPS_ATTR = "relationships"
+MODULE_ROOT_ATTR = "moduleRoot"
 
 @dataclass
 class GuideModule:
     module: str
     part: str
+
+
+def register_module_guide(
+    guide: str,
+    module_root: str,
+) -> None:
+    """
+    Associate a guide with the root guide
+    responsible for its module settings.
+    """
+
+    if not cmds.objExists(guide):
+        raise ValueError(f"Guide does not exist: {guide}")
+
+    if not cmds.objExists(module_root):
+        raise ValueError(
+            f"Module root does not exist: {module_root}"
+        )
+
+    if not cmds.attributeQuery(
+        MODULE_ROOT_ATTR,
+        node=guide,
+        exists=True,
+    ):
+        cmds.addAttr(
+            guide,
+            longName=MODULE_ROOT_ATTR,
+            attributeType="message",
+        )
+
+    cmds.connectAttr(
+        f"{module_root}.message",
+        f"{guide}.{MODULE_ROOT_ATTR}",
+        force=True,
+    )
+
+
+def get_module_root(
+    guide: str,
+) -> str | None:
+    """
+    Return the module root associated with a guide.
+
+    Guides without an explicit module root
+    are treated as their own root.
+    """
+
+    if not cmds.objExists(guide):
+        return None
+
+    if cmds.attributeQuery(
+        MODULE_ROOT_ATTR,
+        node=guide,
+        exists=True,
+    ):
+        connections = cmds.listConnections(
+            f"{guide}.{MODULE_ROOT_ATTR}",
+            source=True,
+            destination=False,
+        ) or []
+
+        if connections:
+            return connections[0]
+
+    return guide
 
 
 

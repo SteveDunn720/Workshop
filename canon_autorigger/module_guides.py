@@ -5,7 +5,7 @@ from maya import cmds
 from Workshop.canon_autorigger.modules import get_module_class
 
 from Workshop.guide.curve_gen import create_curve_guide
-from Workshop.guide.module import add_module
+from Workshop.guide.module import add_module,  register_module_guide
 
 from Workshop.guide.core import (
     GuideInfo,
@@ -62,16 +62,37 @@ def create_module_guides(
 
         if isinstance(definition, ModuleGuideArray):
 
-            created_guides.extend(
-                _create_guide_array(
-                    definition=definition,
-                    module=module,
-                    part=part,
-                    side=side,
-                    count=guide_count,
-                )
+            name = (
+                part
+                if len(module_class.GUIDES) == 1
+                else f"{part}_{definition.name}"
             )
 
+            count = (
+                guide_count
+                if guide_count is not None
+                else definition.default_count
+            )
+
+            if count < definition.minimum_count:
+                raise ValueError(
+                    f"Module '{module}' requires at least "
+                    f"{definition.minimum_count} guides."
+                )
+
+            created_guides.extend(
+                _create_guide_array(
+                    name=name,
+                    side=side,
+                    module=module,
+                    part=part,
+                    count=count,
+                    spacing=definition.spacing,
+                    rotation=definition.rotation,
+                    guide_type=definition.guide_type,
+                    parented=definition.parented,
+                )
+            )
         # -----------------------------------------
         # CURVE GUIDE
         # -----------------------------------------
@@ -108,6 +129,13 @@ def create_module_guides(
             )
 
             created_guides.append(guide)
+            
+            register_module_guide(
+                guide=guide.name,
+                module_root=guide.name,
+            )
+
+            
 
         # -----------------------------------------
         # SINGLE GUIDE
@@ -133,6 +161,11 @@ def create_module_guides(
             )
 
             created_guides.append(guide)
+
+            register_module_guide(
+                guide=guide.name,
+                module_root=guide.name,
+            )
 
         # -----------------------------------------
         # SPLINE GUIDE
@@ -183,6 +216,20 @@ def create_module_guides(
             # The other components are resolved during build.
             created_guides.append(spline.curve)
 
+            module_root = spline.curve.name
+
+            for guide in (
+                spline.curve,
+                spline.lower,
+                spline.lower_tan,
+                spline.upper,
+                spline.upper_tan,
+            ):
+                register_module_guide(
+                    guide=guide.name,
+                    module_root=module_root,
+                )
+
         else:
             raise TypeError(
                 f"Unsupported guide definition: "
@@ -195,6 +242,99 @@ def create_module_guides(
         for guide in created_guides
     ]
 
+def _create_guide(
+    name: str,
+    position: tuple[float, float, float],
+    guide_type: str,
+    module: str,
+    part: str,
+) -> GuideInfo:
+    """
+    Create a single guide and register its module metadata.
+    """
+
+    guide = create_guide_from_position(
+        pos=position,
+        guide_name=name,
+        parent="guides",
+    )
+
+    add_module(
+        guide=guide.name,
+        module=module,
+        part=part,
+    )
+
+    return read_guide(guide.name)
+
+
+def _create_guide_array(
+    name: str,
+    side: str,
+    module: str,
+    part: str,
+    count: int,
+    spacing: tuple[float, float, float],
+    rotation: tuple[float, float, float],
+    guide_type: str = "joint",
+    parented: bool = True,
+) -> list[GuideInfo]:
+    """
+    Create an array of guides.
+
+    The first guide owns the module settings.
+    All subsequent guides reference that module root.
+
+    When parented=True, guides form a hierarchy.
+    Otherwise, they are siblings under 'guides'.
+    """
+
+    created_guides = []
+    previous_guide = None
+    module_root = None
+
+    for index in range(count):
+
+        guide_name = f"{name}_{index:02d}_{side}"
+
+        position = tuple(
+            component * index
+            for component in spacing
+        )
+
+        parent = (
+            previous_guide
+            if parented and previous_guide
+            else "guides"
+        )
+
+        guide = create_guide_from_position(
+            pos=position,
+            guide_name=guide_name,
+            parent=parent,
+        )
+
+        if module_root is None:
+            module_root = guide.name
+
+            add_module(
+                guide=module_root,
+                module=module,
+                part=part,
+            )
+
+        register_module_guide(
+            guide=guide.name,
+            module_root=module_root,
+        )
+
+        created_guides.append(
+            read_guide(guide.name)
+        )
+
+        previous_guide = guide.name
+
+    return created_guides
 
 def _create_curve_guide(
     name: str,

@@ -38,6 +38,15 @@ from Workshop.guide.hierarchy import (
 )
 from Workshop.guide.core import is_guide
 
+from Workshop.guide.module import (
+    get_module_relationships,
+    get_module_settings,
+    get_modules,
+    get_module_root,
+    set_module_setting,
+    set_module_relationship,
+)
+
 def maya_main_window() -> QtWidgets.QWidget:
     """Return Maya's main application window."""
 
@@ -54,6 +63,54 @@ def maya_main_window() -> QtWidgets.QWidget:
         int(main_window_pointer),
         QtWidgets.QWidget,
     )
+
+class Vector3Widget(QtWidgets.QWidget):
+
+    changed = Signal()
+
+    def __init__(
+        self,
+        value=(0.0, 0.0, 0.0),
+        parent=None,
+    ):
+        super().__init__(parent)
+
+        layout = QtWidgets.QHBoxLayout(self)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(4)
+
+        self.spinboxes = []
+
+        for component in value:
+
+            spin = QtWidgets.QDoubleSpinBox()
+
+            spin.setRange(-10000.0, 10000.0)
+            spin.setDecimals(3)
+            spin.setSingleStep(0.1)
+            spin.setValue(float(component))
+
+            spin.valueChanged.connect(
+                lambda _value: self.changed.emit()
+            )
+
+            layout.addWidget(spin)
+            self.spinboxes.append(spin)
+
+    def value(self) -> tuple[float, float, float]:
+        return tuple(
+            spin.value()
+            for spin in self.spinboxes
+        )
+
+    def set_value(self, value) -> None:
+
+        for spin, component in zip(
+            self.spinboxes,
+            value,
+            strict=True,
+        ):
+            spin.setValue(float(component))
 
 
 class ControlSpaceWidget(QtWidgets.QWidget):
@@ -820,33 +877,74 @@ class ModuleLibrary(QtWidgets.QDialog):
     # CURRENT MODULE
     # --------------------------------------------------
 
-    def get_selected_module_instances(
-        self,
-    ) -> list:
+    def get_compatible_selected_instances(self) -> list:
+        """
+        Return selected module instances matching the
+        module currently displayed in the settings UI.
+        """
 
-        selected_guides = set(
-            self.get_selected_guides()
-        )
+        if self.current_edit_module is None:
+            return []
+
+        instances = self.get_selected_module_instances()
+
+        return [
+            instance
+            for instance in instances
+            if instance.module == self.current_edit_module
+        ]
+
+    def get_selected_module_instances(self) -> list:
+        """
+        Return module instances associated with selected guides.
+
+        Supports individual guides, guide arrays, and spline
+        components without requiring the build resolver.
+        """
+
+        from types import SimpleNamespace
+
+        selected_guides = self.get_selected_guides()
 
         if not selected_guides:
             return []
 
-        instances = resolve_module_instances()
+        instances = []
+        seen = set()
 
-        selected_instances = []
+        for guide in selected_guides:
 
-        for instance in instances:
+            module_root = get_module_root(guide)
 
-            if any(
-                guide in selected_guides
-                for guide in instance.guides
-            ):
+            if not module_root:
+                continue
 
-                selected_instances.append(
-                    instance
+            modules = get_modules(module_root)
+
+            for module_info in modules:
+
+                key = (
+                    module_root,
+                    module_info.module,
+                    module_info.part,
                 )
 
-        return selected_instances
+                if key in seen:
+                    continue
+
+                seen.add(key)
+
+                instances.append(
+                    SimpleNamespace(
+                        module=module_info.module,
+                        part=module_info.part,
+                        guides=[module_root],
+                    )
+                )
+
+        return instances
+
+
     def mark_relationship_dirty(
         self,
         relationship_name: str,
@@ -861,6 +959,12 @@ class ModuleLibrary(QtWidgets.QDialog):
         module: str,
         part: str,
     ) -> list:
+        """
+        Return module instances appearing before the
+        currently edited module.
+        """
+
+        module_root = get_module_root(guide)
 
         instances = resolve_module_instances()
 
@@ -868,18 +972,15 @@ class ModuleLibrary(QtWidgets.QDialog):
 
         for instance in instances:
 
-            # Stop when we reach the module
-            # currently being edited.
             if (
                 instance.module == module
                 and instance.part == part
-                and guide in instance.guides
+                and instance.guides
+                and instance.guides[0] == module_root
             ):
                 break
 
-            previous_instances.append(
-                instance
-            )
+            previous_instances.append(instance)
 
         return previous_instances
 
@@ -1022,38 +1123,39 @@ class ModuleLibrary(QtWidgets.QDialog):
 
         return guides
 
-    def guide_selection_changed(
-        self,
-    ) -> None:
+    def guide_selection_changed(self) -> None:
 
         guides = self.get_selected_guides()
 
         if not guides:
-
             self.clear_settings_ui()
             self.clear_relationships_ui()
 
             self.current_edit_guide = None
             self.current_edit_module = None
             self.current_edit_part = None
-
             return
 
-        guide = guides[0]
+        selected_guide = guides[0]
 
-        modules = get_modules(
-            guide
-        )
+        module_root = get_module_root(selected_guide)
+
+        if not module_root:
+            self.clear_settings_ui()
+            self.clear_relationships_ui()
+            return
+
+        modules = get_modules(module_root)
 
         if not modules:
-
             self.clear_settings_ui()
+            self.clear_relationships_ui()
             return
 
         module_info = modules[0]
 
         self.load_guide_settings(
-            guide=guide,
+            guide=module_root,
             module=module_info.module,
             part=module_info.part,
         )
@@ -1420,28 +1522,6 @@ class ModuleLibrary(QtWidgets.QDialog):
         self.dirty_relationships.clear()
 
 
-    def get_compatible_selected_instances(
-        self,
-    ) -> list:
-
-        instances = (
-            self.get_selected_module_instances()
-        )
-
-        if not instances:
-            return []
-
-        if self.current_edit_module is None:
-            return []
-
-        return [
-            instance
-            for instance in instances
-            if instance.module
-            == self.current_edit_module
-        ]
-
-
     def set_setting_widget_value(
         self,
         widget,
@@ -1483,6 +1563,9 @@ class ModuleLibrary(QtWidgets.QDialog):
                 widget.setCurrentIndex(
                     index
                 )
+
+        elif setting.setting_type == "vector3":
+            widget.set_value(value)
     
     def get_current_module_name(
         self,
@@ -1549,6 +1632,9 @@ class ModuleLibrary(QtWidgets.QDialog):
                 values[setting.name] = (
                     widget.text().strip()
                 )
+
+            elif setting.setting_type == "vector3":
+                values[setting.name] = widget.value()
 
         return values
 
@@ -1678,6 +1764,20 @@ class ModuleLibrary(QtWidgets.QDialog):
 
             widget.currentIndexChanged.connect(
                 lambda _index, name=setting.name:
+                self.mark_setting_dirty(name)
+            )
+
+            return widget
+
+
+        if setting.setting_type == "vector3":
+
+            widget = Vector3Widget(
+                value=setting.default or (0.0, 0.0, 0.0)
+            )
+
+            widget.changed.connect(
+                lambda name=setting.name:
                 self.mark_setting_dirty(name)
             )
 
