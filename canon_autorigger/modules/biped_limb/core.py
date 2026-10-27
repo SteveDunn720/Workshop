@@ -18,6 +18,13 @@ from ..twist import create_swing_driver, create_twist
 from .stretch import build_stretchy_ik
 
 
+from Workshop.canon_autorigger.module_schema import (
+    ModuleSetting,
+    ModuleRelationship,
+    ModuleGuideArray,
+)
+
+
 @dataclass
 class moudle_info:
     fk_root:Control
@@ -44,6 +51,111 @@ class moudle_info:
 
 
 class Biped_Limb:
+
+    MODULE_NAME = "biped_limb"
+    DISPLAY_NAME = "Biped Limb"
+
+    GUIDES = (
+        ModuleGuideArray(
+            name="limb",
+            default_count=3,
+            minimum_count=3,
+            spacing=(0.0, -5.0, 0.0),
+            guide_type="joint",
+            parented=True,
+        ),
+    )
+
+    SETTINGS = (
+        ModuleSetting(
+            name="rig_size",
+            setting_type="float",
+            default=1.0,
+        ),
+        ModuleSetting(
+            name="ik_end_control",
+            setting_type="bool",
+            default=False,
+        ),
+        ModuleSetting(
+            name="ikfk_blend",
+            setting_type="float",
+            default=1.0,
+        ),
+        ModuleSetting(
+            name="ik_length",
+            setting_type="bool",
+            default=False,
+        ),
+        ModuleSetting(
+            name="split",
+            setting_type="string",
+            default="single_twist",
+        ),
+        ModuleSetting(
+            name="fk_shape_twist",
+            setting_type="float",
+            default=0.0,
+        ),
+        ModuleSetting(
+            name="fk_ctrl_shapes",
+            setting_type="control_shape",
+            default="fk",
+        ),
+        ModuleSetting(
+            name="ik_ctrl_shapes",
+            setting_type="control_shape",
+            default="box",
+        ),
+        ModuleSetting(
+            name="pv_ctrl_shapes",
+            setting_type="control_shape",
+            default="sphere",
+        ),
+        ModuleSetting(
+            name="bendy_control_shape",
+            setting_type="control_shape",
+            default="round_square",
+        ),
+        ModuleSetting(
+            name="twist_count",
+            setting_type="int",
+            default=4,
+        ),
+        ModuleSetting(
+            name="auto_pv_space",
+            setting_type="bool",
+            default=False,
+        ),
+    )
+
+    RELATIONSHIPS = (
+        ModuleRelationship(
+            name="joint_parent",
+            relationship_type="joint",
+            default="auto",
+        ),
+        ModuleRelationship(
+            name="fk_control_space",
+            relationship_type="control_space",
+            default="auto",
+        ),
+        ModuleRelationship(
+            name="ik_root_control_space",
+            relationship_type="control_space",
+            default="auto",
+        ),
+        ModuleRelationship(
+            name="ik_pv_control_space",
+            relationship_type="control_space",
+            default="auto",
+        ),
+        ModuleRelationship(
+            name="ik_end_control_space",
+            relationship_type="control_space",
+            default="auto",
+        ),
+    )
     def __init__(
         self,
         guides: list,
@@ -92,6 +204,176 @@ class Biped_Limb:
         self.bendy_control_shape = bendy_control_shape
         self.twist_count = twist_count
         self.auto_pv_space = auto_pv_space
+
+
+    @staticmethod
+    def preview(
+        part: str,
+        side: str,
+        guides: list[str],
+        settings: dict,
+    ) -> dict:
+        """
+        Predict the controls and joints created by Biped_Limb.
+
+        Does not create Maya nodes.
+        """
+
+        if len(guides) != 3:
+            raise ValueError(
+                f"Biped_Limb '{part}_{side}' requires exactly "
+                f"3 guides, received {len(guides)}."
+            )
+
+        def descriptor(guide: str) -> str:
+            name = guide.split("|")[-1]
+
+            if name.endswith("_guide"):
+                return name[:-6]
+
+            return name
+
+        descriptors = [
+            descriptor(guide)
+            for guide in guides
+        ]
+
+        root, middle, end = descriptors
+
+        ik_end_control = settings.get(
+            "ik_end_control",
+            False,
+        )
+
+        ik_length = settings.get(
+            "ik_length",
+            False,
+        )
+
+        # --------------------------------------------------
+        # FK CONTROLS
+        # --------------------------------------------------
+
+        fk_controls = [
+            f"FK_{root}_ctrl",
+            f"FK_{middle}_ctrl",
+        ]
+
+        if ik_end_control:
+            fk_controls.append(
+                f"FK_{end}_ctrl"
+            )
+
+        # --------------------------------------------------
+        # IK CONTROLS
+        # --------------------------------------------------
+
+        ik_controls = [
+            f"IK_{root}_ctrl",
+            f"{part}_IK_PV_{side}_ctrl",
+        ]
+
+        if ik_end_control:
+            ik_end = f"IK_{end}_ctrl"
+        else:
+            ik_end = f"IK_{part}_end_{side}_ctrl"
+
+        ik_controls.append(ik_end)
+
+        # --------------------------------------------------
+        # BIND JOINTS
+        # --------------------------------------------------
+
+        bind_joints = [
+            f"def_{root}_jnt",
+            f"def_{middle}_jnt",
+        ]
+
+        if ik_end_control:
+            bind_joints.append(
+                f"def_{end}_jnt"
+            )
+
+        # --------------------------------------------------
+        # OTHER JOINTS
+        # --------------------------------------------------
+
+        switch_joints = [
+            f"switch_{root}_jnt",
+            f"switch_{middle}_jnt",
+        ]
+
+        if ik_end_control:
+            switch_joints.append(
+                f"switch_{end}_jnt"
+            )
+        else:
+            switch_joints.append(
+                f"switch_{end}_solver_jnt"
+            )
+
+        ik_joints = [
+            f"IK_{root}_jnt",
+            f"IK_{middle}_jnt",
+        ]
+
+        if ik_end_control:
+            ik_joints.append(
+                f"IK_{end}_jnt"
+            )
+        else:
+            ik_joints.append(
+                f"IK_{end}_hook_jnt"
+            )
+
+        fk_joints = [
+            f"FK_{root}_jnt",
+            f"FK_{middle}_jnt",
+        ]
+
+        if ik_end_control:
+            fk_joints.append(
+                f"FK_{end}_jnt"
+            )
+        else:
+            fk_joints.append(
+                f"FK_{end}_solver_jnt"
+            )
+
+        if ik_length:
+            ik_joints.extend([
+                f"IK_len_{root}_jnt",
+                f"IK_len_{end}_jnt",
+            ])
+
+        # --------------------------------------------------
+        # OUTPUT
+        # --------------------------------------------------
+
+        controls = fk_controls + ik_controls
+
+        joints = bind_joints
+
+        return {
+            "controls": controls,
+            "joints": joints,
+
+            "output_control": fk_controls[0],
+            "output_joint": bind_joints[-1],
+
+            "fk_controls": fk_controls,
+            "ik_controls": ik_controls,
+
+            "bind_joints": bind_joints,
+            "switch_joints": switch_joints,
+            "fk_joints": fk_joints,
+            "ik_joints": ik_joints,
+
+            "fk_root": fk_controls[0],
+            "ik_root": ik_controls[0],
+            "ik_pv": ik_controls[1],
+            "ik_end": ik_end,
+        }
 
     def build(self):
 
