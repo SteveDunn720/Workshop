@@ -14,9 +14,10 @@ from Workshop.canon_autorigger.relationship_resolver import (
 )
 from Workshop.canon_autorigger.module_schema import (
     get_setting_value,
+    ModuleSplineGuide,
 )
 
-from Workshop.guide.core import read_guide
+from Workshop.guide.core import read_guide, SplineGuideInfo
 
 
 def get_resolved_settings(
@@ -213,14 +214,85 @@ def get_module_guides(
     instance: ModuleInstance,
 ):
     """
-    Convert the guide node names stored by ModuleInstance
-    into GuideInfo objects expected by existing rig modules.
+    Resolve module guides into the structures expected
+    by their corresponding rig modules.
+
+    Regular modules:
+        list[GuideInfo]
+
+    Spline modules:
+        SplineGuideInfo
     """
 
-    return [
-        read_guide(guide)
-        for guide in instance.guides
+    module_class = get_module_class(
+        instance.module
+    )
+
+    spline_definitions = [
+        definition
+        for definition in module_class.GUIDES
+        if isinstance(definition, ModuleSplineGuide)
     ]
+
+    # -----------------------------------------
+    # REGULAR GUIDES
+    # -----------------------------------------
+
+    if not spline_definitions:
+        return [
+            read_guide(guide)
+            for guide in instance.guides
+        ]
+
+    # -----------------------------------------
+    # SPLINE GUIDES
+    # -----------------------------------------
+
+    if len(spline_definitions) != 1:
+        raise ValueError(
+            "Modules currently support exactly one "
+            "ModuleSplineGuide definition."
+        )
+
+    if not instance.guides:
+        raise ValueError(
+            f"No spline guide found for {instance.module}"
+        )
+
+    # The module root is the spline curve.
+    curve_name = instance.guides[0]
+
+    # Resolve names from the actual curve name.
+    # Example: spine_M_guide -> spine
+    suffix = f"_{instance.side}_guide"
+
+    if not curve_name.endswith(suffix):
+        raise ValueError(
+            f"Unexpected spline guide name: {curve_name}"
+        )
+
+    prefix = curve_name.removesuffix(suffix)
+    side = instance.side
+
+    return SplineGuideInfo(
+        curve=read_guide(curve_name),
+
+        lower=read_guide(
+            f"{prefix}_lower_{side}_guide"
+        ),
+
+        lower_tan=read_guide(
+            f"{prefix}_lower_tan_{side}_guide"
+        ),
+
+        upper=read_guide(
+            f"{prefix}_upper_{side}_guide"
+        ),
+
+        upper_tan=read_guide(
+            f"{prefix}_upper_tan_{side}_guide"
+        ),
+    )
 
 
 def build_module_instance(

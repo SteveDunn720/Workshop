@@ -21,6 +21,14 @@ from .utils import align_guides, curve_midpoint
 from .simple_fk import build_simple_fk
 from .hybrid import build_hybrid
 
+from Workshop.canon_autorigger.module_schema import (
+    ModuleCurveGuide,
+    ModuleSetting,
+    ModuleRelationship,
+    ModuleGuide,
+    ModuleSplineGuide
+)
+
 
 @dataclass
 class module_info:
@@ -30,6 +38,193 @@ class module_info:
     chest_off:Control
 
 class Spine:
+
+    MODULE_NAME = "spine"
+    DISPLAY_NAME = "Spine"
+
+    # -----------------------------------
+    # Guides
+    # -----------------------------------
+
+    GUIDES = (
+        ModuleSplineGuide(
+            name="spine",
+            lower_name="spine_lower",
+            upper_name="spine_upper",
+            length=10.0,
+        ),
+    )
+
+    # -----------------------------------
+    # Settings
+    # -----------------------------------
+
+    SETTINGS = (
+
+        # General
+
+        ModuleSetting(
+            name="rig_size",
+            setting_type="float",
+            default=1.0,
+        ),
+
+        ModuleSetting(
+            name="divisions",
+            setting_type="int",
+            default=7,
+        ),
+
+        # Spine Types
+
+        ModuleSetting(
+            name="simple_fk",
+            setting_type="bool",
+            default=False,
+        ),
+
+        ModuleSetting(
+            name="simple_ik",
+            setting_type="bool",
+            default=False,
+        ),
+
+        ModuleSetting(
+            name="hybrid",
+            setting_type="bool",
+            default=True,
+        ),
+
+        # Control Descriptors
+
+        ModuleSetting(
+            name="chest_des",
+            setting_type="string",
+            default="chest",
+        ),
+
+        ModuleSetting(
+            name="hip_des",
+            setting_type="string",
+            default="hip",
+        ),
+
+        ModuleSetting(
+            name="cog_des",
+            setting_type="string",
+            default="cog",
+        ),
+
+        # Control Shapes
+
+        ModuleSetting(
+            name="chest_shape",
+            setting_type="control_shape",
+            default="chest",
+        ),
+
+        ModuleSetting(
+            name="chest_off_shape",
+            setting_type="control_shape",
+            default="hexagon",
+        ),
+
+        ModuleSetting(
+            name="hip_shape",
+            setting_type="control_shape",
+            default="circle",
+        ),
+
+        ModuleSetting(
+            name="cog_shape",
+            setting_type="control_shape",
+            default="circle",
+        ),
+
+        ModuleSetting(
+            name="hybrid_mid_shape",
+            setting_type="control_shape",
+            default="round_square",
+        ),
+
+        # Control Sizes
+
+        ModuleSetting(
+            name="chest_control_size",
+            setting_type="float",
+            default=1 / 3,
+        ),
+
+        ModuleSetting(
+            name="chest_off_control_size",
+            setting_type="float",
+            default=1 / 3.5,
+        ),
+
+        ModuleSetting(
+            name="cog_control_size",
+            setting_type="float",
+            default=1 / 5,
+        ),
+
+        ModuleSetting(
+            name="hip_control_size",
+            setting_type="float",
+            default=1 / 4,
+        ),
+
+        ModuleSetting(
+            name="hybrid_mid_control_size",
+            setting_type="float",
+            default=1 / 3,
+        ),
+
+        ModuleSetting(
+            name="hybrid_sub_control_size",
+            setting_type="float",
+            default=1 / 30,
+        ),
+
+        # Control Offsets
+
+        ModuleSetting(
+            name="chest_control_pos_offset",
+            setting_type="vector3",
+            default=(0.0, 0.125, 0.0),
+        ),
+
+        ModuleSetting(
+            name="hybrid_sub_control_pos_offset",
+            setting_type="vector3",
+            default=(0.0, 0.0, 0.25),
+        ),
+    )
+
+    # -----------------------------------
+    # Relationships
+    # -----------------------------------
+
+    RELATIONSHIPS = (
+
+        ModuleRelationship(
+            name="joint_parent",
+            relationship_type="joint",
+            default="auto",
+        ),
+
+        ModuleRelationship(
+            name="control_space",
+            relationship_type="control_space",
+            default="auto",
+        ),
+
+        ModuleRelationship(
+            name="control_parent",
+            relationship_type="control",
+            default="auto",
+        ),
+    )
+
     def __init__(
         self,
         guides:SplineGuideInfo,
@@ -57,7 +252,7 @@ class Spine:
         chest_off_control_size:float = 1/3.5,
         cog_control_size:float = 1/5,
         hip_control_size:float = 1/4,
-        mid_control_size:float = 1/3,
+        hyrbid_mid_control_size:float = 1/3,
         hybrid_sub_size:float = 1/30,
         hybrid_sub_offset:tuple = (0,0,1/4)
     ):
@@ -95,7 +290,7 @@ class Spine:
         self.chest_off_control_size = chest_off_control_size
         self.cog_control_size = cog_control_size
         self.hip_control_size = hip_control_size
-        self.mid_control_size = mid_control_size
+        self.hyrbid_mid_control_size = hyrbid_mid_control_size
         self.hybrid_sub_size = hybrid_sub_size
         self.hybrid_sub_offset = hybrid_sub_offset 
 
@@ -105,6 +300,200 @@ class Spine:
     # -------------------
     # Build steps
     # -------------------
+
+    @classmethod
+    def preview(
+        cls,
+        part: str,
+        side: str,
+        guides: list[str],
+        settings: dict,
+    ) -> dict:
+        """
+        Predict the controls and joints created by the Spine module.
+
+        This does not create Maya nodes.
+
+        Args:
+            part:
+                Module descriptor.
+
+            side:
+                Module side (M, L, R).
+
+            guides:
+                Guide references assigned to this module.
+
+            settings:
+                Module setting overrides.
+
+        Returns:
+            Dictionary containing predicted controls, joints,
+            and primary module outputs.
+        """
+
+        # -----------------------------------
+        # Empty Guide Validation
+        # -----------------------------------
+
+        if not guides:
+            return {
+                "controls": [],
+                "joints": [],
+                "output_control": None,
+                "output_joint": None,
+            }
+
+        # -----------------------------------
+        # Resolve Settings
+        # -----------------------------------
+
+        defaults = {
+            setting.name: setting.default
+            for setting in cls.SETTINGS
+        }
+
+        defaults.update(settings or {})
+
+        divisions = int(defaults["divisions"])
+
+        simple_fk = defaults["simple_fk"]
+        simple_ik = defaults["simple_ik"]
+        hybrid = defaults["hybrid"]
+
+        chest_des = defaults["chest_des"]
+        hip_des = defaults["hip_des"]
+        cog_des = defaults["cog_des"]
+
+        # Match the fallback behavior in build()
+
+        if not any((simple_fk, simple_ik, hybrid)):
+            hybrid = True
+
+        # -----------------------------------
+        # Shared Controls
+        # -----------------------------------
+
+        chest_control = f"{chest_des}_{side}_ctrl"
+        chest_off_control = f"{chest_des}_off_{side}_ctrl"
+
+        cog_control = f"{cog_des}_{side}_ctrl"
+        hip_control = f"{hip_des}_{side}_ctrl"
+
+        controls = [
+            chest_control,
+            chest_off_control,
+            cog_control,
+            hip_control,
+        ]
+
+        # -----------------------------------
+        # Shared Joints
+        # -----------------------------------
+
+        joints = []
+
+        # The build creates divisions + 1 guide positions.
+        # The final position becomes the chest joint.
+
+        guide_count = divisions + 1
+
+        for index in range(guide_count - 1):
+
+            descriptor = (
+                f"{part}_{side}_{index + 1:02d}"
+            )
+
+            switch_joint = (
+                f"switch_{descriptor}_jnt"
+            )
+
+            bind_joint = (
+                f"def_{descriptor}_jnt"
+            )
+
+            joints.extend([
+                switch_joint,
+                bind_joint,
+            ])
+
+        # Final chest joints
+
+        chest_switch_joint = (
+            f"switch_{chest_des}_{side}_jnt"
+        )
+
+        chest_bind_joint = (
+            f"def_{chest_des}_{side}_jnt"
+        )
+
+        joints.extend([
+            chest_switch_joint,
+            chest_bind_joint,
+        ])
+
+        # -----------------------------------
+        # Hybrid Spine
+        # -----------------------------------
+
+        if hybrid:
+
+            mid_control = (
+                f"{part}_mid_{side}_ctrl"
+            )
+
+            controls.append(mid_control)
+
+            # Hybrid creates one control and joint
+            # for every resampled guide position.
+
+            for index in range(guide_count):
+
+                descriptor = (
+                    f"{part}_{side}_{index + 1:02d}"
+                )
+
+                sub_control = (
+                    f"{descriptor}_ctrl"
+                )
+
+                hybrid_joint = (
+                    f"Hybrid_{descriptor}_jnt"
+                )
+
+                controls.append(sub_control)
+                joints.append(hybrid_joint)
+
+        # -----------------------------------
+        # Simple FK
+        # -----------------------------------
+
+        if simple_fk:
+            # TODO:
+            # Add FK controls and joints when
+            # build_simple_fk() is implemented.
+            pass
+
+        # -----------------------------------
+        # Simple IK
+        # -----------------------------------
+
+        if simple_ik:
+            # TODO:
+            # Add IK controls and joints when
+            # build_simple_ik() is implemented.
+            pass
+
+        # -----------------------------------
+        # Return Preview
+        # -----------------------------------
+
+        return {
+            "controls": controls,
+            "joints": joints,
+            "output_control": chest_off_control,
+            "output_joint": chest_bind_joint,
+        }
 
 
     def build(self):
@@ -253,7 +642,7 @@ class Spine:
             
 
         if self.hybrid:
-            hyrbid = build_hybrid(part=self.part, guts=self.guts, side=self.side, control_grp=self.control_grp, guide_curve=self.curve, guide_list=self.curve.locator_list, cv_transforms=[self.hip.ctrl, self.chest_off.ctrl,],  rig_size=self.rig_size, hip=self.hip, hip_des=self.hip_des, hybrid_mid_shape=self.hybrid_mid_shape, main_color=self.main_control_color, mid_control_size = self.mid_control_size, sub_spine_control_size = self.hybrid_sub_size, sub_offset =self.hybrid_sub_offset)
+            hyrbid = build_hybrid(part=self.part, guts=self.guts, side=self.side, control_grp=self.control_grp, guide_curve=self.curve, guide_list=self.curve.locator_list, cv_transforms=[self.hip.ctrl, self.chest_off.ctrl,],  rig_size=self.rig_size, hip=self.hip, hip_des=self.hip_des, hybrid_mid_shape=self.hybrid_mid_shape, main_color=self.main_control_color, mid_control_size = self.hyrbid_mid_control_size, sub_spine_control_size = self.hybrid_sub_size, sub_offset =self.hybrid_sub_offset)
             constraint(drivers=[self.hip.ctrl, self.chest_off.ctrl], driven=hyrbid.mid.top, constraint_type='parent', maintain_offset=True)
 
             #cmds.parentConstraint(self.hip.ctrl, hyrbid.mid.top, maintainOffset=True)

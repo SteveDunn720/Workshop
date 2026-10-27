@@ -4,22 +4,22 @@ from maya import cmds
 
 from Workshop.canon_autorigger.modules import get_module_class
 
+from Workshop.guide.curve_gen import create_curve_guide
+from Workshop.guide.module import add_module
+
 from Workshop.guide.core import (
     GuideInfo,
     create_guide_from_position,
+    create_spline_guide,
     read_guide,
 )
-
-from Workshop.guide.curve_gen import create_curve_guide
-from Workshop.guide.module import add_module
 
 from .module_schema import (
     ModuleGuide,
     ModuleGuideArray,
     ModuleCurveGuide,
+    ModuleSplineGuide,
 )
-
-
 def create_module_guides(
     module: str,
     part: str,
@@ -133,6 +133,55 @@ def create_module_guides(
             )
 
             created_guides.append(guide)
+
+        # -----------------------------------------
+        # SPLINE GUIDE
+        # -----------------------------------------
+
+        elif isinstance(definition, ModuleSplineGuide):
+
+            # Use the module part to avoid naming conflicts.
+            if len(module_class.GUIDES) == 1:
+                name = part
+            else:
+                name = f"{part}_{definition.name}"
+
+            lower_pos = definition.position
+
+            spline_length = (
+                definition.length
+                if length is None
+                else length
+            )
+
+            upper_pos = (
+                lower_pos[0],
+                lower_pos[1] + spline_length,
+                lower_pos[2],
+            )
+
+            spline = create_spline_guide(
+                parent="guides",
+                lower_name=f"{name}_lower",
+                upper_name=f"{name}_upper",
+                curve_name=name,
+                side=side,
+                position=[
+                    upper_pos,
+                    lower_pos,
+                ],
+            )
+
+            # Register the spline's curve as the module root.
+            add_module(
+                spline.curve.name,
+                module=module,
+                part=part,
+            )
+
+            # Keep one root guide per spline module.
+            # The other components are resolved during build.
+            created_guides.append(spline.curve)
 
         else:
             raise TypeError(

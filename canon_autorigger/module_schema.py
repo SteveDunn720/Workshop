@@ -35,6 +35,8 @@ class ModuleGuideArray:
     guide_type: str = "joint"
     parented: bool = True
 
+    
+
 @dataclass
 class ModuleCurveGuide:
     name: str = "curve"
@@ -42,6 +44,20 @@ class ModuleCurveGuide:
     degree: int = 3
     length: float = 10.0
     guide_type: str = "curve"
+
+
+@dataclass
+class ModuleSplineGuide:
+    name: str = "spline"
+
+    lower_name: str = "lower"
+    upper_name: str = "upper"
+
+    length: float = 5.0
+
+    position: tuple[float, float, float] = (0.0, 0.0, 0.0)
+
+    guide_type: str = "spline"
 
 def get_setting(
     module_class,
