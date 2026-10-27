@@ -14,11 +14,12 @@ from Workshop.spline.matrix_spline.build import matrix_spline_from_transforms
 from Workshop.transform.matrix import matrix_constraint
 from Workshop.skin.split.tag import tag_for_weight_split
 
-
+from ..module_shared import create_module_switch
 from ..module_initialize import module_prep, module_space
 
 from .utils import align_guides, curve_midpoint
 from .simple_fk import build_simple_fk
+from .hybrid import build_hybrid
 
 
 @dataclass
@@ -36,7 +37,7 @@ class Spine:
         side: str = "M",
         parent: str = "components",
         control_parent: str | None = None,
-        control_size: float = 1.0,
+        rig_size: float = 1.0,
         joint_parent:str = 'skel',
         simple_fk:bool = False,
         simple_ik:bool = False,
@@ -51,12 +52,20 @@ class Spine:
         cog_des:str = 'cog',
         chest_shape:str = 'chest',
         chest_off_shape:str = "hexagon",
+        chest_control_size:float = 1/3,
+        chest_control_pos_offset:tuple = (0, 1/8 ,0) , 
+        chest_off_control_size:float = 1/3.5,
+        cog_control_size:float = 1/5,
+        hip_control_size:float = 1/4,
+        mid_control_size:float = 1/3,
+        hybrid_sub_size:float = 1/30,
+        hybrid_sub_offset:tuple = (0,0,1/4)
     ):
         self.part: str = part
         self.side: str = side
         self.parent: str = parent
         self.control_parent: str | None = control_parent
-        self.control_size: float = control_size
+        self.rig_size: float = rig_size
         self.guides = guides
         self.joint_parent = joint_parent
         self.simple_fk = simple_fk
@@ -81,6 +90,16 @@ class Spine:
         self.hip_shape = hip_shape
         self.chest_shape = chest_shape
         self.chest_off_shape = chest_off_shape
+        self.chest_control_size = chest_control_size
+        self.chest_control_pos_offset = chest_control_pos_offset
+        self.chest_off_control_size = chest_off_control_size
+        self.cog_control_size = cog_control_size
+        self.hip_control_size = hip_control_size
+        self.mid_control_size = mid_control_size
+        self.hybrid_sub_size = hybrid_sub_size
+        self.hybrid_sub_offset = hybrid_sub_offset 
+
+
 
 
     # -------------------
@@ -102,6 +121,7 @@ class Spine:
         self.bind_joints = []
         split_joints = []
         self.switch_joints = []
+        drivers = {}
 
 
         ##### Validate Spine Types ########
@@ -141,8 +161,6 @@ class Spine:
         self.chestswitch_joint = create_joint(name=f'switch_{self.chest_des}_{self.side}', transform=self.curve.locator_list[-1].name, parent=jnt_par, connect=False, bind_set= False, ue_set=False,)
         self.switch_joints.append(self.chestswitch_joint)
 
-
-
         ############ def joints ################# 
 
         jnt_par = self.joint_parent
@@ -162,19 +180,31 @@ class Spine:
 
         self.chest_joint = create_joint(name=f'def_{self.chest_des}_{self.side}', transform=self.curve.locator_list[-1].name, parent=jnt_par, connect=False)
         self.bind_joints.append(self.chest_joint)
-
+        constraint(
+            drivers=[self.chestswitch_joint],
+            driven=self.chest_joint,
+            constraint_type="parent",
+            parent=self.guts,
+        )
 
         ############# chest controls #######################
         chest_offset = get_distance_between(self.guides.lower.name, self.guides.upper.name)
         self.chest = create_control(
             name=f'{self.chest_des}_{self.side}',
-            parent=self.hybrid_grp ,
+            parent=self.control_grp ,
             transform=self.guides.lower.name,
-            size=self.control_size/3,
+            size=self.rig_size * self.chest_control_size,
             control_shape=self.chest_shape,
             direction="y",
             color_type=self.sub_control_color,
-            shape_position_offset=(0,chest_offset + (self.control_size / 8),0)  
+            shape_position_offset=tuple(
+                            value * self.rig_size + addition
+                            for value, addition in zip(
+                                self.chest_control_pos_offset,
+                                (0, chest_offset, 0),
+                                strict=True,
+                            )
+            )
         )
         for attrs in ['X', 'Y', 'Z']:
             cmds.setAttr(f'{self.chest.top}.rotate{attrs}', 0)
@@ -183,7 +213,7 @@ class Spine:
             name=f'{self.chest_des}_off_{self.side}',
             parent=self.chest.ctrl,
             transform=self.guides.upper.name,
-            size=self.control_size/3.5,
+            size=self.rig_size * self.chest_off_control_size,
             control_shape=self.chest_off_shape,
             direction="y",
             color_type=self.main_control_color
@@ -198,7 +228,7 @@ class Spine:
                 name=f'{self.cog_des}_{self.side}',
                 parent=self.control_grp,
                 transform=self.guides.lower.name,
-                size=self.control_size/5,
+                size=self.rig_size * self.cog_control_size,
                 control_shape=self.hip_shape,
                 direction="y",
                 color_type=self.main_control_color
@@ -207,14 +237,11 @@ class Spine:
                 name=f'{self.hip_des}_{self.side}',
                 parent=self.cog.ctrl,
                 transform=self.guides.lower.name,
-                size=self.control_size/4,
+                size=self.rig_size * self.hip_control_size,
                 control_shape=self.hip_shape,
                 direction="y",
                 color_type=self.main_control_color
             )
-
-            
-        
 
         ############# spine types ##########################
 
@@ -226,14 +253,26 @@ class Spine:
             
 
         if self.hybrid:
+            hyrbid = build_hybrid(part=self.part, guts=self.guts, side=self.side, control_grp=self.control_grp, guide_curve=self.curve, guide_list=self.curve.locator_list, cv_transforms=[self.hip.ctrl, self.chest_off.ctrl,],  rig_size=self.rig_size, hip=self.hip, hip_des=self.hip_des, hybrid_mid_shape=self.hybrid_mid_shape, main_color=self.main_control_color, mid_control_size = self.mid_control_size, sub_spine_control_size = self.hybrid_sub_size, sub_offset =self.hybrid_sub_offset)
+            constraint(drivers=[self.hip.ctrl, self.chest_off.ctrl], driven=hyrbid.mid.top, constraint_type='parent', maintain_offset=True)
 
-            pass
+            #cmds.parentConstraint(self.hip.ctrl, hyrbid.mid.top, maintainOffset=True)
+            #cmds.parentConstraint(self.chest_off.ctrl, hyrbid.mid.top, maintainOffset=True)
+            #chest_jnt = create_joint(name=f'Hybrid_{self.chest_des}_{self.side}', transform=self.chest_off.ctrl, parent=jnt_par, bind_set= False, ue_set=False,)
+            #constraint(drivers=[self.chest_off.ctrl], driven=self.chestswitch_joint, constraint_type="parent")
+            #constraint(drivers=[self.chestswitch_joint], driven=self.chest_joint, constraint_type="parent", parent=self.guts)
 
-        cmds.parentConstraint(self.hip.ctrl, self.mid_hip, maintainOffset=True)
-        cmds.parentConstraint(self.chest_off.ctrl, self.mid_hip, maintainOffset=True)
+            drivers["Hybrid"] = {
+                "joints": hyrbid.joints,
+                "visibility": [hyrbid.grp],
+            }
 
-        constraint(drivers=[self.chest_off.ctrl], driven=self.chestswitch_joint, constraint_type="parent")
-        constraint(drivers=[self.chestswitch_joint], driven=self.chest_joint, constraint_type="parent", parent=self.guts)
+        self.spine_switch = create_module_switch(
+            driven=self.switch_joints,
+            drivers=drivers,
+            node_attr=self.chest.ctrl,
+            descriptor=f"{self.part}_{self.side}",
+        )
 
         cmds.delete(self.curve.group)
         spine_info = module_info(switch_joints=self.switch_joints, bind_joints=self.bind_joints, chest_ctrl=self.chest, chest_off=self.chest_off)
