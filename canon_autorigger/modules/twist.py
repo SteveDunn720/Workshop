@@ -253,7 +253,7 @@ def create_twist_control(
     end_driver: str,
     primary_axis: str,
     control_parent: str | None = None,
-    control_size: float = 1.0,
+    rig_size: float = 1.0,
     control_shape: str = "round_square",
 ):
     """
@@ -322,7 +322,7 @@ def create_twist_control(
         name=f"{descriptor}_twist",
         transform=midpoint.name,
         parent=control_parent,
-        size=control_size,
+        size=rig_size,
         control_shape=control_shape,
         direction=primary_axis.lower(),
     )
@@ -1492,7 +1492,7 @@ def create_twist(
     # Optional midpoint control
     mid_control: bool = False,
     control_parent: str | None = None,
-    control_size: float = 1.0,
+    rig_size: float = 1.0,
     control_shape:str = "round_square"
 
 ) -> TwistData:
@@ -1530,7 +1530,7 @@ def create_twist(
         control_parent:
             Parent for the optional midpoint control.
 
-        control_size:
+        rig_size:
             Size of the optional midpoint control.
 
     Returns:
@@ -1575,7 +1575,7 @@ def create_twist(
             end_driver=end_driver,
             primary_axis=primary_axis,
             control_parent=control_parent,
-            control_size=control_size,
+            rig_size=rig_size,
             control_shape=control_shape,
         )
 

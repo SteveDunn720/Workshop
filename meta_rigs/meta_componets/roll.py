@@ -25,7 +25,7 @@ class Roll:
         side: str = "l",
         parent: str = "components",
         control_parent: str | None = None,
-        control_size: float = 1.0,
+        rig_size: float = 1.0,
         joints: list = ['foot_l', 'ball_l'],
 
     ):
@@ -33,7 +33,7 @@ class Roll:
         self.side: str = side
         self.parent: str = parent
         self.control_parent: str | None = control_parent
-        self.control_size: float = control_size
+        self.rig_size: float = rig_size
         self.joints: list = joints
         self.main_control_color = 'SubLeft' if self.side == 'l' else 'SubRight' 
         self.guides = guides
@@ -52,7 +52,7 @@ class Roll:
                 name=f'foot_roll_{self.side}',
                 parent=roll_group,
                 transform=self.guides.true_foot.name,
-                size=self.control_size/8,
+                size=self.rig_size/8,
                 control_shape="sphere",
                 direction="x",
                 color_type=self.main_control_color,
@@ -66,7 +66,7 @@ class Roll:
                 name=f'foot_twist_{self.side}',
                 parent=roll_group,
                 transform=self.guides.true_ball.name,
-                size=self.control_size/8,
+                size=self.rig_size/8,
                 control_shape="circle",
                 direction="y",
                 color_type=self.main_control_color,
@@ -249,7 +249,7 @@ class Roll:
                 name=f'bank_in_ref_{self.side}',
                 parent=inbank_main,
                 transform=inbank_main,
-                size=self.control_size/32,
+                size=self.rig_size/32,
                 control_shape="locator",
                 direction="y",
                 color_type=self.main_control_color,
@@ -260,7 +260,7 @@ class Roll:
                 name=f'bank_out_ref_{self.side}',
                 parent=outbank_main,
                 transform=outbank_main,
-                size=self.control_size/32,
+                size=self.rig_size/32,
                 control_shape="locator",
                 direction="y",
                 color_type=self.main_control_color,

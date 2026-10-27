@@ -110,7 +110,7 @@ class MatrixSpline:
             default=2,
         ),
         ModuleSetting(
-            name="control_size",
+            name="rig_size",
             setting_type="float",
             default=1.0,
         ),
@@ -150,7 +150,7 @@ class MatrixSpline:
         side: str = "M",
         parent: str = "rig",
         control_parent: str | None = None,
-        control_size: float = 1.0,
+        rig_size: float = 1.0,
         guides: list[GuideInfo] | None = None,
         joint_parent: str = "skel",
         control_space: list[str] | None = None,
@@ -165,7 +165,7 @@ class MatrixSpline:
         self.side = side
         self.parent = parent
         self.control_parent = control_parent
-        self.control_size = control_size
+        self.rig_size = rig_size
         self.guides = guides or []
         self.joint_parent = joint_parent
         self.control_space = control_space or []
@@ -274,7 +274,7 @@ class MatrixSpline:
                 name=name,
                 parent=self.control_grp,
                 transform=matrix,
-                size=self.control_size,
+                size=self.rig_size,
                 control_shape=self.control_shape,
                 direction="y",
                 color_type=self.control_color,

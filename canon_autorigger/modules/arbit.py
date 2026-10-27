@@ -33,7 +33,7 @@ class Arbit:
 
     SETTINGS = (
         ModuleSetting(
-            name="control_size",
+            name="rig_size",
             setting_type="float",
             default=1.0,
         ),
@@ -69,7 +69,7 @@ class Arbit:
         side: str = "M",
         parent: str = "rig",
         control_parent: str | None = None,
-        control_size: float = 1.0,
+        rig_size: float = 1.0,
         guides: list = [],
         joint_parent:str = 'skel',
         control_space:list = [],
@@ -81,7 +81,7 @@ class Arbit:
         self.side: str = side
         self.parent: str = parent
         self.control_parent: str | None = control_parent
-        self.control_size: float = control_size
+        self.rig_size: float = rig_size
         self.guides: list = guides
         self.joint_parent = joint_parent
         self.control_space = control_space
@@ -137,7 +137,7 @@ class Arbit:
             name=self.guides[0].descriptor,
             parent=self.control_grp,
             transform=self.guides[0].name,
-            size=self.control_size,
+            size=self.rig_size,
             control_shape=self.control_shape,
             direction="y",
             color_type=self.control_color

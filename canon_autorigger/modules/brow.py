@@ -27,7 +27,7 @@ class Brow:
         side: str = "M",
         parent: str = "components",
         control_parent: str | None = None,
-        control_size: float = 1.0,
+        rig_size: float = 1.0,
         guides: list = [],
         joint_parent:str = 'skel',
         control_space:list = [],
@@ -40,7 +40,7 @@ class Brow:
         self.side: str = side
         self.parent: str = parent
         self.control_parent: str | None = control_parent
-        self.control_size: float = control_size
+        self.rig_size: float = rig_size
         self.guides: list = guides
         self.joint_parent = joint_parent
         self.control_space = control_space
@@ -90,17 +90,17 @@ class Brow:
             name=g.descriptor,
             parent=self.control_grp,
             transform=g.name,
-            size=self.control_size/80,
+            size=self.rig_size/80,
             control_shape='round_square',
             direction="y",
             color_type=self.main_color,
             sdk_offset=False,
             dimensions=(arc_length/2, 1, 1),
             shape_rotation_offset=(90,0,0),
-            shape_position_offset=(-self.control_size/40,self.control_size/50, self.control_size/30)
+            shape_position_offset=(-self.rig_size/40,self.rig_size/50, self.rig_size/30)
         )
 
-        pos_offset = (self.control_size/30) + pos[2] #type:ignore
+        pos_offset = (self.rig_size/30) + pos[2] #type:ignore
 
         module_space(control=master_ctrl, space_list=self.control_space)
 
@@ -123,13 +123,13 @@ class Brow:
                 name=g.descriptor,
                 parent=master_ctrl.ctrl,
                 transform=g.name,
-                size=self.control_size/120,
+                size=self.rig_size/120,
                 control_shape='round_square',
                 direction="y",
                 color_type=self.main_color,
                 sdk_offset=False,
                 shape_rotation_offset=(90,0,0),
-                shape_position_offset=(-self.control_size/40,self.control_size/50,0)
+                shape_position_offset=(-self.rig_size/40,self.rig_size/50,0)
             )
             macro_controls.append(ctrl)
 
@@ -162,13 +162,13 @@ class Brow:
                 name=g.descriptor,
                 parent=par.ctrl,
                 transform=g.name,
-                size=self.control_size/120,
+                size=self.rig_size/120,
                 control_shape='round_square',
                 direction="y",
                 color_type=self.sub_color,
                 sdk_offset=False,
                 shape_rotation_offset=(90,0,0),
-                shape_position_offset=(0,0,self.control_size/60)
+                shape_position_offset=(0,0,self.rig_size/60)
                 
             )
             controls.append(ctrl)
@@ -221,7 +221,7 @@ class Brow:
                 name=g.descriptor,
                 parent=sub_grp,
                 transform=g.name,
-                size=self.control_size/180,
+                size=self.rig_size/180,
                 control_shape='circle',
                 direction="y",
                 color_type=self.main_color

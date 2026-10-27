@@ -19,7 +19,7 @@ from Workshop.snapshots.camera_core import delete_snapshot_camera, place_snapsho
 from pathlib import Path
 
 WORKSHOP_ROOT = Path(__file__).resolve().parents[1]  # Adjust if needed
-IMAGE_PATH = WORKSHOP_ROOT / "control" / "AA_control_sizer.png"
+IMAGE_PATH = WORKSHOP_ROOT / "control" / "AA_rig_sizer.png"
 ICON_PATH = WORKSHOP_ROOT / "control" / "shape_icons"
 
 

@@ -15,7 +15,7 @@ class hybrid_info:
 
 
 
-def build_hybrid(part:str, guts:str, side:str, control_grp:str, guide_curve, guide_list:list, cv_transforms:list,  rig_size:float, hip, hip_des, hybrid_mid_shape:str, main_color:str, mid_control_size:float=1/3, sub_spine_control_size = 1/30, sub_offset =(0,0,1/4)):
+def build_hybrid(part:str, guts:str, side:str, control_grp:str, guide_curve, guide_list:list, cv_transforms:list,  rig_size:float, hip, hip_des, hybrid_mid_shape:str, main_color:str, mid_rig_size:float=1/3, sub_spine_rig_size = 1/30, sub_offset =(0,0,1/4)):
     hybrid_grp = create_transform(name=f'{part}_{side}_hybrid_grp', parent=control_grp)
 
     mid_guide = curve_midpoint(curve=guide_curve.curve)
@@ -25,7 +25,7 @@ def build_hybrid(part:str, guts:str, side:str, control_grp:str, guide_curve, gui
         name=f'{part}_mid_{side}',
         parent=mid_hip,
         transform=mid_guide.name,
-        size=rig_size * mid_control_size,
+        size=rig_size * mid_rig_size,
         control_shape=hybrid_mid_shape,
         direction="y",
         color_type=main_color
@@ -43,7 +43,7 @@ def build_hybrid(part:str, guts:str, side:str, control_grp:str, guide_curve, gui
                 name=g.descriptor,
                 parent=hybrid_grp,
                 transform=g.name,
-                size=rig_size * sub_spine_control_size,
+                size=rig_size * sub_spine_rig_size,
                 control_shape="circle",
                 direction="z",
                 color_type=main_color,

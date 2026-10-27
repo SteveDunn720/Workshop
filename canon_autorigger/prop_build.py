@@ -15,7 +15,7 @@ from .build_management.config_scene import configure_canon_scene
 
 @dataclass
 class PropRigConfig:
-    control_size: float = 1.0
+    rig_size: float = 1.0
     build_modules: bool = True
     skin: bool = False
     cleanup: bool = False
@@ -54,7 +54,7 @@ def build(
         results = auto_build_prop(
             root="root_M_guide",
             parent=scene.rig,
-            control_size=scene.scene_size,
+            rig_size=scene.scene_size,
         )
 
 

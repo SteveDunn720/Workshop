@@ -24,7 +24,7 @@ class Tongue:
         side: str = "M",
         parent: str = "components",
         control_parent: str | None = None,
-        control_size: float = 1.0,
+        rig_size: float = 1.0,
         guides: list = [],
         joint_parent:str = 'skel',
         control_space:list = [],
@@ -36,7 +36,7 @@ class Tongue:
         self.side: str = side
         self.parent: str = parent
         self.control_parent: str | None = control_parent
-        self.control_size: float = control_size
+        self.rig_size: float = rig_size
         self.guides: list = guides
         self.joint_parent = joint_parent
         self.control_space = control_space
@@ -103,7 +103,7 @@ class Tongue:
                 name=g.descriptor,
                 parent=ctrl_par,
                 transform=g.name,
-                size=self.control_size/100,
+                size=self.rig_size/100,
                 control_shape='circle',
                 direction="y",
                 color_type=self.main_M_color
@@ -136,7 +136,7 @@ class Tongue:
             name=f'{self.part}_{self.side}',
             parent=self.control_grp,
             transform=self.guides[0].name,
-            size=self.control_size,
+            size=self.rig_size,
             control_shape=self.control_shape,
             direction="y",
             color_type=self.control_color

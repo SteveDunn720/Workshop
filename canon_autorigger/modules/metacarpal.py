@@ -24,7 +24,7 @@ class Metacarpal:
         side: str = "M",
         parent: str = "components",
         control_parent: str | None = None,
-        control_size: float = 1.0,
+        rig_size: float = 1.0,
         guides: list = [],
         joint_parent:str = 'skel',
         control_space:list = [],
@@ -35,7 +35,7 @@ class Metacarpal:
         self.side: str = side
         self.parent: str = parent
         self.control_parent: str | None = control_parent
-        self.control_size: float = control_size
+        self.rig_size: float = rig_size
         self.guides: list = guides
         self.joint_parent = joint_parent
         self.control_space = control_space
@@ -63,11 +63,11 @@ class Metacarpal:
                             name=f'{self.part}_expresion_{self.side}',
                             parent=self.control_grp,
                             transform=self.guides[0].name,
-                            size=self.control_size/32,
+                            size=self.rig_size/32,
                             control_shape="four_star",
                             direction="y",
                             color_type=self.sub_control_color,
-                            shape_position_offset=(-(self.control_size/16), 0, 0)
+                            shape_position_offset=(-(self.rig_size/16), 0, 0)
                         )
 
             weights = [i / (len(self.guides) - 1) for i in range(len(self.guides))]
@@ -81,7 +81,7 @@ class Metacarpal:
                 name=guide.descriptor,
                 parent=self.control_grp,
                 transform=guide.name,
-                size=self.control_size/32,
+                size=self.rig_size/32,
                 control_shape="circle",
                 direction="y",
                 color_type=self.main_control_color,

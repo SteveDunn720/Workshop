@@ -24,7 +24,7 @@ class Elbow_Cor:
         side: str = "M",
         parent: str = "rig",
         control_parent: str | None = None,
-        control_size: float = 1.0,
+        rig_size: float = 1.0,
         guides: list = [],
         joint_parent:str = 'skel',
 
@@ -34,7 +34,7 @@ class Elbow_Cor:
         self.side: str = side
         self.parent: str = parent
         self.control_parent: str | None = control_parent
-        self.control_size: float = control_size
+        self.rig_size: float = rig_size
         self.guides: list = guides
         self.joint_parent = joint_parent
         self.driver = driver
@@ -51,13 +51,13 @@ class Elbow_Cor:
         mod = 1 #if self.side == 'R' else 1
 
 
-        lowerbicep = Pull(part = 'lowerbicep', control_size=self.control_size, side=self.side, parent=self.main_grp, joint_parent=self.joint_parent, guides=[self.guides[1]], driver =  self.driver, range=(0,120 * mod), pull_amount=self.control_size/15,)
+        lowerbicep = Pull(part = 'lowerbicep', rig_size=self.rig_size, side=self.side, parent=self.main_grp, joint_parent=self.joint_parent, guides=[self.guides[1]], driver =  self.driver, range=(0,120 * mod), pull_amount=self.rig_size/15,)
         lowerbicepinfo = lowerbicep.build()
-        lowertricep = Pull(part = 'lowertricep', control_size=self.control_size, side=self.side, parent=self.main_grp, joint_parent=self.joint_parent, guides=[self.guides[2]], driver =  self.driver, range=(0,120 * mod), pull_amount=self.control_size/15)
+        lowertricep = Pull(part = 'lowertricep', rig_size=self.rig_size, side=self.side, parent=self.main_grp, joint_parent=self.joint_parent, guides=[self.guides[2]], driver =  self.driver, range=(0,120 * mod), pull_amount=self.rig_size/15)
         lowertricepinfo = lowertricep.build()
-        elbowin = Blend(part = 'elbowin', side=self.side, parent=self.main_grp, joint_parent= self.joint_parent, guides=[self.guides[0]], driver = self.driver, driver_rot_range=(0, 80* mod), mult_range=(.5,.5), driver_axis='X', pop_amount=(self.control_size/10))
+        elbowin = Blend(part = 'elbowin', side=self.side, parent=self.main_grp, joint_parent= self.joint_parent, guides=[self.guides[0]], driver = self.driver, driver_rot_range=(0, 80* mod), mult_range=(.5,.5), driver_axis='X', pop_amount=(self.rig_size/10))
         elbowininfo = elbowin.build()
-        pronator = Pull(part = 'pronator', control_size=self.control_size, side=self.side, parent=self.main_grp, joint_parent=self.driver, guides=[self.guides[3]], driver =  self.driver, range=(0,120 * mod), pull_amount=self.control_size/10,)
+        pronator = Pull(part = 'pronator', rig_size=self.rig_size, side=self.side, parent=self.main_grp, joint_parent=self.driver, guides=[self.guides[3]], driver =  self.driver, range=(0,120 * mod), pull_amount=self.rig_size/10,)
         pronatorinfo = pronator.build()
 
 

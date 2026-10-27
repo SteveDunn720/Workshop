@@ -23,7 +23,7 @@ class Nose:
         side: str = "M",
         parent: str = "components",
         control_parent: str | None = None,
-        control_size: float = 1.0,
+        rig_size: float = 1.0,
         guides: dict = {},
         joint_parent:str = 'skel',
         control_space:list = [],
@@ -35,7 +35,7 @@ class Nose:
         self.side: str = side
         self.parent: str = parent
         self.control_parent: str | None = control_parent
-        self.control_size: float = control_size
+        self.rig_size: float = rig_size
         self.guides: dict = guides
         self.joint_parent = joint_parent
         self.control_space = control_space
@@ -69,7 +69,7 @@ class Nose:
             name=self.guides['Root'].descriptor,
             parent=self.control_grp,
             transform=self.guides['Root'].name,
-            size=self.control_size/40,
+            size=self.rig_size/40,
             control_shape='round_square',
             direction="y",
             sdk_offset=True,
@@ -93,7 +93,7 @@ class Nose:
             name=self.guides['Bridge'].descriptor,
             parent=self.control_grp,
             transform=self.guides['Bridge'].name,
-            size=self.control_size/50,
+            size=self.rig_size/50,
             control_shape='round_square',
             direction="y",
             color_type=self.main_M_color
@@ -124,7 +124,7 @@ class Nose:
                 name=guide.descriptor,
                 parent=self.nose_ctrl.ctrl,
                 transform=guide.name,
-                size=self.control_size/70 if guide == self.guides['Tip'] else self.control_size/150,
+                size=self.rig_size/70 if guide == self.guides['Tip'] else self.rig_size/150,
                 control_shape=shape,
                 direction="y",
                 color_type=color,

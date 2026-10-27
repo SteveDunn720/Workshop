@@ -29,7 +29,7 @@ class Face:
         side: str = "M",
         parent: str = "components",
         control_parent: str | None = None,
-        control_size: float = 1.0,
+        rig_size: float = 1.0,
         guides: list = [],
         joint_parent:str = 'skel',
         control_space:list = [],
@@ -39,7 +39,7 @@ class Face:
         self.side: str = side
         self.parent: str = parent
         self.control_parent: str | None = control_parent
-        self.control_size: float = control_size
+        self.rig_size: float = rig_size
         self.guides: list = guides
         self.joint_parent = joint_parent
         self.control_space = control_space
@@ -63,11 +63,11 @@ class Face:
             name='muppet_M',
             parent=self.control_grp,
             transform=self.guides[-1].name,
-            size=self.control_size/30,
+            size=self.rig_size/30,
             control_shape="triangle",
             direction="y",
             shape_rotation_offset=(90,0,0),
-            shape_position_offset=(0,self.control_size/2.5,0), 
+            shape_position_offset=(0,self.rig_size/2.5,0), 
             color_type=self.sub_control_color
         )
         
@@ -77,11 +77,11 @@ class Face:
             name=f'def_{self.guides[2].descriptor}',
             parent=self.mid_face_ctrl.ctrl,
             transform=self.guides[2].name,
-            size=self.control_size/40,
+            size=self.rig_size/40,
             control_shape="triangle",
             direction="y",
             shape_rotation_offset=(90,0,0),
-            shape_position_offset=(0,self.control_size/2,0), 
+            shape_position_offset=(0,self.rig_size/2,0), 
             color_type=self.sub_control_color,
             sdk_offset=True
         )
@@ -105,11 +105,11 @@ class Face:
             name=self.guides[0].descriptor,
             parent=self.mid_face_ctrl.ctrl,
             transform=self.guides[0].name,
-            size=self.control_size/30,
+            size=self.rig_size/30,
             control_shape="round_square",
             direction="y",
             shape_rotation_offset=(90,0,0),
-            shape_position_offset=(self.control_size/4,0,0), 
+            shape_position_offset=(self.rig_size/4,0,0), 
             color_type=self.sub_control_color
         )
 
@@ -119,11 +119,11 @@ class Face:
             name=self.guides[1].descriptor,
             parent=self.control_grp,
             transform=self.guides[1].name,
-            size=self.control_size/30,
+            size=self.rig_size/30,
             control_shape="round_square",
             direction="y",
             shape_rotation_offset=(90,0,0),
-            shape_position_offset=(self.control_size/4,0,0), 
+            shape_position_offset=(self.rig_size/4,0,0), 
             color_type=self.sub_control_color
         )
         
@@ -141,11 +141,11 @@ class Face:
             name=self.guides[3].descriptor,
             parent=self.upper_face_ctrl.ctrl,
             transform=self.guides[3].name,
-            size=self.control_size/70,
+            size=self.rig_size/70,
             control_shape="round_square",
             direction="y",
             shape_rotation_offset=(90,0,0),
-            shape_position_offset=(0,self.control_size/10, self.control_size/6), 
+            shape_position_offset=(0,self.rig_size/10, self.rig_size/6), 
             color_type=self.sub_control_color,
             dimensions=(8,.1,1)
         )

@@ -51,7 +51,7 @@ class Biped_Limb:
         side: str = "L",
         parent: str = "rig",
         joint_parent:str = None,
-        control_size: float = 1.0,
+        rig_size: float = 1.0,
         fk_control_space:list = [],
         ik_root_control_space:list = [],
         ik_pv_control_space:list = [],
@@ -73,7 +73,7 @@ class Biped_Limb:
         self.part: str = part
         self.side: str = side
         self.parent: str = parent
-        self.control_size: float = control_size
+        self.rig_size: float = rig_size
         self.guides: list = guides
         self.ik_end_control = ik_end_control
         self.fk_control_space = fk_control_space
@@ -137,7 +137,7 @@ class Biped_Limb:
                 name=f'FK_{jnt.descriptor}',
                 parent=ctrl_par,
                 transform=jnt.name,
-                size=self.control_size/6,
+                size=self.rig_size/6,
                 control_shape=self.fk_ctrl_shapes,
                 direction="y",
                 color_type=self.main_control_color,
@@ -179,7 +179,7 @@ class Biped_Limb:
                 name=f'IK_{self.guides[0].descriptor}',
                 parent=self.ik_control_grp,
                 transform=self.ik_handle.start_joint,
-                size=self.control_size/8,
+                size=self.rig_size/8,
                 control_shape=self.ik_ctrl_shapes,
                 direction="y",
                 color_type=self.main_control_color
@@ -192,7 +192,7 @@ class Biped_Limb:
                 name=f'{self.part}_IK_PV_{self.side}',
                 parent=self.ik_control_grp,
                 transform=self.ik_handle.pole_vector,
-                size=self.control_size/10,
+                size=self.rig_size/10,
                 control_shape=self.pv_ctrl_shapes,
                 direction="y",
                 color_type=self.main_control_color,
@@ -218,7 +218,7 @@ class Biped_Limb:
                 name=f'IK_{self.guides[2].descriptor}',
                 parent=self.ik_control_grp,
                 transform=self.guides[2].name,
-                size=self.control_size/8,
+                size=self.rig_size/8,
                 control_shape=self.ik_ctrl_shapes,
                 direction="y",
                 color_type=self.main_control_color
@@ -234,7 +234,7 @@ class Biped_Limb:
                 name=f'IK_{self.part}_end_{self.side}',
                 parent=self.ik_control_grp,
                 transform=self.guides[2].name,
-                size=self.control_size/8,
+                size=self.rig_size/8,
                 control_shape=self.ik_ctrl_shapes,
                 direction="y",
                 color_type=self.main_control_color
@@ -315,7 +315,7 @@ class Biped_Limb:
 
                 mid_control=True,
                 control_parent=self.bend_control_grp,
-                control_size=self.control_size/10,
+                rig_size=self.rig_size/10,
                 control_shape=self.bendy_control_shape,
 
 

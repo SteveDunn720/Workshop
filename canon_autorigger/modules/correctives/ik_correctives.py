@@ -30,7 +30,7 @@ class Ik_correctives:
         side: str = "M",
         parent: str = "components",
         control_parent: str | None = None,
-        control_size: float = 1.0,
+        rig_size: float = 1.0,
         guides: list[GuideInfo] | None = None,
         joint_parent: str = "skel",
         end_ik_space: list | None = None,
@@ -44,7 +44,7 @@ class Ik_correctives:
         self.side = side
         self.parent = parent
         self.control_parent = control_parent
-        self.control_size = control_size
+        self.rig_size = rig_size
 
         self.guides = guides or []
         self.joint_parent = joint_parent
@@ -267,7 +267,7 @@ class Ik_correctives:
 
                 mid_control=self.mid_control,
                 control_parent=control_parent,
-                control_size=self.control_size,
+                rig_size=self.rig_size,
                 control_shape=self.control_shape,
             )
 

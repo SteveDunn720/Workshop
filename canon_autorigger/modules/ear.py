@@ -24,7 +24,7 @@ class Ear:
         side: str = "M",
         parent: str = "components",
         control_parent: str | None = None,
-        control_size: float = 1.0,
+        rig_size: float = 1.0,
         guides: dict = {},
         joint_parent:str = 'skel',
         shape:str = 'sphere',
@@ -36,7 +36,7 @@ class Ear:
         self.side: str = side
         self.parent: str = parent
         self.control_parent: str | None = control_parent
-        self.control_size: float = control_size
+        self.rig_size: float = rig_size
         self.guides= guides
         self.joint_parent = joint_parent
         self.main_shape = main_shape
@@ -68,12 +68,12 @@ class Ear:
             name=self.guides[f'{self.side}_root'].descriptor,
             parent=self.control_grp,
             transform=self.guides[f'{self.side}_root'].name,
-            size=self.control_size/100,
+            size=self.rig_size/100,
             control_shape=self.main_shape,
             direction="y",
             color_type=self.main_color,
             sdk_offset=True,
-            shape_position_offset=((self.control_size * .03), self.control_size*.03, 0),
+            shape_position_offset=((self.rig_size * .03), self.rig_size*.03, 0),
             shape_rotation_offset=(90,0,0)
         )
 
@@ -85,7 +85,7 @@ class Ear:
                 name=self.guides[f'{self.side}_{mod}'].descriptor,
                 parent=self.main_ctrl.ctrl,
                 transform=self.guides[f'{self.side}_{mod}'].name,
-                size=self.control_size/150,
+                size=self.rig_size/150,
                 control_shape=self.shape,
                 direction="y",
                 color_type=self.main_color,

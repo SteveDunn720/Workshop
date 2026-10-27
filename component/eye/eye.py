@@ -18,7 +18,7 @@ class Eye:
         side: str = "",
         parent: str = "face_grp",
         control_parent: str = "neck_M0_head_ctl",
-        control_size: float = 1.0,
+        rig_size: float = 1.0,
         parent_jnt: str = "face_jnt",
         look_parent: str = "Look_M_ctrl",
     ):
@@ -26,7 +26,7 @@ class Eye:
         self.side: str = side
         self.parent: str = parent
         self.control_parent: str = control_parent
-        self.control_size: float = control_size
+        self.rig_size: float = rig_size
         self.parent_jnt: str = parent_jnt
         self.look_parent: str = look_parent
         self.guides: dict[str, str] = {
@@ -61,7 +61,7 @@ class Eye:
             name=self.guides["root_name"],
             parent=self.control_grp,
             transform=self.guides["center_piv"],
-            size=self.control_size,
+            size=self.rig_size,
             control_shape="round_square",
             direction="z",
         )
@@ -81,7 +81,7 @@ class Eye:
         self.eyelid = Eyelid(
             side=self.side,
             guides=self.guides,
-            control_size=self.control_size,
+            rig_size=self.rig_size,
             main_ctrl=self.main_ctrl.transform,
             parent=self.main_grp,
             joint_parent=self.main_jnt,
@@ -94,7 +94,7 @@ class Eye:
         self.socket = Socket(
             side=self.side,
             guides=self.guides,
-            control_size=self.control_size,
+            rig_size=self.rig_size,
             main_ctrl=self.main_ctrl.transform,
             parent=self.main_grp,
             joint_parent=self.main_jnt,
@@ -107,7 +107,7 @@ class Eye:
         self.eyeball = Eyeball(
             side=self.side,
             guides=self.guides,
-            control_size=self.control_size,
+            rig_size=self.rig_size,
             main_ctrl=self.main_ctrl.transform,
             parent=self.main_grp,
             joint_parent=self.main_jnt,

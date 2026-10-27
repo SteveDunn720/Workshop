@@ -25,7 +25,7 @@ class PropBuildResults:
 def auto_build_prop(
     root: str = "root_M_guide",
     parent: str = "rig",
-    control_size: float = 1.0,
+    rig_size: float = 1.0,
     dry_run: bool = False,
 ) -> PropBuildResults:
     """
@@ -70,7 +70,7 @@ def auto_build_prop(
             instance=instance,
             instances=instances,
             parent=parent,
-            control_size=control_size,
+            rig_size=rig_size,
         )
 
         results.modules[key] = result

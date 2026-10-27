@@ -26,7 +26,7 @@ class Arch:
         side: str = "M",
         parent: str = "components",
         control_parent: str | None = None,
-        control_size: float = 1.0,
+        rig_size: float = 1.0,
         guides: list = [],
         joint_parent:str = 'skel',
         control_space:list = [],
@@ -36,7 +36,7 @@ class Arch:
         self.side: str = side
         self.parent: str = parent
         self.control_parent: str | None = control_parent
-        self.control_size: float = control_size
+        self.rig_size: float = rig_size
         self.guides: list = guides
         self.joint_parent = joint_parent
         self.control_space = control_space
@@ -99,12 +99,12 @@ class Arch:
             name=main_guide.descriptor,
             parent=self.control_grp,
             transform=main_guide.name,
-            size=self.control_size/140,
+            size=self.rig_size/140,
             control_shape='round_square',
             direction="y",
             color_type=self.main_M_color,
             shape_rotation_offset=(90,0,0),
-            shape_position_offset=(self.control_size/6, 0,0)
+            shape_position_offset=(self.rig_size/6, 0,0)
         )
 
         module_space(control=self.main_ctrl, space_list=self.control_space)
@@ -133,7 +133,7 @@ class Arch:
                 name=g.descriptor,
                 parent=self.main_ctrl.ctrl,
                 transform=g.name,
-                size=self.control_size/80,
+                size=self.rig_size/80,
                 control_shape='sphere',
                 direction="y",
                 color_type=color
@@ -176,7 +176,7 @@ class Arch:
             name=f'{self.part}_{self.side}',
             parent=self.control_grp,
             transform=self.guides[0].name,
-            size=self.control_size,
+            size=self.rig_size,
             control_shape=self.control_shape,
             direction="y",
             color_type=self.control_color

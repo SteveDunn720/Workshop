@@ -24,7 +24,7 @@ class Chest_Cor:
         side: str = "M",
         parent: str = "rig",
         control_parent: str | None = None,
-        control_size: float = 1.0,
+        rig_size: float = 1.0,
         guides: list = [],
         joint_parent:str = 'skel',
 
@@ -34,7 +34,7 @@ class Chest_Cor:
         self.side: str = side
         self.parent: str = parent
         self.control_parent: str | None = control_parent
-        self.control_size: float = control_size
+        self.rig_size: float = rig_size
         self.guides: list = guides
         self.joint_parent = joint_parent
         self.driver = driver
@@ -51,11 +51,11 @@ class Chest_Cor:
 
         mod = 1 #if self.side == 'R' else 1 ///// spineinfo.bind_joints[-1] /// arm_info.switch_joints[0] //// spineinfo.chest_off.ctrl ///pec_correctives, trap_correctives, necktrap_correctives
 
-        pec = Ik_correctives(part="pec", control_size=self.control_size, joint_parent=self.joint_parent, parent=self.main_grp, side=self.side, guides=self.guides[0], end_ik_space=[self.driver], root_ik_space=[self.parent_space], divisions=1) #type:ignore
+        pec = Ik_correctives(part="pec", rig_size=self.rig_size, joint_parent=self.joint_parent, parent=self.main_grp, side=self.side, guides=self.guides[0], end_ik_space=[self.driver], root_ik_space=[self.parent_space], divisions=1) #type:ignore
         pec.build()
-        trap = Ik_correctives(part="trap", control_size=self.control_size, joint_parent=self.joint_parent, parent=self.main_grp, side=self.side, guides=self.guides[1], end_ik_space=[self.driver], root_ik_space=[self.parent_space], divisions=1) #type:ignore
+        trap = Ik_correctives(part="trap", rig_size=self.rig_size, joint_parent=self.joint_parent, parent=self.main_grp, side=self.side, guides=self.guides[1], end_ik_space=[self.driver], root_ik_space=[self.parent_space], divisions=1) #type:ignore
         trap.build()
-        necktrap = Ik_correctives(part="necktrap", control_size=self.control_size, joint_parent=self.joint_parent, parent=self.main_grp, side=self.side, guides=self.guides[2], end_ik_space=[self.driver], root_ik_space=[self.parent_space], divisions=1) #type:ignore
+        necktrap = Ik_correctives(part="necktrap", rig_size=self.rig_size, joint_parent=self.joint_parent, parent=self.main_grp, side=self.side, guides=self.guides[2], end_ik_space=[self.driver], root_ik_space=[self.parent_space], divisions=1) #type:ignore
         necktrap.build()
 
 

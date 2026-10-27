@@ -22,48 +22,48 @@ def build(meta_type:str='metahuman'):
 
     #middle rig parts
 
-    root = meta_componets.Root(control_size=rig_size, parent=body_rig_root)
+    root = meta_componets.Root(rig_size=rig_size, parent=body_rig_root)
     root_info = root.root_build()
-    hip = meta_componets.Hip(control_size=rig_size, parent=body_rig_root, control_space=[root_info.offset_control.ctrl])
+    hip = meta_componets.Hip(rig_size=rig_size, parent=body_rig_root, control_space=[root_info.offset_control.ctrl])
     hipinfo = hip.hip_build()
-    spine = meta_componets.Spine(control_size=rig_size, parent=body_rig_root, fk_control_space=[hipinfo.cog_control.ctrl])
+    spine = meta_componets.Spine(rig_size=rig_size, parent=body_rig_root, fk_control_space=[hipinfo.cog_control.ctrl])
     spineinfo = spine.spine_build()
 
-    neck = meta_componets.Neck(part='neck', control_size=rig_size * 2, parent=body_rig_root, side='m', joints= ['neck_01', 'neck_02', 'head',], fk_control_space=[spineinfo.fk_spine_controls_list[-1].ctrl], mod=2 )
+    neck = meta_componets.Neck(part='neck', rig_size=rig_size * 2, parent=body_rig_root, side='m', joints= ['neck_01', 'neck_02', 'head',], fk_control_space=[spineinfo.fk_spine_controls_list[-1].ctrl], mod=2 )
     neck_info = neck.neck_build()
 
     #side parts
 
     for side in ['l', 'r']:
         sidemod = 1 if side == 'l' else -1
-        clav = meta_componets.Clavicle(part='clav', control_size=rig_size, parent=body_rig_root, side=side, joints= [f'clavicle_{side}'], control_space=[spineinfo.fk_spine_controls_list[-1].ctrl], )
+        clav = meta_componets.Clavicle(part='clav', rig_size=rig_size, parent=body_rig_root, side=side, joints= [f'clavicle_{side}'], control_space=[spineinfo.fk_spine_controls_list[-1].ctrl], )
         clavinfo = clav.clavicle_build()
 
-        arm = meta_componets.Limb(part='arm', control_size=rig_size, parent=body_rig_root, side=side, joints= [f'upperarm_{side}', f'lowerarm_{side}', f'hand_{side}'],ik_end_control = False, fk_control_space=[clavinfo.clav_control.ctrl], ik_control_space=[clavinfo.clav_control.ctrl, root_info.offset_control.ctrl, ])
+        arm = meta_componets.Limb(part='arm', rig_size=rig_size, parent=body_rig_root, side=side, joints= [f'upperarm_{side}', f'lowerarm_{side}', f'hand_{side}'],ik_end_control = False, fk_control_space=[clavinfo.clav_control.ctrl], ik_control_space=[clavinfo.clav_control.ctrl, root_info.offset_control.ctrl, ])
         arm_info = arm.limb_build()
 
-        leg = meta_componets.Limb(part='leg', control_size=rig_size, parent=body_rig_root, side=side, joints= [f'thigh_{side}', f'calf_{side}', f'foot_{side}'],ik_end_control = False, fk_control_space=[hipinfo.hip_control.ctrl], ik_control_space=[hipinfo.hip_control.ctrl, root_info.offset_control.ctrl, ], ikfk_blend=0, ik_length=True)
+        leg = meta_componets.Limb(part='leg', rig_size=rig_size, parent=body_rig_root, side=side, joints= [f'thigh_{side}', f'calf_{side}', f'foot_{side}'],ik_end_control = False, fk_control_space=[hipinfo.hip_control.ctrl], ik_control_space=[hipinfo.hip_control.ctrl, root_info.offset_control.ctrl, ], ikfk_blend=0, ik_length=True)
         leg_info = leg.limb_build()
 
         footguide = generate_foot_guides(parent=rig_root.guides, side=side)
-        foot = meta_componets.Foot(part='feet', control_size=rig_size, parent=body_rig_root, side=side, joints= [f'foot_{side}', f'ball_{side}'], fk_control_space=[leg_info.fk_controls[-1].ctrl], ik_control_space=[root_info.offset_control.ctrl, hipinfo.hip_control.ctrl, ], ik_hook=leg_info.end_ik_hook, feet_guides=footguide, fkik_switch_attr=leg_info.fk_ik_switch, leg_info=leg_info)
+        foot = meta_componets.Foot(part='feet', rig_size=rig_size, parent=body_rig_root, side=side, joints= [f'foot_{side}', f'ball_{side}'], fk_control_space=[leg_info.fk_controls[-1].ctrl], ik_control_space=[root_info.offset_control.ctrl, hipinfo.hip_control.ctrl, ], ik_hook=leg_info.end_ik_hook, feet_guides=footguide, fkik_switch_attr=leg_info.fk_ik_switch, leg_info=leg_info)
         foot_info = foot.foot_build()
 
 
         #hand
 
-        hand = meta_componets.Hand(part='palm', control_size=rig_size, parent=body_rig_root, side=side, joints= [f'hand_{side}',], fk_control_space=[arm_info.fk_controls[-1].ctrl], ik_control_space=[root_info.offset_control.ctrl, hipinfo.hip_control.ctrl, ], ik_hook=arm_info.end_ik_hook, fkik_switch_attr=arm_info.fk_ik_switch)
+        hand = meta_componets.Hand(part='palm', rig_size=rig_size, parent=body_rig_root, side=side, joints= [f'hand_{side}',], fk_control_space=[arm_info.fk_controls[-1].ctrl], ik_control_space=[root_info.offset_control.ctrl, hipinfo.hip_control.ctrl, ], ik_hook=arm_info.end_ik_hook, fkik_switch_attr=arm_info.fk_ik_switch)
         hand_info = hand.hand_build()
 
 
         #metacarples
 
-        metacarpal = meta_componets.Metacarpal(part='metacarpal', control_size=rig_size, parent=body_rig_root, side=side, joints=[f'index_metacarpal_{side}', f'middle_metacarpal_{side}', f'ring_metacarpal_{side}', f'pinky_metacarpal_{side}'], fk_control_space=[hand_info.switch], mod=-1 * sidemod)
+        metacarpal = meta_componets.Metacarpal(part='metacarpal', rig_size=rig_size, parent=body_rig_root, side=side, joints=[f'index_metacarpal_{side}', f'middle_metacarpal_{side}', f'ring_metacarpal_{side}', f'pinky_metacarpal_{side}'], fk_control_space=[hand_info.switch], mod=-1 * sidemod)
         metacarpal_info = metacarpal.metacarpal_build()
 
         #metatoes
 
-        metacartoes = meta_componets.Metacarpal(part='metatoes', control_size=rig_size, parent=body_rig_root, side=side, joints= [f'bigtoe_01_{side}', f'indextoe_01_{side}', f'middletoe_01_{side}', f'ringtoe_01_{side}', f'littletoe_01_{side}'], fk_control_space=[foot_info.swtich_joints[-1]], name_offset='meta', mod=1 * sidemod, bind=False)
+        metacartoes = meta_componets.Metacarpal(part='metatoes', rig_size=rig_size, parent=body_rig_root, side=side, joints= [f'bigtoe_01_{side}', f'indextoe_01_{side}', f'middletoe_01_{side}', f'ringtoe_01_{side}', f'littletoe_01_{side}'], fk_control_space=[foot_info.swtich_joints[-1]], name_offset='meta', mod=1 * sidemod, bind=False)
         metacartoes_info = metacartoes.metacarpal_build()
 
         for i, fingers in enumerate(['index', 'middle', 'ring', 'pinky', 'thumb']):
@@ -72,14 +72,14 @@ def build(meta_type:str='metahuman'):
             else:
                 parent = metacarpal_info.fk_controls[i].ctrl
 
-            finger = meta_componets.Chain(part=fingers, control_size=rig_size, parent=body_rig_root, side=side, joints= [f'{fingers}_01_{side}', f'{fingers}_02_{side}', f'{fingers}_03_{side}',], fk_control_space=parent, mod=1 * sidemod)
+            finger = meta_componets.Chain(part=fingers, rig_size=rig_size, parent=body_rig_root, side=side, joints= [f'{fingers}_01_{side}', f'{fingers}_02_{side}', f'{fingers}_03_{side}',], fk_control_space=parent, mod=1 * sidemod)
             finger.chain_build()
 
         for i, toes in enumerate(['big', 'index', 'middle', 'ring', 'little', ]):
 
             parent = metacartoes_info.fk_controls[i].ctrl
 
-            toe = meta_componets.Chain(part=f"{toes}toe", control_size=rig_size, parent=body_rig_root, side=side, joints= [f'{toes}toe_01_{side}', f'{toes}toe_02_{side}'], fk_control_space=parent, mod=-1 * sidemod)
+            toe = meta_componets.Chain(part=f"{toes}toe", rig_size=rig_size, parent=body_rig_root, side=side, joints= [f'{toes}toe_01_{side}', f'{toes}toe_02_{side}'], fk_control_space=parent, mod=-1 * sidemod)
             toe.chain_build()
 
     

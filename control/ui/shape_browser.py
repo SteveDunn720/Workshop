@@ -25,7 +25,7 @@ from Workshop.color.palette_picker import PalettePickerPopup
 
 
 WORKSHOP_ROOT = Path(__file__).resolve().parents[1]  # Adjust if needed
-IMAGE_PATH = WORKSHOP_ROOT / "AA_control_sizer.png"
+IMAGE_PATH = WORKSHOP_ROOT / "AA_rig_sizer.png"
 ICON_PATH = WORKSHOP_ROOT / "shape_icons"
 
 
@@ -1313,7 +1313,7 @@ class ControlCreatorWidget(QtWidgets.QWidget):
         return self.primary_axis_combo.currentText()
 
     @property
-    def control_size(self) -> float:
+    def rig_size(self) -> float:
         """Return the selected control size."""
 
         return self.size_spinbox.value()
@@ -1597,7 +1597,7 @@ class ControlCreatorWidget(QtWidgets.QWidget):
 
         selected_shape = self.shape_browser.selected_shape
         primary_axis = self.primary_axis
-        size = self.control_size
+        size = self.rig_size
 
         position_offset = self.position_offset
         rotation_offset = self.rotation_offset
@@ -1941,7 +1941,7 @@ class ControlCreatorWidget(QtWidgets.QWidget):
         name = self.control_name
         placement_mode = self.placement_mode
         primary_axis = self.primary_axis
-        size = self.control_size
+        size = self.rig_size
         sdk = self.use_sdk
 
         position_offset = self.position_offset

@@ -28,7 +28,7 @@ class Neck:
         side: str = "M",
         parent: str = "components",
         control_parent: str | None = None,
-        control_size: float = 1.0,
+        rig_size: float = 1.0,
         joint_parent:str = 'skel',
         control_space:list = [],
         simple_fk:bool=False,
@@ -39,7 +39,7 @@ class Neck:
         self.side: str = side
         self.parent: str = parent
         self.control_parent: str | None = control_parent
-        self.control_size: float = control_size
+        self.rig_size: float = rig_size
         self.guides = guides
         self.joint_parent = joint_parent
         self.simple_fk = simple_fk
@@ -102,7 +102,7 @@ class Neck:
             name=f'autohead_{self.side}',
             parent=self.control_grp,
             transform=self.guides.lower.name,
-            size=self.control_size/5,
+            size=self.rig_size/5,
             control_shape="round_square",
             direction="y",
             color_type=self.sub_control_color,
@@ -154,7 +154,7 @@ class Neck:
                 name=guide.descriptor,
                 parent=control_par,
                 transform=guide.name,
-                size=self.control_size/8,
+                size=self.rig_size/8,
                 control_shape="circle",
                 direction="y",
                 color_type=self.main_control_color,

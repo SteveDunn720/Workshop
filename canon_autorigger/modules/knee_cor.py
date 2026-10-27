@@ -24,7 +24,7 @@ class Knee_Cor:
         side: str = "M",
         parent: str = "rig",
         control_parent: str | None = None,
-        control_size: float = 1.0,
+        rig_size: float = 1.0,
         guides: list = [],
         joint_parent:str = 'skel',
 
@@ -34,7 +34,7 @@ class Knee_Cor:
         self.side: str = side
         self.parent: str = parent
         self.control_parent: str | None = control_parent
-        self.control_size: float = control_size
+        self.rig_size: float = rig_size
         self.guides: list = guides
         self.joint_parent = joint_parent
         self.driver = driver
@@ -51,15 +51,15 @@ class Knee_Cor:
         mod = 1 #if self.side == 'R' else 1
 
 
-        hamstring = Pull(part = 'hamstring', control_size=self.control_size, side=self.side, parent=self.main_grp, joint_parent=self.joint_parent, guides=[self.guides[1]], driver =  self.driver, range=(0,-120 * mod), pull_amount=self.control_size/3)
+        hamstring = Pull(part = 'hamstring', rig_size=self.rig_size, side=self.side, parent=self.main_grp, joint_parent=self.joint_parent, guides=[self.guides[1]], driver =  self.driver, range=(0,-120 * mod), pull_amount=self.rig_size/3)
         hamstringinfo = hamstring.build()
-        kneecap = Blend(part = 'kneecap', side=self.side, parent=self.main_grp, joint_parent= self.joint_parent, guides=[self.guides[0]], driver = self.driver, driver_rot_range=(0, -80* mod), mult_range=(.5,.8), driver_axis='X', pop_amount=(self.control_size/7))
+        kneecap = Blend(part = 'kneecap', side=self.side, parent=self.main_grp, joint_parent= self.joint_parent, guides=[self.guides[0]], driver = self.driver, driver_rot_range=(0, -80* mod), mult_range=(.5,.8), driver_axis='X', pop_amount=(self.rig_size/7))
         kneecapinfo = kneecap.build()
-        calf = Pull(part = 'calf', side=self.side, parent=self.main_grp, joint_parent= self.driver, guides=[self.guides[2]], driver = self.driver, range=(0,-120 * mod), pull_amount=self.control_size/10)
+        calf = Pull(part = 'calf', side=self.side, parent=self.main_grp, joint_parent= self.driver, guides=[self.guides[2]], driver = self.driver, range=(0,-120 * mod), pull_amount=self.rig_size/10)
         calfinfo = calf.build()
-        """glutesup = Pull(part = 'glutesup', side=self.side, parent=self.main_grp, joint_parent= self.joint_parent, guides=[self.guides[4]], driver = self.driver, range=(0,-90 * mod), pull_amount=self.control_size/3) #trochanter
+        """glutesup = Pull(part = 'glutesup', side=self.side, parent=self.main_grp, joint_parent= self.joint_parent, guides=[self.guides[4]], driver = self.driver, range=(0,-90 * mod), pull_amount=self.rig_size/3) #trochanter
         glutesupinfo = glutesup.build()
-        trochanter = Blend(part = 'trochanter', side=self.side, parent=self.main_grp, joint_parent= self.joint_parent, guides=[self.guides[5]], driver = self.driver, mult_range=(.5,.5),driver_rot_range=(0, 90* mod), driver_axis='Z', pop_amount=(self.control_size/8)) #trochanter
+        trochanter = Blend(part = 'trochanter', side=self.side, parent=self.main_grp, joint_parent= self.joint_parent, guides=[self.guides[5]], driver = self.driver, mult_range=(.5,.5),driver_rot_range=(0, 90* mod), driver_axis='Z', pop_amount=(self.rig_size/8)) #trochanter
         trochanterinfo = trochanter.build()"""
 
         #joints

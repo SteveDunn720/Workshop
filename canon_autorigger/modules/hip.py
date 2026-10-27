@@ -20,7 +20,7 @@ class Hip:
         part: str = "hip",
         side: str = "M",
         parent: str = "components",
-        control_size: float = 1.0,
+        rig_size: float = 1.0,
         joint_parent:str = 'root',
         guides: list = ['pelvis'],
         control_space = [],
@@ -29,7 +29,7 @@ class Hip:
         self.part: str = part
         self.side: str = side
         self.parent: str = parent
-        self.control_size: float = control_size
+        self.rig_size: float = rig_size
         self.guides: list = guides
         self.control_space = control_space
         self.joint_parent = joint_parent
@@ -50,7 +50,7 @@ class Hip:
             name='COG',
             parent=self.control_grp,
             transform=self.guides[0].name,
-            size=self.control_size * .4,
+            size=self.rig_size * .4,
             control_shape="COG",
             direction="y",
             shape_rotation_offset=(0,0,0),
@@ -61,7 +61,7 @@ class Hip:
             name='hip',
             parent=self.COG_ctrl.ctrl,
             transform=self.guides[0].name,
-            size=self.control_size * .35,
+            size=self.rig_size * .35,
             control_shape="circle",
             direction="y",
             color_type=self.rig_color_type

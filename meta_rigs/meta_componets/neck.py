@@ -25,7 +25,7 @@ class Neck:
         part: str = "neck",
         side: str = "m",
         parent: str = "body_rig",
-        control_size: float = 1.0,
+        rig_size: float = 1.0,
         joints: list = ['neck_01', 'neck_02', 'head',],
         fk_control_space:list = [],
         mod = 1
@@ -34,7 +34,7 @@ class Neck:
         self.part: str = part
         self.side: str = side
         self.parent: str = parent
-        self.control_size: float = control_size
+        self.rig_size: float = rig_size
         self.joints: list = joints
         self.fk_control_space = fk_control_space
         self.main_control_color = 'Left' if self.side == 'l' else 'Right'
@@ -66,11 +66,11 @@ class Neck:
                 name=f'{self.part}_curl_{self.side}',
                 parent=ctrl_par,
                 transform=self.joints[0],
-                size=self.control_size/8,
+                size=self.rig_size/8,
                 control_shape="sims",
                 direction="x",
                 color_type=self.sub_control_color,
-                shape_position_offset=(self.control_size/3, 0, 0)
+                shape_position_offset=(self.rig_size/3, 0, 0)
             )
 
 
@@ -79,7 +79,7 @@ class Neck:
                 name=f'FK_{jnt}',
                 parent=ctrl_par,
                 transform=jnt,
-                size=self.control_size/16,
+                size=self.rig_size/16,
                 control_shape="circle",
                 direction="x",
                 color_type=self.main_control_color,
@@ -98,12 +98,12 @@ class Neck:
                     name='skull',
                     parent=ctrl_par,
                     transform=jnt,
-                    size=self.control_size/8,
+                    size=self.rig_size/8,
                     control_shape="circle",
                     direction="x",
                     color_type= self.sub_control_color,
                     sdk_offset=False,
-                    shape_position_offset=(self.control_size/5, 0, 0)
+                    shape_position_offset=(self.rig_size/5, 0, 0)
                 )
 
                 cmds.parentConstraint(self.head_ctrl.ctrl, jnt, maintainOffset=True)

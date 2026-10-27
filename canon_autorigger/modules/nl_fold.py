@@ -31,7 +31,7 @@ class NL_Fold:
         side: str = "M",
         parent: str = "components",
         control_parent: str | None = None,
-        control_size: float = 1.0,
+        rig_size: float = 1.0,
         guides: list = [],
         joint_parent:str = 'skel',
         control_space:list = [],
@@ -44,7 +44,7 @@ class NL_Fold:
         self.side: str = side
         self.parent: str = parent
         self.control_parent: str | None = control_parent
-        self.control_size: float = control_size
+        self.rig_size: float = rig_size
         self.guides: list = guides
         self.joint_parent = joint_parent
         self.control_space = control_space
@@ -118,7 +118,7 @@ class NL_Fold:
                 name=g.descriptor,
                 parent=self.control_grp,
                 transform=g.name,
-                size=self.control_size/100,
+                size=self.rig_size/100,
                 control_shape='circle',
                 direction="y",
                 color_type=self.main_color,
@@ -135,7 +135,7 @@ class NL_Fold:
         corner_remap = RemapValueNode(name = f'{controls[2].name}_remap')
         corner_remap.input_value.connect_from(f'{self.corner.ctrl}.translateX')
         corner_remap.input_max.set(control_max)
-        corner_remap.output_max.set(self.control_size/45)
+        corner_remap.output_max.set(self.rig_size/45)
         corner_remap.output.connect_to(f'{controls[2].sdk}.translateX')
         corner_remap.output.connect_to(f'{controls[2].sdk}.translateZ')
 
@@ -163,7 +163,7 @@ class NL_Fold:
                 name=g.descriptor,
                 parent=ctrl_par,
                 transform=g.name,
-                size=self.control_size/100,
+                size=self.rig_size/100,
                 control_shape='circle',
                 direction="y",
                 color_type=self.main_color
@@ -198,7 +198,7 @@ class NL_Fold:
             name=f'{self.part}_{self.side}',
             parent=self.control_grp,
             transform=self.guides[0].name,
-            size=self.control_size,
+            size=self.rig_size,
             control_shape=self.control_shape,
             direction="y",
             color_type=self.control_color

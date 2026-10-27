@@ -20,7 +20,7 @@ class Pull:
         side: str = "M",
         parent: str = "rig",
         control_parent: str | None = None,
-        control_size: float = 1.0,
+        rig_size: float = 1.0,
         guides: list | None = None,
         joint_parent: str = "skel",
         range: tuple = (-90, 90),
@@ -35,7 +35,7 @@ class Pull:
         self.side = side
         self.parent = parent
         self.control_parent = control_parent
-        self.control_size = control_size
+        self.rig_size = rig_size
         self.guides = guides or []
         self.joint_parent = joint_parent
 

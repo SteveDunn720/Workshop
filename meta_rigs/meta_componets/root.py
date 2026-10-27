@@ -20,7 +20,7 @@ class Root:
         side: str = "m",
         parent: str = "components",
         control_parent: str | None = None,
-        control_size: float = 1.0,
+        rig_size: float = 1.0,
         joints: list = ['root'],
 
     ):
@@ -28,7 +28,7 @@ class Root:
         self.side: str = side
         self.parent: str = parent
         self.control_parent: str | None = control_parent
-        self.control_size: float = control_size
+        self.rig_size: float = rig_size
         self.joints: list = joints
 
     # -------------------
@@ -45,7 +45,7 @@ class Root:
             name=self.part,
             parent=self.control_grp,
             transform=self.joints[0],
-            size=self.control_size,
+            size=self.rig_size,
             control_shape="Character_base",
             direction="z",
             color_type='Root'
@@ -55,7 +55,7 @@ class Root:
             name='local',
             parent=self.root_ctrl.ctrl,
             transform=self.joints[0],
-            size=self.control_size * .56,
+            size=self.rig_size * .56,
             control_shape="circle",
             direction="z",
         )
@@ -64,7 +64,7 @@ class Root:
             name='offset',
             parent=self.local_ctrl.ctrl,
             transform=self.joints[0],
-            size=self.control_size * .4,
+            size=self.rig_size * .4,
             control_shape="circle",
             direction="z",
         )
@@ -74,20 +74,20 @@ class Root:
             name='visibility_options',
             parent=self.local_ctrl.ctrl,
             transform=self.joints[0],
-            size=self.control_size * .05,
+            size=self.rig_size * .05,
             control_shape="gear",
             direction="z",
-            shape_position_offset=(self.control_size * 0.88, 0, 0 )
+            shape_position_offset=(self.rig_size * 0.88, 0, 0 )
         )
 
         self.color_control = create_control(
             name='color_options',
             parent=self.local_ctrl.ctrl,
             transform=self.joints[0],
-            size=self.control_size * .05,
+            size=self.rig_size * .05,
             control_shape="gear",
             direction="z",
-            shape_position_offset=(self.control_size * -0.88, 0, 0 )
+            shape_position_offset=(self.rig_size * -0.88, 0, 0 )
         )
         lock_tag(self.color_control.ctrl, hide_tag=True)
         lock_tag(self.vis_control.ctrl, hide_tag=True)

@@ -299,7 +299,7 @@ def build_module_instance(
     instance: ModuleInstance,
     instances: list[ModuleInstance],
     parent: str = "rig",
-    control_size: float | None = None,
+    rig_size: float | None = None,
 ):
     """
     Build a single resolved module instance.
@@ -329,11 +329,11 @@ def build_module_instance(
     # CONTROL SIZE
     # --------------------------------------------------
 
-    if control_size is not None:
+    if rig_size is not None:
 
-        if settings.get("control_size", 1.0) == 1.0:
+        if settings.get("rig_size", 1.0) == 1.0:
 
-            settings["control_size"] = control_size
+            settings["rig_size"] = rig_size
 
     # --------------------------------------------------
     # COLLECT ARGUMENTS

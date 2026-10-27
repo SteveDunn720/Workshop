@@ -37,7 +37,7 @@ class Mouth:
         side: str = "M",
         parent: str = "components",
         control_parent: str | None = None,
-        control_size: float = 1.0,
+        rig_size: float = 1.0,
         joint_parent:str = 'skel',
         control_space:list = [],
         divisions:int = 6
@@ -47,7 +47,7 @@ class Mouth:
         self.side: str = side
         self.parent: str = parent
         self.control_parent: str | None = control_parent
-        self.control_size: float = control_size
+        self.rig_size: float = rig_size
         self.guides: dict[str, GuideInfo] = guides
         self.joint_parent = joint_parent
         self.control_space = control_space
@@ -872,11 +872,11 @@ class Mouth:
                     name='mouth_main_M',
                     parent=self.control_grp,
                     transform=lipcenter_guide.name,
-                    size=self.control_size/15,
+                    size=self.rig_size/15,
                     control_shape='bracket',
                     direction="y",
                     color_type=self.main_M_color,
-                    shape_position_offset=(0,0,-self.control_size/90),
+                    shape_position_offset=(0,0,-self.rig_size/90),
                     shape_rotation_offset=(90, 0, 0),
                     dimensions=(1.3,1,1)
                 )
@@ -886,12 +886,12 @@ class Mouth:
                     name=f'lip_corner_{side}',
                     parent=self.mouth.ctrl,
                     transform=lipcorner_guide.name,
-                    size=self.control_size/60,
+                    size=self.rig_size/60,
                     control_shape='triangle',
                     direction="y",
                     sdk_offset=True,
                     color_type=self.main_L_color if side == 'L' else self.main_R_color,
-                    shape_position_offset=(0, 0, self.control_size/80),
+                    shape_position_offset=(0, 0, self.rig_size/80),
                     shape_rotation_offset=(90, 0, -90)
                 )
 
@@ -911,12 +911,12 @@ class Mouth:
                     name=f'lip_corner_{side}',
                     parent=self.mouth.ctrl,
                     transform=lipcorner_guide.name,
-                    size=self.control_size/60,
+                    size=self.rig_size/60,
                     control_shape='triangle',
                     sdk_offset=True,
                     direction="y",
                     color_type=self.main_L_color if side == 'L' else self.main_R_color,
-                    shape_position_offset=(0, 0, self.control_size/80),
+                    shape_position_offset=(0, 0, self.rig_size/80),
                     shape_rotation_offset=(90, 0, -90)
                 )
 
@@ -937,12 +937,12 @@ class Mouth:
                             name=f'Main_{vertical}_M',
                             parent=self.mouth.ctrl,
                             transform=lipcenter_guide.name,
-                            size=self.control_size/60,
+                            size=self.rig_size/60,
                             control_shape='line',
                             direction="y",
                             sdk_offset=True,
                             color_type=self.main_M_color,
-                            shape_position_offset=(0,self.control_size/35*v_mod,self.control_size/90),
+                            shape_position_offset=(0,self.rig_size/35*v_mod,self.rig_size/90),
                             shape_rotation_offset=(0, 0, 0)
                         ) 
 
@@ -954,12 +954,12 @@ class Mouth:
                             name=f'Main_{vertical}_M',
                             parent=self.mouth.ctrl,
                             transform=lipcenter_guide.name,
-                            size=self.control_size/60,
+                            size=self.rig_size/60,
                             control_shape='line',
                             direction="y",
                             sdk_offset=True,
                             color_type=self.main_M_color,
-                            shape_position_offset=(0,self.control_size/35*v_mod,self.control_size/90),
+                            shape_position_offset=(0,self.rig_size/35*v_mod,self.rig_size/90),
                             shape_rotation_offset=(0, 0, 0)
                         )
                         self.connect_jaw(jaw=self.jaw, control=self.lower_lip, rot_mult=.6, jaw_forward=True, trans_mult=.8)
@@ -970,12 +970,12 @@ class Mouth:
                                 name=f'{vertical}_lip_M',
                                 parent=self.upper_lip.ctrl if vertical == 'upper' else self.lower_lip.ctrl,
                                 transform=lipcenter_guide.name,
-                                size=self.control_size/100,
+                                size=self.rig_size/100,
                                 control_shape='triangle',
                                 direction="y",
                                 sdk_offset=True,
                                 color_type=self.main_M_color,
-                                shape_position_offset=(0,self.control_size/70*v_mod,self.control_size/80),
+                                shape_position_offset=(0,self.rig_size/70*v_mod,self.rig_size/80),
                                 shape_rotation_offset=(90*v_mod,0,0)
                             )
 
@@ -995,12 +995,12 @@ class Mouth:
                         name=f'{vertical}_lip_mid_{side}',
                         parent=self.upper_lip.ctrl if vertical == 'upper' else self.lower_lip.ctrl,
                         transform=lipmid_guide.name,
-                        size=self.control_size/100,
+                        size=self.rig_size/100,
                         control_shape='triangle',
                         direction="y",
                         sdk_offset=True,
                         color_type=self.main_L_color if side == 'L' else self.main_R_color,
-                        shape_position_offset=(0,self.control_size/70*v_mod,self.control_size/80),
+                        shape_position_offset=(0,self.rig_size/70*v_mod,self.rig_size/80),
                         shape_rotation_offset=(90*v_mod,0,0)
                     )
 
@@ -1014,12 +1014,12 @@ class Mouth:
                     name=f'{vertical}_lip_corner_{side}',
                     parent=self.mouth.ctrl,
                     transform=lipcorner_guide.name,
-                    size=self.control_size/100,
+                    size=self.rig_size/100,
                     control_shape='triangle',
                     direction="y",
                     sdk_offset=True,
                     color_type=self.main_L_color if side == 'L' else self.main_R_color,
-                    shape_position_offset=(0,self.control_size/70*v_mod,self.control_size/80),
+                    shape_position_offset=(0,self.rig_size/70*v_mod,self.rig_size/80),
                     shape_rotation_offset=(90*v_mod,0,0)
                 )
                 true_list.append(lip_corner)
@@ -1141,7 +1141,7 @@ class Mouth:
 
 
         root_jnt = create_joint(name=f'def_{self.part}_root', transform=center_guide.name, parent=self.joint_parent, connect=False)
-        cmds.xform(root_jnt, translation=(0,0, -self.control_size / 10,), relative=True, objectSpace=True)
+        cmds.xform(root_jnt, translation=(0,0, -self.rig_size / 10,), relative=True, objectSpace=True)
 
         sub_mouth_grp = create_transform(name=f'{self.part}_subcontrols', parent=self.control_grp)
 
@@ -1339,7 +1339,7 @@ class Mouth:
                     name=f"{vertical}_{guide.descriptor}",
                     parent=control_parent,
                     transform=guide.name,
-                    size=self.control_size / 120,
+                    size=self.rig_size / 120,
                     control_shape="circle",
                     direction="y",
                     color_type=color,
@@ -1585,7 +1585,7 @@ class Mouth:
             name=f'{self.part}_{self.side}',
             parent=self.control_grp,
             transform=self.guides[0].name,
-            size=self.control_size,
+            size=self.rig_size,
             control_shape=self.control_shape,
             direction="y",
             color_type=self.control_color

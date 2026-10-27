@@ -29,7 +29,7 @@ class Hand:
         side: str = "L",
         parent: str = "components",
         control_parent: str | None = None,
-        control_size: float = 1.0,
+        rig_size: float = 1.0,
         fk_control_space:list = [],
         ik_control_space:list = [],
         ik_hook:list=[],
@@ -46,7 +46,7 @@ class Hand:
         self.side: str = side
         self.parent: str = parent
         self.control_parent: str | None = control_parent
-        self.control_size: float = control_size
+        self.rig_size: float = rig_size
         self.guides = guides
         self.fk_control_space = fk_control_space
         self.ik_control_space = ik_control_space
@@ -95,7 +95,7 @@ class Hand:
             name=f'FK_{self.part}_{self.side}',
             parent=ctrl_par,
             transform=self.guides.name,
-            size=self.control_size/(6),
+            size=self.rig_size/(6),
             control_shape=self.fk_control_shape,
             direction="y",
             color_type=self.main_control_color
@@ -122,7 +122,7 @@ class Hand:
                 name=f'IK_{self.part}_{self.side}',
                 parent=ctrl_par,
                 transform=f'{self.guides.name}',
-                size=self.control_size/4,
+                size=self.rig_size/4,
                 control_shape=self.ik_control_shape,
                 direction="y",
                 color_type=self.sub_control_color,
@@ -135,11 +135,11 @@ class Hand:
                 name=f'IK_{self.part}_off_{self.side}',
                 parent=self.ik_hand_piv.ctrl,
                 transform=f'{self.guides.name}',
-                size=self.control_size/16,
+                size=self.rig_size/16,
                 control_shape=self.ik_offset_shape,
                 direction="y",
                 color_type=self.main_control_color,
-                shape_position_offset=(0,0,-(self.control_size * .4)),
+                shape_position_offset=(0,0,-(self.rig_size * .4)),
                 shape_rotation_offset=(0,0,0)
             )
         self.ik_controls.append(self.ik_hand)
@@ -152,11 +152,11 @@ class Hand:
                 name=f'prop_{self.side}',
                 parent=self.control_grp,
                 transform=f'{self.guides.name}',
-                size=self.control_size/32,
+                size=self.rig_size/32,
                 control_shape=self.prop_shape,
                 direction="y",
                 color_type=self.main_control_color,
-                shape_position_offset=((self.control_size * .1),0,0)
+                shape_position_offset=((self.rig_size * .1),0,0)
             )
         cmds.parentConstraint(self.switch_joints[0], self.prop.top, maintainOffset=True)
         self.controls.append(self.prop)
@@ -172,7 +172,7 @@ class Hand:
         constraint(driven=self.bind_jnt, drivers=self.switch_joints[0], constraint_type='parent', parent=self.guts)
 
         if self.arm_info.auto_pv_driven:
-            pv_auto = auto_pv_space(end_control=self.ik_hand, pv_control=self.arm_info.ik_controls[1], parent_space=self.ik_control_space[0], parent=self.guts, swing_range=((-90, 90),(-self.control_size/10, self.control_size/10)))
+            pv_auto = auto_pv_space(end_control=self.ik_hand, pv_control=self.arm_info.ik_controls[1], parent_space=self.ik_control_space[0], parent=self.guts, swing_range=((-90, 90),(-self.rig_size/10, self.rig_size/10)))
             cmds.parent(self.arm_info.auto_pv_driven, pv_auto.driver)
 
 

@@ -47,7 +47,7 @@ class Eyelid:
         self,
         side: str = "L",
         guides: dict = {},
-        control_size: float = 1.0,
+        rig_size: float = 1.0,
         main_ctrl: str = "",
         parent: str = "",
         joint_parent: str = "",
@@ -57,7 +57,7 @@ class Eyelid:
         self.side = side
         self.guides = guides
         self.main_ctrl = main_ctrl
-        self.control_size = control_size
+        self.rig_size = rig_size
         self.parent = parent
         self.joint_parent = joint_parent
         self.component_grp = component_grp
@@ -180,7 +180,7 @@ class Eyelid:
                 name=f"{descriptor}_{i}_{self.side}",
                 parent=top_grp,
                 transform=temp,
-                size=self.control_size / 10,
+                size=self.rig_size / 10,
                 control_shape="circle",
                 direction="z",
             )
@@ -447,7 +447,7 @@ class Eyelid:
                     name=f"{sub_blink}_{side}_blink_{self.side}",
                     parent=self.main_ctrl,
                     transform=new_matrix,
-                    size=self.control_size / 10,
+                    size=self.rig_size / 10,
                     control_shape="sphere",
                     direction="z",
                 )
@@ -505,7 +505,7 @@ class Eyelid:
                     name=f"{sub_blink}_{side}_eyelid_{self.side}",
                     parent=self.main_ctrl,
                     transform=guide,
-                    size=self.control_size / 4,
+                    size=self.rig_size / 4,
                     control_shape="sphere",
                     direction="z",
                 )
@@ -598,7 +598,7 @@ class Eyelid:
                 name=f"{side}_blink_{self.side}",
                 parent=self.main_ctrl,
                 transform=blink_matrix,
-                size=self.control_size,
+                size=self.rig_size,
                 control_shape=ControlShape.SEMI_CIRCLE,
                 direction="z",
                 dimensions=(1, 1, 1 if side == "upper" else -1),

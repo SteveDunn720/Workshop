@@ -28,7 +28,7 @@ class Limb:
         part: str = "leg",
         side: str = "L",
         parent: str = "body_rig",
-        control_size: float = 1.0,
+        rig_size: float = 1.0,
         joints: list = ['thigh_l', 'calf_l', 'foot_l'],
         fk_control_space:list = [],
         ik_control_space:list = [],
@@ -40,7 +40,7 @@ class Limb:
         self.part: str = part
         self.side: str = side
         self.parent: str = parent
-        self.control_size: float = control_size
+        self.rig_size: float = rig_size
         self.joints: list = joints
         self.ik_end_control = ik_end_control
         self.fk_control_space = fk_control_space
@@ -200,7 +200,7 @@ class Limb:
                 name=f'FK_{jnt}',
                 parent=ctrl_par,
                 transform=jnt,
-                size=self.control_size/4,
+                size=self.rig_size/4,
                 control_shape="circle",
                 direction="x",
                 color_type=self.main_control_color
@@ -236,7 +236,7 @@ class Limb:
                 name=f'IK_{self.joints[0]}',
                 parent=self.ik_control_grp,
                 transform=self.ik_handle.start_joint,
-                size=self.control_size/8,
+                size=self.rig_size/8,
                 control_shape="cube",
                 direction="x",
                 color_type=self.main_control_color
@@ -249,7 +249,7 @@ class Limb:
                 name=f'{self.part}_IK_PV_{self.side}',
                 parent=self.ik_control_grp,
                 transform=self.ik_handle.pole_vector,
-                size=self.control_size/10,
+                size=self.rig_size/10,
                 control_shape="diamond",
                 direction="y",
                 color_type=self.main_control_color,
@@ -265,7 +265,7 @@ class Limb:
                 name=f'IK_{self.joints[2]}',
                 parent=self.ik_control_grp,
                 transform=self.joints[2],
-                size=self.control_size/8,
+                size=self.rig_size/8,
                 control_shape="cube",
                 direction="x",
                 color_type=self.main_control_color
@@ -281,7 +281,7 @@ class Limb:
                 name=f'IK_{self.joints[2]}',
                 parent=self.ik_control_grp,
                 transform=self.joints[2],
-                size=self.control_size/8,
+                size=self.rig_size/8,
                 control_shape="cube",
                 direction="x",
                 color_type=self.main_control_color

@@ -331,7 +331,7 @@ eye_L = Eye(
     side="L",
     parent="face_grp",
     control_parent="neck_M0_head_ctl",
-    control_size=1,
+    rig_size=1,
 )
 
 eye_L.build()
@@ -341,7 +341,7 @@ eye_R = Eye(
     side="R",
     parent="face_grp",
     control_parent="neck_M0_head_ctl",
-    control_size=1,
+    rig_size=1,
 )
 
 eye_R.build()

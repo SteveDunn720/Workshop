@@ -32,7 +32,7 @@ class Spine:
         side: str = "M",
         parent: str = "components",
         control_parent: str | None = None,
-        control_size: float = 1.0,
+        rig_size: float = 1.0,
         joint_parent:str = 'skel',
         simple_fk:bool = False,
         count:int = 7,
@@ -43,7 +43,7 @@ class Spine:
         self.side: str = side
         self.parent: str = parent
         self.control_parent: str | None = control_parent
-        self.control_size: float = control_size
+        self.rig_size: float = rig_size
         self.guides = guides
         self.joint_parent = joint_parent
         self.simple_fk = simple_fk
@@ -158,7 +158,7 @@ class Spine:
                     name=f'FK_{jnt.descriptor}',
                     parent=ctrl_par,
                     transform=jnt.name,
-                    size=self.control_size/4,
+                    size=self.rig_size/4,
                     control_shape="circle",
                     direction="y",
                     color_type=self.main_control_color
@@ -184,7 +184,7 @@ class Spine:
                     name='hip',
                     parent=self.hybrid_grp,
                     transform=self.guides.lower.name,
-                    size=self.control_size/4,
+                    size=self.rig_size/4,
                     control_shape="circle",
                     direction="y",
                     color_type=self.main_control_color
@@ -193,7 +193,7 @@ class Spine:
                     name='cog',
                     parent=self.hybrid_grp,
                     transform=self.guides.lower.name,
-                    size=self.control_size/5,
+                    size=self.rig_size/5,
                     control_shape="circle",
                     direction="y",
                     color_type=self.main_control_color
@@ -208,7 +208,7 @@ class Spine:
                 name='spine_mid',
                 parent=self.mid_hip,
                 transform=self.mid_guide.name,
-                size=self.control_size/3,
+                size=self.rig_size/3,
                 control_shape="round_square",
                 direction="y",
                 color_type=self.main_control_color
@@ -218,11 +218,11 @@ class Spine:
                 name='chest',
                 parent=self.hybrid_grp ,
                 transform=self.guides.lower.name,
-                size=self.control_size/3,
+                size=self.rig_size/3,
                 control_shape="chest",
                 direction="y",
                 color_type=self.sub_control_color,
-                shape_position_offset=(0,chest_offset + (self.control_size / 8),0)
+                shape_position_offset=(0,chest_offset + (self.rig_size / 8),0)
             )
 
 
@@ -235,7 +235,7 @@ class Spine:
                 name='chest_off',
                 parent=self.chest.ctrl,
                 transform=self.guides.upper.name,
-                size=self.control_size/3.5,
+                size=self.rig_size/3.5,
                 control_shape="hexagon",
                 direction="y",
                 color_type=self.main_control_color
@@ -250,11 +250,11 @@ class Spine:
                         name=g.descriptor,
                         parent=self.hybrid_grp,
                         transform=g.name,
-                        size=self.control_size/30,
+                        size=self.rig_size/30,
                         control_shape="circle",
                         direction="z",
                         color_type=self.main_control_color,
-                        shape_position_offset=(0,0,(self.control_size/4))
+                        shape_position_offset=(0,0,(self.rig_size/4))
                     )
                 self.spine_off_ctrls.append(ctrl)
                 spine_driven.append(ctrl.top)

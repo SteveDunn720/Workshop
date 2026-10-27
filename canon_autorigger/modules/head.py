@@ -22,7 +22,7 @@ class Head:
         side: str = "M",
         parent: str = "components",
         control_parent: str | None = None,
-        control_size: float = 1.0,
+        rig_size: float = 1.0,
         joint_parent:str = 'skel',
         control_space:list = [],
         control_shape:str = 'head'
@@ -32,7 +32,7 @@ class Head:
         self.side: str = side
         self.parent: str = parent
         self.control_parent: str | None = control_parent
-        self.control_size: float = control_size
+        self.rig_size: float = rig_size
         self.guides= guides
         self.joint_parent = joint_parent
         self.control_space = control_space
@@ -64,11 +64,11 @@ class Head:
             name=f'skull_{self.side}',
             parent=self.control_grp,
             transform=self.guides.name,
-            size=self.control_size/5,
+            size=self.rig_size/5,
             control_shape=self.control_shape,
             direction="y",
             color_type=self.main_control_color,
-            shape_position_offset=(0,self.control_size/4,0),
+            shape_position_offset=(0,self.rig_size/4,0),
         )
 
         module_space(control=self.head_ctrl, space_list=self.control_space)

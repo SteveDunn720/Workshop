@@ -27,7 +27,7 @@ class Jaw:
         side: str = "M",
         parent: str = "components",
         control_parent: str | None = None,
-        control_size: float = 1.0,
+        rig_size: float = 1.0,
         guides: list = [],
         joint_parent:str = 'skel',
         control_space:list = [],
@@ -39,7 +39,7 @@ class Jaw:
         self.side: str = side
         self.parent: str = parent
         self.control_parent: str | None = control_parent
-        self.control_size: float = control_size
+        self.rig_size: float = rig_size
         self.guides: list = guides
         self.joint_parent = joint_parent
         self.control_space = control_space
@@ -234,14 +234,14 @@ class Jaw:
             name=self.guides[0].descriptor,
             parent=self.control_grp,
             transform=self.guides[0].name,
-            size=self.control_size/6,
+            size=self.rig_size/6,
             control_shape="jaw",
             direction="y",
             sdk_offset=True, 
             color_type=self.sub_control_color,
             shape_rotation_offset=(rot - 90,0,0),
             dimensions=(1,1.3,1.3),
-            shape_position_offset=(0,-self.control_size/60,0)
+            shape_position_offset=(0,-self.rig_size/60,0)
         )
 
         module_space(control=self.jaw_ctrl, space_list=self.control_space)
@@ -255,7 +255,7 @@ class Jaw:
             name=self.guides[2].descriptor,
             parent=self.control_grp,
             transform=self.guides[2].name,
-            size=self.control_size/40,
+            size=self.rig_size/40,
             control_shape="circle",
             direction="y",
             sdk_offset=True, 
@@ -278,7 +278,7 @@ class Jaw:
         larynx_remap.input_value.connect_from(f'{self.jaw_ctrl.ctrl}.rotateX')
         larynx_remap.input_max.set(90)
 
-        cmds.addAttr(self.jaw_ctrl.ctrl, longName="larynx_mult", defaultValue=-self.control_size/6, keyable=True)
+        cmds.addAttr(self.jaw_ctrl.ctrl, longName="larynx_mult", defaultValue=-self.rig_size/6, keyable=True)
         cmds.addAttr(self.larynx_ctrl.ctrl, longName="larynx_mult", proxy=f'{self.jaw_ctrl.ctrl}.larynx_mult')
 
         larynx_remap.output_max.connect_from(f'{self.jaw_ctrl.ctrl}.larynx_mult')
@@ -288,7 +288,7 @@ class Jaw:
         jaw_remap.input_value.connect_from(f'{self.jaw_ctrl.ctrl}.rotateX')
         jaw_remap.input_max.set(90)
 
-        cmds.addAttr(self.jaw_ctrl.ctrl, longName="jaw_mult", defaultValue=self.control_size/80, keyable=True)
+        cmds.addAttr(self.jaw_ctrl.ctrl, longName="jaw_mult", defaultValue=self.rig_size/80, keyable=True)
 
         jaw_remap.output_max.connect_from(f'{self.jaw_ctrl.ctrl}.jaw_mult')
         jaw_remap.output.connect_to(f'{self.jaw_ctrl.sdk}.translateZ')

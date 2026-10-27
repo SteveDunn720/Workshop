@@ -18,7 +18,7 @@ class Spine:
         side: str = "m",
         parent: str = "components",
         control_parent: str | None = None,
-        control_size: float = 1.0,
+        rig_size: float = 1.0,
         joints: list = ['spine_01', 'spine_02', 'spine_03', 'spine_04',],
         fk_control_space = [],
 
@@ -27,7 +27,7 @@ class Spine:
         self.side: str = side
         self.parent: str = parent
         self.control_parent: str | None = control_parent
-        self.control_size: float = control_size
+        self.rig_size: float = rig_size
         self.joints: list = joints
         self.fk_control_space = fk_control_space 
         self.rig_color = 'Middle'
@@ -48,7 +48,7 @@ class Spine:
                 name=jnt,
                 parent=control_parent,
                 transform=jnt,
-                size=self.control_size * .3,
+                size=self.rig_size * .3,
                 control_shape="circle",
                 direction="x",
                 color_type=self.rig_color,

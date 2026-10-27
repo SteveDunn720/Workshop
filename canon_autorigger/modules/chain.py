@@ -34,7 +34,7 @@ class Chain:
 
     SETTINGS = (
         ModuleSetting(
-            name="control_size",
+            name="rig_size",
             setting_type="float",
             default=1.0,
         ),
@@ -90,7 +90,7 @@ class Chain:
         side: str = "M",
         parent: str = "components",
         control_parent: str | None = None,
-        control_size: float = 1.0,
+        rig_size: float = 1.0,
         guides: list = [],
         joint_parent:str = 'skel',
         control_space:list = [],
@@ -106,7 +106,7 @@ class Chain:
         self.side: str = side
         self.parent: str = parent
         self.control_parent: str | None = control_parent
-        self.control_size: float = control_size
+        self.rig_size: float = rig_size
         self.guides: list = guides
         self.joint_parent = joint_parent
         self.control_space = control_space
@@ -218,11 +218,11 @@ class Chain:
                             name=f'{self.part}_{self.driver_name}_{self.side}',
                             parent=self.control_grp,
                             transform=self.guides[0].name,
-                            size=self.control_size/64,
+                            size=self.rig_size/64,
                             control_shape=self.roll_control_shape,
                             direction="y",
                             color_type=self.roll_control_color,
-                            shape_position_offset=(-(self.control_size/16), 0, 0)
+                            shape_position_offset=(-(self.rig_size/16), 0, 0)
                         )
             module_space(control=self.roll_ctrl, space_list=self.control_space)
 
@@ -236,7 +236,7 @@ class Chain:
                 name=guide.descriptor,
                 parent=ctrl_par,
                 transform=guide.name,
-                size=self.control_size/32,
+                size=self.rig_size/32,
                 control_shape=self.main_control_shape,
                 direction="y",
                 color_type=self.main_control_color,

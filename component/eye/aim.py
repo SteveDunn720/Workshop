@@ -13,7 +13,7 @@ class Look:
         side: str = "M",
         parent: str = "face_grp",
         control_parent: str = "neck_M0_head_ctl",
-        control_size: float = 1.0,
+        rig_size: float = 1.0,
         parent_jnt: str = "face_jnt",
         parent_list: list[str] = [
             "neck_M0_head_ctl",
@@ -26,7 +26,7 @@ class Look:
         self.side: str = side
         self.parent: str = parent
         self.control_parent: str = control_parent
-        self.control_size: float = control_size
+        self.rig_size: float = rig_size
         self.parent_jnt: str = parent_jnt
         self.guides = ["eye_aim_L", "eye_aim_R"]
         self.parent_list = parent_list
@@ -78,7 +78,7 @@ class Look:
             name=self.guides["root_name"],
             parent=self.control_grp,
             transform=self.guides["center_piv"],
-            size=self.control_size,
+            size=self.rig_size,
             control_shape="round_square",
             direction="z",
         )"""
@@ -94,7 +94,7 @@ class Look:
             name="Look_M",
             parent=self.control_grp,
             transform=mid_guide,
-            size=self.control_size * 2.5,
+            size=self.rig_size * 2.5,
             control_shape="round_square",
             direction="z",
             dimensions=(3, 1, 1),

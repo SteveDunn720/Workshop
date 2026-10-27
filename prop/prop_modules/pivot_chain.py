@@ -14,7 +14,7 @@ class module_info:
     joints:list
 
 
-def pivot_chain(guides:list[str], name_overwrites:list[str] | None,  controls:bool=True, joints:bool=False, control_size:float=1, rig_type:str='')->module_info:
+def pivot_chain(guides:list[str], name_overwrites:list[str] | None,  controls:bool=True, joints:bool=False, rig_size:float=1, rig_type:str='')->module_info:
     parent=None
     jnt_parent =None
     ctrls = []
@@ -23,7 +23,7 @@ def pivot_chain(guides:list[str], name_overwrites:list[str] | None,  controls:bo
     for i, guide in enumerate(guides):
         name = guide if not name_overwrites else name_overwrites[i]
         if controls and not joints:
-            control = create_control(name=name, transform=guide, control_shape='cube', parent=parent, size=control_size, color_type=rig_type)
+            control = create_control(name=name, transform=guide, control_shape='cube', parent=parent, size=rig_size, color_type=rig_type)
             parent= control.ctrl
             ctrls.append(control)
             
@@ -32,7 +32,7 @@ def pivot_chain(guides:list[str], name_overwrites:list[str] | None,  controls:bo
             parent=joint
             jnts.append(joint)
         elif joints and controls:
-            control = create_control(name=name, transform=guide, control_shape='cube', parent=parent, size=control_size, color_type=rig_type)
+            control = create_control(name=name, transform=guide, control_shape='cube', parent=parent, size=rig_size, color_type=rig_type)
             joint = create_joint(name=f'{name}',transform=control.ctrl,connect=True, parent=jnt_parent)
             parent= control.ctrl
             jnt_parent=joint

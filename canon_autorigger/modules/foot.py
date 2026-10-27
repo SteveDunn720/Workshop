@@ -46,7 +46,7 @@ class Foot:
         side: str = "L",
         parent: str = "components",
         control_parent: str | None = None,
-        control_size: float = 1.0,
+        rig_size: float = 1.0,
         guides: list = [],
         fk_control_space:list = [],
         ik_control_space:list = [],
@@ -61,7 +61,7 @@ class Foot:
         self.side: str = side
         self.parent: str = parent
         self.control_parent: str | None = control_parent
-        self.control_size: float = control_size
+        self.rig_size: float = rig_size
         self.guides: list = guides
         self.fk_control_space = fk_control_space
         self.ik_control_space = ik_control_space
@@ -178,7 +178,7 @@ class Foot:
                 name=f'FK_{jnt.descriptor}',
                 parent=ctrl_par,
                 transform=jnt.name,
-                size=self.control_size/(6 * (i + 1)),
+                size=self.rig_size/(6 * (i + 1)),
                 control_shape="fk",
                 direction="y",
                 color_type=self.main_control_color,
@@ -222,11 +222,11 @@ class Foot:
                 name=f'IK_{self.guides[0].descriptor}_main',
                 parent=ctrl_par,
                 transform=temp_guide,
-                size=self.control_size/4,
+                size=self.rig_size/4,
                 control_shape="foot",
                 direction="y",
                 color_type=self.main_control_color,
-                shape_position_offset=(0, -ground_offset, -self.control_size/10),
+                shape_position_offset=(0, -ground_offset, -self.rig_size/10),
                 shape_rotation_offset=(0,180,0)
             )
 
@@ -242,7 +242,7 @@ class Foot:
                 name=f'IK_{self.guides[1].descriptor}',
                 parent=ctrl_par,
                 transform=f'{self.guides[1].name}',
-                size=self.control_size/8,
+                size=self.rig_size/8,
                 control_shape="ik_toes",
                 direction="y",
                 color_type=self.main_control_color,
@@ -266,7 +266,7 @@ class Foot:
         roll_ik = create_IK_single_chain(name=f'{self.part}_{self.side}_roll', start_joint=self.ik_roll_joints[0], end_joint=self.ik_roll_joints[1])
         cmds.parent(roll_ik.handle, self.guts)
 
-        roll = Roll(part='roll', control_size=self.control_size, side=self.side, joints= [f'foot_{self.side}', f'ball_{self.side}'], guides=self.feet_guides, control_parent=self.ik_foot.ctrl)
+        roll = Roll(part='roll', rig_size=self.rig_size, side=self.side, joints= [f'foot_{self.side}', f'ball_{self.side}'], guides=self.feet_guides, control_parent=self.ik_foot.ctrl)
         roll_info = roll.build()
 
         #self.build_compressible_ik_length(name=f'{self.part}_{self.side}_roll', root_reference=roll_info.roll_ctrl.top, ik_control=roll_info.down_driver, down_axis='X', length_joint=self.ik_roll_joints[1])
@@ -301,7 +301,7 @@ class Foot:
 
 
         if self.leg_info.auto_pv_driven:
-            pv_auto = auto_pv_space(end_control=self.ik_foot, pv_control=self.leg_info.ik_controls[1], parent_space=self.ik_control_space[0], parent=self.guts, swing_range=((-90, 90),(-self.control_size/10, self.control_size/10)))
+            pv_auto = auto_pv_space(end_control=self.ik_foot, pv_control=self.leg_info.ik_controls[1], parent_space=self.ik_control_space[0], parent=self.guts, swing_range=((-90, 90),(-self.rig_size/10, self.rig_size/10)))
             cmds.parent(self.leg_info.auto_pv_driven, pv_auto.driver)
 
 

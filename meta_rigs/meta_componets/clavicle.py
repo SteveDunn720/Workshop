@@ -17,7 +17,7 @@ class Clavicle:
         side: str = "m",
         parent: str = "components",
         control_parent: str | None = None,
-        control_size: float = 1.0,
+        rig_size: float = 1.0,
         joints: list = ['clavicle_l'],
         control_space = [],
 
@@ -26,7 +26,7 @@ class Clavicle:
         self.side: str = side
         self.parent: str = parent
         self.control_parent: str | None = control_parent
-        self.control_size: float = control_size
+        self.rig_size: float = rig_size
         self.joints: list = joints
         self.control_space = control_space 
         self.main_control_color = 'Left' if self.side == 'l' else 'Right'
@@ -45,7 +45,7 @@ class Clavicle:
             name=f'{self.part}_{self.side}',
             parent=self.control_grp,
             transform=self.joints[0],
-            size=self.control_size * .3,
+            size=self.rig_size * .3,
             control_shape="circle",
             direction="x",
             color_type=self.main_control_color

@@ -22,7 +22,7 @@ class Clav:
         side: str = "L",
         parent: str = "components",
         control_parent: str | None = None,
-        control_size: float = 1.0,
+        rig_size: float = 1.0,
         joint_parent:str = 'skel',
         control_space:list = []
 
@@ -31,7 +31,7 @@ class Clav:
         self.side: str = side
         self.parent: str = parent
         self.control_parent: str | None = control_parent
-        self.control_size: float = control_size
+        self.rig_size: float = rig_size
         self.guides = guides
         self.joint_parent = joint_parent
         self.main_control_color = 'Left' if self.side == 'L' else 'Right'
@@ -54,12 +54,12 @@ class Clav:
             name=f'{self.part}_{self.side}',
             parent=self.control_grp,
             transform=self.guides.name,
-            size=self.control_size/4,
+            size=self.rig_size/4,
             control_shape="arch",
             direction="y",
             color_type=self.main_control_color,
             shape_rotation_offset=(0,90,0),
-            shape_position_offset=(0,(self.control_size/10),0)
+            shape_position_offset=(0,(self.rig_size/10),0)
         )
 
         #joints

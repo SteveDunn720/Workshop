@@ -16,11 +16,11 @@ class module_info:
     pivot_inverse:str
 
 
-def moveable_pivot(transform:str, name_overwite:str|None, control_size:float=1, parent:str|None = None, rig_type:str=''):
+def moveable_pivot(transform:str, name_overwite:str|None, rig_size:float=1, parent:str|None = None, rig_type:str=''):
     base_name = name_overwite if name_overwite else transform
-    pivot_offset = create_control(name=f'{base_name}_pivot_offset', transform=transform, control_shape='circle', parent=parent, size=control_size, color_type=rig_type)
+    pivot_offset = create_control(name=f'{base_name}_pivot_offset', transform=transform, control_shape='circle', parent=parent, size=rig_size, color_type=rig_type)
     lock_tag(object=pivot_offset.ctrl, translate=(False, False, False), rotate=(True,True,True), scale=(True,True,True), visibility=True, hide_tag=True)
-    pivot = create_control(name=f'{base_name}_pivot', transform=transform, control_shape='sphere', parent=pivot_offset.ctrl, size=control_size/2, color_type=rig_type)
+    pivot = create_control(name=f'{base_name}_pivot', transform=transform, control_shape='sphere', parent=pivot_offset.ctrl, size=rig_size/2, color_type=rig_type)
     lock_tag(object=pivot.ctrl, translate=(False, False, False), rotate=(False, False, False), scale=(True,True,True), visibility=True, hide_tag=True)
 
     object_parent = cmds.listRelatives(transform, parent=True)[0]

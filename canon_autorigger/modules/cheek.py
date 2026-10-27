@@ -25,7 +25,7 @@ class Cheek:
         side: str = "M",
         parent: str = "components",
         control_parent: str | None = None,
-        control_size: float = 1.0,
+        rig_size: float = 1.0,
         guides: list = [],
         joint_parent:str = 'skel',
         cheekbone_shape:str = 'triangle',
@@ -37,7 +37,7 @@ class Cheek:
         self.side: str = side
         self.parent: str = parent
         self.control_parent: str | None = control_parent
-        self.control_size: float = control_size
+        self.rig_size: float = rig_size
         self.guides: list = guides
         self.joint_parent = joint_parent
         self.puff_shape = puff_shape
@@ -70,7 +70,7 @@ class Cheek:
             name=self.guides[0].descriptor,
             parent=self.control_grp,
             transform=self.guides[0].name,
-            size=self.control_size/100,
+            size=self.rig_size/100,
             control_shape=self.puff_shape,
             direction="y",
             color_type=self.main_color,
@@ -92,7 +92,7 @@ class Cheek:
             name=self.guides[1].descriptor,
             parent=self.control_grp,
             transform=self.guides[1].name,
-            size=self.control_size/100,
+            size=self.rig_size/100,
             control_shape=self.cheekbone_shape,
             direction="y",
             color_type=self.main_color,

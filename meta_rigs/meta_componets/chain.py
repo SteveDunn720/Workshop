@@ -25,7 +25,7 @@ class Chain:
         part: str = "leg",
         side: str = "L",
         parent: str = "body_rig",
-        control_size: float = 1.0,
+        rig_size: float = 1.0,
         joints: list = ['thigh_l', 'calf_l', 'foot_l'],
         fk_control_space:list = [],
         mod = 1
@@ -34,7 +34,7 @@ class Chain:
         self.part: str = part
         self.side: str = side
         self.parent: str = parent
-        self.control_size: float = control_size
+        self.rig_size: float = rig_size
         self.joints: list = joints
         self.fk_control_space = fk_control_space
         self.main_control_color = 'Left' if self.side == 'l' else 'Right'
@@ -66,7 +66,7 @@ class Chain:
                 name=f'{self.part}_curl_{self.side}',
                 parent=ctrl_par,
                 transform=self.joints[0],
-                size=self.control_size/64,
+                size=self.rig_size/64,
                 control_shape="sphere",
                 direction="x",
                 color_type=self.sub_control_color,
@@ -79,7 +79,7 @@ class Chain:
                 name=f'FK_{jnt}',
                 parent=ctrl_par,
                 transform=jnt,
-                size=self.control_size/32,
+                size=self.rig_size/32,
                 control_shape="circle",
                 direction="x",
                 color_type=self.main_control_color,

@@ -8,7 +8,7 @@ class Socket:
         self,
         side: str = "L",
         guides: dict = {},
-        control_size: float = 1.0,
+        rig_size: float = 1.0,
         main_ctrl: str = "",
         parent: str = "",
         joint_parent: str = "",
@@ -18,7 +18,7 @@ class Socket:
         self.side = side
         self.guides = guides
         self.main_ctrl = main_ctrl
-        self.control_size = control_size
+        self.rig_size = rig_size
         self.parent = parent
         self.joint_parent = joint_parent
         self.component_grp = component_grp

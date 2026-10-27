@@ -30,7 +30,7 @@ class Root:
 
     SETTINGS = (
         ModuleSetting(
-            name="control_size",
+            name="rig_size",
             setting_type="float",
             default=1.0,
         ),
@@ -84,7 +84,7 @@ class Root:
         side: str = "M",
         parent: str = "rig",
         control_parent: str | None = None,
-        control_size: float = 1.0,
+        rig_size: float = 1.0,
         guides: list = [],
         joint_parent:str = 'skel',
         root_control_shape:str = "Character_base",
@@ -102,7 +102,7 @@ class Root:
         self.side: str = side
         self.parent: str = parent
         self.control_parent: str | None = control_parent
-        self.control_size: float = control_size
+        self.rig_size: float = rig_size
         self.guides: list = guides
         self.joint_parent = joint_parent
         self.root_control_shape = root_control_shape
@@ -181,7 +181,7 @@ class Root:
             name=f'{self.part}_{self.side}',
             parent=self.control_grp,
             transform=self.guides[0].name,
-            size=self.control_size,
+            size=self.rig_size,
             control_shape=self.root_control_shape,
             direction="y",
             color_type=self.root_control_color
@@ -191,7 +191,7 @@ class Root:
             name=f'{self.local_name}_{self.side}',
             parent=self.root_ctrl.ctrl,
             transform=self.guides[0].name,
-            size=self.control_size * .56,
+            size=self.rig_size * .56,
             control_shape=self.control_shape,
             direction="y",
             color_type=self.control_color
@@ -201,7 +201,7 @@ class Root:
             name=f'{self.offset_name}_{self.side}',
             parent=self.local_ctrl.ctrl,
             transform=self.guides[0].name,
-            size=self.control_size * .4,
+            size=self.rig_size * .4,
             control_shape=self.control_shape,
             direction="y",
             color_type=self.control_color
@@ -214,10 +214,10 @@ class Root:
             name='visibility_options',
             parent=self.root_ctrl.ctrl,
             transform=self.guides[0].name,
-            size=self.control_size * .05,
+            size=self.rig_size * .05,
             control_shape=self.settings_control_shape,
             direction="y",
-            shape_position_offset=(self.control_size * settings_offset, 0, 0 ),
+            shape_position_offset=(self.rig_size * settings_offset, 0, 0 ),
             color_type=self.settings_control_color
         )
 
@@ -225,10 +225,10 @@ class Root:
             name='color_options',
             parent=self.root_ctrl.ctrl,
             transform=self.guides[0].name,
-            size=self.control_size * .05,
+            size=self.rig_size * .05,
             control_shape=self.settings_control_shape,
             direction="y",
-            shape_position_offset=(self.control_size * -settings_offset, 0, 0 ),
+            shape_position_offset=(self.rig_size * -settings_offset, 0, 0 ),
             color_type=self.settings_control_color
         )
         lock_tag(self.color_control.ctrl, hide_tag=True)
