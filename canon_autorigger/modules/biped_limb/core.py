@@ -14,6 +14,7 @@ from ..ik import create_IK_rotate_plane, create_IK_single_chain, IK_data
 from ..module_initialize import module_prep, module_space
 from ..module_shared import fkik_switch
 from ..twist import create_swing_driver, create_twist
+from ..correctives.ik_bone import IK_Bone
 
 from .stretch import build_stretchy_ik
 
@@ -127,6 +128,23 @@ class Biped_Limb:
             setting_type="bool",
             default=False,
         ),
+        ModuleSetting(
+            name="twist_joints",
+            setting_type="bool",
+            default=True,
+        ),
+
+        ModuleSetting(
+            name="ik_bone",
+            setting_type="bool",
+            default=False,
+        ),
+
+        ModuleSetting(
+            name="ik_bone_offset",
+            setting_type="float",
+            default=0.1,
+        ),
     )
 
     RELATIONSHIPS = (
@@ -178,7 +196,10 @@ class Biped_Limb:
         pv_ctrl_shapes:str = 'sphere',
         bendy_control_shape:str = 'round_square',
         twist_count:int = 4, 
-        auto_pv_space:bool = False
+        auto_pv_space:bool = False,
+        twist_joints: bool = True,
+        ik_bone: bool = False,
+        ik_bone_offset: float = 1/30,
 
 
     ):
@@ -204,6 +225,9 @@ class Biped_Limb:
         self.bendy_control_shape = bendy_control_shape
         self.twist_count = twist_count
         self.auto_pv_space = auto_pv_space
+        self.twist_joints = twist_joints
+        self.ik_bone = ik_bone
+        self.ik_bone_offset = ik_bone_offset
 
 
     @staticmethod
@@ -579,31 +603,106 @@ class Biped_Limb:
             jnt_par = bind_jnt
             #constraint(drivers=[self.switch_joints[i]], driven=bind_jnt, parent=self.guts, constraint_type="parent")
 
+        # --------------------------------------------------
+        # Twist joints
+        # --------------------------------------------------
+
         self.twists = []
 
-        for i in range(len(self.bind_joints) - 1):
+        if self.twist_joints:
 
-            twist = create_twist(
-                start_driver=self.switch_joints[i],
-                end_driver=self.switch_joints[i + 1],
+            for i in range(len(self.bind_joints) - 1):
 
-                start_joint=self.bind_joints[i],
-                end_joint=self.bind_joints[i + 1],
+                twist = create_twist(
+                    start_driver=self.switch_joints[i],
+                    end_driver=self.switch_joints[i + 1],
 
-                twist_count=self.twist_count,
-                primary_axis="Y",
+                    start_joint=self.bind_joints[i],
+                    end_joint=self.bind_joints[i + 1],
 
-                cst_parent=self.guts,
+                    twist_count=self.twist_count,
+                    primary_axis="Y",
 
-                mid_control=True,
-                control_parent=self.bend_control_grp,
-                rig_size=self.rig_size/10,
-                control_shape=self.bendy_control_shape,
+                    cst_parent=self.guts,
+
+                    mid_control=True,
+                    control_parent=self.bend_control_grp,
+                    rig_size=self.rig_size / 10,
+                    control_shape=self.bendy_control_shape,
+                )
+
+                self.twists.append(twist)
+
+        else:
+
+            # Without twist joints, we still need to
+            # constrain the bind joints to the switch chain.
+
+            for switch_joint, bind_joint in zip(
+                self.switch_joints,
+                self.bind_joints,
+                strict=True,
+            ):
+
+                constraint(
+                    drivers=[switch_joint],
+                    driven=bind_joint,
+                    constraint_type="parent",
+                    maintain_offset=True,
+                    parent=self.guts,
+                )
 
 
-            )
+        # --------------------------------------------------
+        # IK Bone Correctives
+        # --------------------------------------------------
 
-            self.twists.append(twist)
+        self.ik_bones = []
+
+        if self.ik_bone:
+
+            # Lower half of the limb
+            root_driver = self.switch_joints[1]
+            end_driver = self.switch_joints[2]
+
+            # Shared offset magnitude
+            offset = self.rig_size * self.ik_bone_offset
+
+            # Build positive and negative X bone correctives
+            for direction, sign in [
+                ("positive", 1),
+                ("negative", -1),
+            ]:
+
+                bone = IK_Bone(
+                    part=f"{self.part}_lower_{direction}",
+                    side=self.side,
+
+                    root_driver=root_driver,
+                    end_driver=end_driver,
+
+                    primary_axis="X",
+                    offset=offset * sign,
+
+                    parent=self.main_grp,
+                    control_parent=self.bend_control_grp,
+                    joint_parent=self.bind_joints[1],
+
+                    rig_size=self.rig_size / 30,
+                    control_shape=self.bendy_control_shape,
+                    control_color=self.main_control_color,
+
+                    stretch_default=1.0,
+                )
+
+                bone_info = bone.build()
+
+                self.ik_bones.append(bone_info)
+
+                # Include corrective controls in module controls.
+                self.controls.append(bone_info.control)
+
+
 
         if not self.ik_end_control:
             cmds.delete(self.bind_joints[-1])
