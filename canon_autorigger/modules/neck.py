@@ -32,7 +32,7 @@ class Neck:
         joint_parent:str = 'skel',
         control_space:list = [],
         simple_fk:bool=False,
-        count:int=4
+        divisions:int=4
 
     ):
         self.part: str = part
@@ -43,7 +43,7 @@ class Neck:
         self.guides = guides
         self.joint_parent = joint_parent
         self.simple_fk = simple_fk
-        self.count = count + 1
+        self.divisions = divisions + 1
         if self.side == "M":
             self.main_control_color = 'Middle'
             self.sub_control_color = 'SubMiddle'
@@ -110,7 +110,7 @@ class Neck:
             shape_rotation_offset=(90,0,0)
         )
 
-        mult = (self.count /2)/10
+        mult = (self.divisions /2)/10
 
         for attrs in ['X', 'Y', 'Z']:
             cmds.setAttr(f'{self.roll_ctrl.top}.rotate{attrs}', 0)
@@ -123,13 +123,13 @@ class Neck:
         self.trans_mult.input1.connect_from(f'{self.roll_ctrl.ctrl}.translate')
 
 
-        for i in range(self.count):
+        for i in range(self.divisions):
             guide_names.append(f'{self.part}_{self.side}_{i + 1:02d}')
 
 
         self.curve = GuideCurve(
                     curve= self.guides.curve.name, 
-                    resample_amount=self.count,
+                    resample_amount=self.divisions,
                     output_names=guide_names,
                     ignore_handles=True,
                     align_normals=False,
