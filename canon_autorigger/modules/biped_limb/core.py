@@ -199,7 +199,7 @@ class Biped_Limb:
         auto_pv_space:bool = False,
         twist_joints: bool = True,
         ik_bone: bool = False,
-        ik_bone_offset: float = 1/30,
+        ik_bone_offset: float = 1/50,
 
 
     ):
