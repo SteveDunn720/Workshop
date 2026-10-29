@@ -8,6 +8,12 @@ from Workshop.guide.core import GuideInfo
 
 from .module_initialize import module_prep, module_space
 
+from Workshop.canon_autorigger.module_schema import (
+    ModuleSetting,
+    ModuleRelationship,
+    ModuleGuide,
+)
+
 
 @dataclass
 class module_info:
@@ -15,6 +21,56 @@ class module_info:
     joint:str
 
 class Clav:
+
+    MODULE_NAME = "clav"
+    DISPLAY_NAME = "Clavicle"
+
+    GUIDES = (
+        ModuleGuide(
+            name="clav",
+        ),
+    )
+
+    SETTINGS = (
+        ModuleSetting(
+            name="rig_size",
+            setting_type="float",
+            default=1.0,
+        ),
+        ModuleSetting(
+            name="control_shape",
+            setting_type="control_shape",
+            default="arch",
+        ),
+        ModuleSetting(
+            name="control_size",
+            setting_type="float",
+            default=0.25,
+        ),
+        ModuleSetting(
+            name="control_rot",
+            setting_type="vector3",
+            default=(0.0, 90.0, 0.0),
+        ),
+        ModuleSetting(
+            name="control_offset",
+            setting_type="vector3",
+            default=(0.0, 0.1, 0.0),
+        ),
+    )
+
+    RELATIONSHIPS = (
+        ModuleRelationship(
+            name="joint_parent",
+            relationship_type="joint",
+            default="auto",
+        ),
+        ModuleRelationship(
+            name="control_space",
+            relationship_type="control_space",
+            default="auto",
+        ),
+    )
     def __init__(
         self,
         guides: GuideInfo,
@@ -24,7 +80,11 @@ class Clav:
         control_parent: str | None = None,
         rig_size: float = 1.0,
         joint_parent:str = 'skel',
-        control_space:list = []
+        control_space:list = [],
+        control_shape:str = "arch",
+        control_size:float = 1/4,
+        control_rot:tuple = (0,90,0),
+        control_offset:tuple = (0,1/10,0),
 
     ):
         self.part: str = part
@@ -36,6 +96,41 @@ class Clav:
         self.joint_parent = joint_parent
         self.main_control_color = 'Left' if self.side == 'L' else 'Right'
         self.control_space = control_space
+        self.control_shape = control_shape
+        self.control_size = control_size
+        self.control_rot = control_rot
+        self.control_offset = control_offset
+
+    # -------------------
+    # Preview
+    # -------------------
+
+    @classmethod
+    def preview(
+        cls,
+        part: str,
+        side: str,
+        guides: list[str],
+        settings: dict,
+    ) -> dict:
+
+        if not guides:
+            return {
+                "controls": [],
+                "joints": [],
+                "output_control": None,
+                "output_joint": None,
+            }
+
+        control = f"{part}_{side}_ctrl"
+        joint = f"def_{part}_{side}_jnt"
+
+        return {
+            "controls": [control],
+            "joints": [joint],
+            "output_control": control,
+            "output_joint": joint,
+        }
 
     # -------------------
     # Build steps
@@ -54,12 +149,12 @@ class Clav:
             name=f'{self.part}_{self.side}',
             parent=self.control_grp,
             transform=self.guides.name,
-            size=self.rig_size/4,
-            control_shape="arch",
+            size=self.rig_size * self.control_size,
+            control_shape=self.control_shape,
             direction="y",
             color_type=self.main_control_color,
-            shape_rotation_offset=(0,90,0),
-            shape_position_offset=(0,(self.rig_size/10),0)
+            shape_rotation_offset=self.control_rot,
+            shape_position_offset=tuple(value * self.rig_size for value in self.control_offset)
         )
 
         #joints

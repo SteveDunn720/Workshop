@@ -33,6 +33,10 @@ class Face:
         guides: list = [],
         joint_parent:str = 'skel',
         control_space:list = [],
+        face_ctrl_shape:str = 'round_square',
+        face_control_rot:tuple = (90,0,0) ,
+        face_control_offset:tuple = (1/4,0,0) ,
+        face_control_size:float = 1/30,
 
     ):
         self.part: str = part
@@ -45,6 +49,10 @@ class Face:
         self.control_space = control_space
         self.main_control_color = 'Middle'
         self.sub_control_color = 'SubMiddle'
+        self.face_ctrl_shape = face_ctrl_shape
+        self.face_control_rot = face_control_rot
+        self.face_control_offset = face_control_offset
+        self.face_control_size = face_control_size
 
     # -------------------
     # Build steps
@@ -105,11 +113,11 @@ class Face:
             name=self.guides[0].descriptor,
             parent=self.mid_face_ctrl.ctrl,
             transform=self.guides[0].name,
-            size=self.rig_size/30,
-            control_shape="round_square",
+            size=self.rig_size * self.face_control_size,
+            control_shape=self.face_ctrl_shape,
             direction="y",
-            shape_rotation_offset=(90,0,0),
-            shape_position_offset=(self.rig_size/4,0,0), 
+            shape_rotation_offset=self.face_control_rot,
+            shape_position_offset=tuple(value * self.rig_size for value in self.face_control_offset), 
             color_type=self.sub_control_color
         )
 
@@ -119,11 +127,11 @@ class Face:
             name=self.guides[1].descriptor,
             parent=self.control_grp,
             transform=self.guides[1].name,
-            size=self.rig_size/30,
-            control_shape="round_square",
+            size=self.rig_size * self.face_control_size,
+            control_shape=self.face_ctrl_shape,
             direction="y",
-            shape_rotation_offset=(90,0,0),
-            shape_position_offset=(self.rig_size/4,0,0), 
+            shape_rotation_offset=self.face_control_rot,
+            shape_position_offset=tuple(value * self.rig_size for value in self.face_control_offset), 
             color_type=self.sub_control_color
         )
         
@@ -142,9 +150,9 @@ class Face:
             parent=self.upper_face_ctrl.ctrl,
             transform=self.guides[3].name,
             size=self.rig_size/70,
-            control_shape="round_square",
+            control_shape=self.face_ctrl_shape,
             direction="y",
-            shape_rotation_offset=(90,0,0),
+            shape_rotation_offset=self.face_control_rot,
             shape_position_offset=(0,self.rig_size/10, self.rig_size/6), 
             color_type=self.sub_control_color,
             dimensions=(8,.1,1)
