@@ -16,6 +16,7 @@ from Workshop.transform.matrix import get_world_matrix
 from Workshop.transform.structs import Direction
 from Workshop.transform.utils import bake_shape, match_location, partial_path_name
 from Workshop.tag.core import control_color_tag, lock_tag
+from .utils import tag_control
 
 CONTROL_SUFFIX = "_ctrl"
 TOP_SUFFIX = "_offset"
@@ -188,6 +189,8 @@ def create_control(
         shape_position_offset,
         shape_rotation_offset
     )
+
+    tag_control(control_transform)
 
     
 

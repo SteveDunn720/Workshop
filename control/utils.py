@@ -24,3 +24,41 @@ def get_tagged_controls(side: str | None = None) -> list[str]:
             tagged_controls.append(control)
 
     return tagged_controls
+
+def tag_control(control: str) -> str:
+    """Ensure a transform has a Maya controller tag."""
+
+    if not cmds.objExists(control):
+        raise RuntimeError(f"Control does not exist: {control}")
+
+    if cmds.nodeType(control) != "transform":
+        raise TypeError(f"Expected transform, got: {control}")
+
+    # Check for an existing controller tag
+    existing_tags = cmds.listConnections(
+        f"{control}.message",
+        source=False,
+        destination=True,
+        type="controller",
+    ) or []
+
+    if existing_tags:
+        return existing_tags[0]
+
+    # Create the controller tag
+    cmds.controller(control)
+
+    # Retrieve the newly created tag
+    tags = cmds.listConnections(
+        f"{control}.message",
+        source=False,
+        destination=True,
+        type="controller",
+    ) or []
+
+    if not tags:
+        raise RuntimeError(
+            f"Failed to create controller tag for {control}"
+        )
+
+    return tags[0]
