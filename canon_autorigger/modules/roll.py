@@ -67,6 +67,14 @@ class Roll:
             )
         roll_ctrls.append(self.smart_roll)
 
+        cmds.transformLimits(
+            self.smart_roll.ctrl,
+            rz=(-45, 45),
+            erz=(True, True),
+            rx=(-45, 45),
+            erx=(True, False),
+        )
+
         lock_tag(object=self.smart_roll.ctrl, rotate=(False, True, False), extra_channels=['DEV_bank_sensitivity'], hide_tag=True)
 
         self.smart_twist = create_control(
