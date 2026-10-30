@@ -37,6 +37,14 @@ class Face:
         face_control_rot:tuple = (90,0,0) ,
         face_control_offset:tuple = (1/4,0,0) ,
         face_control_size:float = 1/30,
+        top_dimentions:tuple = (8,.1,1),
+        top_offset:tuple = (0, 1/10, 1/6),
+        top_size:float = 1/70,
+        muppet_shape:str = "triangle",
+        muppet_size:float= 1/30,
+        muppet_offset:tuple = (0, 1/2.5, 0),
+        muppet_des:str = 'muppet',
+        skull_des:str = 'skull'
 
     ):
         self.part: str = part
@@ -53,6 +61,14 @@ class Face:
         self.face_control_rot = face_control_rot
         self.face_control_offset = face_control_offset
         self.face_control_size = face_control_size
+        self.top_dimentions = top_dimentions
+        self.top_offset = top_offset
+        self.top_size = top_size
+        self.muppet_shape =muppet_shape
+        self.muppet_size = muppet_size
+        self.muppet_offset = muppet_offset
+        self.muppet_des = muppet_des
+        self.skull_des = skull_des
 
     # -------------------
     # Build steps
@@ -68,28 +84,28 @@ class Face:
 
 
         self.mid_face_ctrl = create_control(
-            name='muppet_M',
+            name=f'{self.muppet_des}_M',
             parent=self.control_grp,
             transform=self.guides[-1].name,
-            size=self.rig_size/30,
-            control_shape="triangle",
+            size=self.rig_size * self.muppet_size,
+            control_shape=self.muppet_shape,
             direction="y",
-            shape_rotation_offset=(90,0,0),
-            shape_position_offset=(0,self.rig_size/2.5,0), 
+            shape_rotation_offset=self.face_control_rot,
+            shape_position_offset=tuple(value * self.rig_size for value in self.muppet_offset), 
             color_type=self.sub_control_color
         )
         
         module_space(control=self.mid_face_ctrl, space_list=self.control_space)
 
         self.mid_sub_ctrl = create_control(
-            name=f'def_{self.guides[2].descriptor}',
+            name=f'sub_{self.guides[2].descriptor}',
             parent=self.mid_face_ctrl.ctrl,
             transform=self.guides[2].name,
-            size=self.rig_size/40,
-            control_shape="triangle",
+            size=self.rig_size * self.muppet_size * 1/2,
+            control_shape=self.muppet_shape,
             direction="y",
-            shape_rotation_offset=(90,0,0),
-            shape_position_offset=(0,self.rig_size/2,0), 
+            shape_rotation_offset=self.face_control_rot,
+            shape_position_offset=tuple(value * self.rig_size for value in self.muppet_offset), 
             color_type=self.sub_control_color,
             sdk_offset=True
         )
@@ -104,7 +120,7 @@ class Face:
 
         constraint(drivers=[self.mid_sub_ctrl.ctrl], driven=self.mid_face_joint, constraint_type='parent', parent=self.guts)
 
-        self.skull_face_joint = create_joint(name='def_skull_M', transform=self.mid_face_ctrl.ctrl, connect=False, parent=self.joint_parent)
+        self.skull_face_joint = create_joint(name=f'def_{self.skull_des}_M', transform=self.mid_face_ctrl.ctrl, connect=False, parent=self.joint_parent)
         
         constraint(drivers=[self.mid_face_ctrl.ctrl], driven=self.skull_face_joint, constraint_type='parent', parent=self.guts)
 
@@ -149,13 +165,13 @@ class Face:
             name=self.guides[3].descriptor,
             parent=self.upper_face_ctrl.ctrl,
             transform=self.guides[3].name,
-            size=self.rig_size/70,
+            size=self.rig_size * self.top_size,
             control_shape=self.face_ctrl_shape,
             direction="y",
             shape_rotation_offset=self.face_control_rot,
-            shape_position_offset=(0,self.rig_size/10, self.rig_size/6), 
+            shape_position_offset=tuple(value * self.rig_size for value in self.top_offset), 
             color_type=self.sub_control_color,
-            dimensions=(8,.1,1)
+            dimensions=self.top_dimentions
         )
         
         #module_space(control=self.top_face_ctrl, space_list=self.control_space)
