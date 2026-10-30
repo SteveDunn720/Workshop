@@ -11,8 +11,7 @@ from Workshop.transform.constraint import constraint
 
 from .roll import Roll
 from .ik import auto_pv_space, create_IK_single_chain
-from .module_initialize import module_prep, module_space
-from .module_shared import fkik_switch
+from .module_shared import fkik_switch, module_prep, module_space
 
 @dataclass
 class module_info:

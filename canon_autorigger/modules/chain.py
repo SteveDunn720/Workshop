@@ -9,7 +9,7 @@ from Workshop.joint import create_joint
 from Workshop.canon_autorigger.module_schema import ModuleGuideArray, ModuleRelationship, ModuleSetting
 from Workshop.guide.core import read_guide
 
-from .module_initialize import module_prep, module_space
+from .module_shared import module_prep, module_space
 
 
 @dataclass

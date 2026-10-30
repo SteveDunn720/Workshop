@@ -6,7 +6,7 @@ from Workshop.control import create_control
 from Workshop.joint import create_joint
 from Workshop.guide.core import GuideInfo
 
-from .module_initialize import module_prep, module_space
+from .module_shared import module_prep, module_space
 
 from Workshop.canon_autorigger.module_schema import (
     ModuleSetting,

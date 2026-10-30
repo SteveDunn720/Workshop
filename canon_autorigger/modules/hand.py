@@ -6,10 +6,9 @@ from Workshop.control import create_control
 from Workshop.transform.utils import get_position, match_transform
 from Workshop.transform.constraint import constraint
 from .ik import auto_pv_space
-from .module_initialize import module_prep, module_space
 from Workshop.joint import create_joint
 from Workshop.maya_api.node import ReverseNode
-from .module_shared import fkik_switch
+from .module_shared import fkik_switch,module_prep, module_space
 from Workshop.guide.core import GuideInfo
 
 @dataclass

@@ -5,8 +5,7 @@ from Workshop.transform.constraint import constraint
 from Workshop.control import create_control
 from Workshop.joint import create_joint
 
-from .module_initialize import module_prep, module_space
-from .module_shared import create_driver_offset, create_blend_driver_offset
+from .module_shared import create_driver_offset, create_blend_driver_offset, module_prep, module_space
 
 @dataclass
 class module_info:

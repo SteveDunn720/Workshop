@@ -15,8 +15,7 @@ from Workshop.transform.utils import create_transform
 from Workshop.spline.matrix_spline.build import matrix_spline_from_transforms
 from Workshop.skin.split.tag import tag_for_weight_split
 
-from .module_initialize import module_prep, module_space
-from .module_shared import create_driver_offset
+from .module_shared import create_driver_offset,module_prep, module_space
 
 
 @dataclass

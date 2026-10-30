@@ -7,7 +7,7 @@ from Workshop.joint import create_joint
 from Workshop.guide.core import GuideInfo, create_guide_from_position
 from Workshop.skin.split.tag import tag_for_weight_split
 
-from .module_initialize import module_prep, module_space
+from .module_shared import module_prep, module_space
 
 import maya.cmds as cmds
 

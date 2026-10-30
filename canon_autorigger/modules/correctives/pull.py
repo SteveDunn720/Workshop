@@ -8,7 +8,7 @@ from Workshop.transform.quat import (
 )
 from Workshop.maya_api.node import RemapValueNode
 
-from ..module_initialize import module_prep
+from ..module_shared import module_prep
 
 
 class Pull:

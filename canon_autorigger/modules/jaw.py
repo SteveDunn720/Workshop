@@ -7,8 +7,7 @@ from Workshop.joint import create_joint
 from Workshop.maya_api.node import RemapValueNode
 from Workshop.transform.utils import create_transform
 
-from .module_shared import create_driver_offset
-from .module_initialize import module_prep, module_space
+from .module_shared import create_driver_offset, module_prep, module_space
 
 import maya.cmds as cmds
 import math

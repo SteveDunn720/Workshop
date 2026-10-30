@@ -7,7 +7,7 @@ from Workshop.control import create_control
 from Workshop.tag.core import lock_tag
 from Workshop.joint import create_joint
 from Workshop.canon_autorigger.module_schema import ModuleGuide, ModuleRelationship, ModuleSetting
-from .module_initialize import module_prep
+from .module_shared import module_prep
 
 
 @dataclass

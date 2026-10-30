@@ -5,7 +5,7 @@ import maya.cmds as cmds
 from Workshop.control import create_control
 from Workshop.joint import create_joint
 from Workshop.transform.constraint import constraint
-from .module_initialize import module_prep, module_space
+from .module_shared import module_prep, module_space
 
 
 @dataclass

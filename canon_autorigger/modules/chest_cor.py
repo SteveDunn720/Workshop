@@ -3,7 +3,7 @@ from attr import dataclass
 from Workshop.control.core import Control
 from Workshop.transform.utils import create_transform
 
-from .module_initialize import module_prep, module_space
+from .module_shared import module_prep, module_space
 
 from .correctives.ik_correctives import Ik_correctives
 

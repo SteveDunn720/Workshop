@@ -14,8 +14,7 @@ from Workshop.spline.matrix_spline.build import matrix_spline_from_transforms
 from Workshop.transform.matrix import matrix_constraint
 from Workshop.skin.split.tag import tag_for_weight_split
 
-from ..module_shared import create_module_switch
-from ..module_initialize import module_prep, module_space
+from ..module_shared import create_module_switch,  module_prep, module_space
 
 from .utils import align_guides, curve_midpoint
 from .simple_fk import build_simple_fk

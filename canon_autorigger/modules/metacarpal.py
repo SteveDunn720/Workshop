@@ -9,7 +9,7 @@ from Workshop.joint import create_joint
 from Workshop.transform.utils import rotation_blend
 from Workshop.maya_api.node import BlendColorsNode
 
-from .module_initialize import module_prep, module_space
+from .module_shared import module_prep, module_space
 
 
 @dataclass

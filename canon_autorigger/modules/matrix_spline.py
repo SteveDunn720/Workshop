@@ -18,7 +18,7 @@ from Workshop.canon_autorigger.module_schema import (
     ModuleSetting,
 )
 
-from .module_initialize import module_prep, module_space
+from .module_shared import module_prep, module_space
 
 # Update this import if your Workshop spline solver has a different path.
 from Workshop.spline.matrix_spline.build import matrix_spline_from_transforms

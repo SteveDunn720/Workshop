@@ -9,7 +9,7 @@ from Workshop.joint import create_joint
 from Workshop.guide.core import GuideInfo
 from Workshop.transform.utils import create_transform
 
-from ..module_initialize import module_prep
+from ..module_shared import module_prep
 from ..ik import create_IK_single_chain
 
 

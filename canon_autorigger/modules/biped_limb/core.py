@@ -11,8 +11,7 @@ from Workshop.transform.constraint import constraint
 
 from ..display_line import create_connection_curve
 from ..ik import create_IK_rotate_plane, create_IK_single_chain, IK_data
-from ..module_initialize import module_prep, module_space
-from ..module_shared import fkik_switch
+from ..module_shared import module_prep, module_space, fkik_switch
 from ..twist import create_swing_driver, create_twist
 from ..correctives.ik_bone import IK_Bone
 

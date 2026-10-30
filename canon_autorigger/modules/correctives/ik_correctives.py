@@ -9,7 +9,7 @@ from Workshop.maya_api.node import DistanceBetweenNode
 from Workshop.transform.constraint import constraint
 from Workshop.transform.utils import create_transform
 
-from ..module_initialize import module_prep
+from ..module_shared import module_prep
 from ..ik import create_IK_single_chain
 from ..twist import create_twist, TwistData
 

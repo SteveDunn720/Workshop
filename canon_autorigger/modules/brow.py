@@ -6,11 +6,9 @@ from Workshop.control import create_control
 from Workshop.joint import create_joint
 from Workshop.spline.matrix_spline.build import matrix_spline_from_transforms
 from Workshop.transform.utils import create_transform
-from .module_shared import create_mid_blend_driver_offset
+from .module_shared import create_mid_blend_driver_offset, module_prep, module_space
 from Workshop.guide.core import GuideInfo, create_guide_from_position, mirror_guide, read_guide, align_guides
 from Workshop.skin.split.tag import tag_for_weight_split
-
-from .module_initialize import module_prep, module_space
 
 import maya.cmds as cmds
 
