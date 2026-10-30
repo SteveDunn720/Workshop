@@ -12,7 +12,7 @@ from Workshop.transform.utils import get_distance_between
 from Workshop.maya_api.node import MultiplyDivideNode
 from Workshop.skin.split.tag import tag_for_weight_split
 
-from .module_initialize import module_prep, module_space
+from .module_shared import module_prep, module_space
 
 
 @dataclass
