@@ -5,8 +5,15 @@ from Workshop.control.core import Control
 from Workshop.transform.constraint import constraint
 from Workshop.control import create_control
 from Workshop.joint import create_joint
+from Workshop.guide.core import read_guide
 
 from .module_initialize import module_prep, module_space
+
+from ..module_schema import (
+    ModuleSetting,
+    ModuleRelationship,
+    ModuleGuide,
+)
 
 
 @dataclass
@@ -23,6 +30,118 @@ class module_info:
     submid_control:Control
 
 class Face:
+
+    MODULE_NAME = "face"
+    DISPLAY_NAME = "Face"
+
+    GUIDES = (
+        ModuleGuide(
+            name="upper_face",
+        ),
+        ModuleGuide(
+            name="lower_face",
+        ),
+        ModuleGuide(
+            name="mid_face",
+        ),
+        ModuleGuide(
+            name="top_face",
+        ),
+        ModuleGuide(
+            name="muppet",
+        ),
+    )
+
+    SETTINGS = (
+        ModuleSetting(
+            name="rig_size",
+            setting_type="float",
+            default=1.0,
+        ),
+
+        # Face controls
+        ModuleSetting(
+            name="face_ctrl_shape",
+            setting_type="control_shape",
+            default="round_square",
+        ),
+        ModuleSetting(
+            name="face_control_rot",
+            setting_type="tuple",
+            default=(90, 0, 0),
+        ),
+        ModuleSetting(
+            name="face_control_offset",
+            setting_type="tuple",
+            default=(1/4, 0, 0),
+        ),
+        ModuleSetting(
+            name="face_control_size",
+            setting_type="float",
+            default=1/30,
+        ),
+
+        # Top face control
+        ModuleSetting(
+            name="top_dimentions",
+            setting_type="tuple",
+            default=(8, 0.1, 1),
+        ),
+        ModuleSetting(
+            name="top_offset",
+            setting_type="tuple",
+            default=(0, 1/10, 1/6),
+        ),
+        ModuleSetting(
+            name="top_size",
+            setting_type="float",
+            default=1/70,
+        ),
+
+        # Muppet control
+        ModuleSetting(
+            name="muppet_shape",
+            setting_type="control_shape",
+            default="triangle",
+        ),
+        ModuleSetting(
+            name="muppet_size",
+            setting_type="float",
+            default=1/30,
+        ),
+        ModuleSetting(
+            name="muppet_offset",
+            setting_type="tuple",
+            default=(0, 1/2.5, 0),
+        ),
+
+        # Naming
+        ModuleSetting(
+            name="muppet_des",
+            setting_type="string",
+            default="muppet",
+        ),
+        ModuleSetting(
+            name="skull_des",
+            setting_type="string",
+            default="skull",
+        ),
+    )
+
+    RELATIONSHIPS = (
+        ModuleRelationship(
+            name="joint_parent",
+            relationship_type="joint",
+            default="auto",
+        ),
+        ModuleRelationship(
+            name="control_space",
+            relationship_type="control_space",
+            default="auto",
+        ),
+    )
+
+
     def __init__(
         self,
         part: str = "face",
@@ -73,6 +192,66 @@ class Face:
     # -------------------
     # Build steps
     # -------------------
+
+    @classmethod
+    def preview(
+        cls,
+        part: str,
+        side: str,
+        guides: list[str],
+        settings: dict,
+    ) -> dict:
+
+        if len(guides) < 5:
+            return {
+                "controls": [],
+                "joints": [],
+                "output_control": None,
+                "output_joint": None,
+            }
+
+        upper_guide = read_guide(guides[0])
+        lower_guide = read_guide(guides[1])
+        mid_guide = read_guide(guides[2])
+        top_guide = read_guide(guides[3])
+
+        muppet_des = settings.get("muppet_des", "muppet")
+        skull_des = settings.get("skull_des", "skull")
+
+        # Controls
+        muppet_control = f"{muppet_des}_M_ctrl"
+        submid_control = f"sub_{mid_guide.descriptor}_ctrl"
+
+        upper_control = f"{upper_guide.descriptor}_ctrl"
+        lower_control = f"{lower_guide.descriptor}_ctrl"
+        top_control = f"{top_guide.descriptor}_ctrl"
+
+        # Joints
+        skull_joint = f"def_{skull_des}_M_jnt"
+        mid_joint = f"def_{mid_guide.descriptor}_jnt"
+
+        upper_joint = f"def_{upper_guide.descriptor}_jnt"
+        lower_joint = f"def_{lower_guide.descriptor}_jnt"
+        top_joint = f"def_{top_guide.descriptor}_jnt"
+
+        return {
+            "controls": [
+                muppet_control,
+                submid_control,
+                upper_control,
+                lower_control,
+                top_control,
+            ],
+            "joints": [
+                skull_joint,
+                mid_joint,
+                upper_joint,
+                lower_joint,
+                top_joint,
+            ],
+            "output_control": muppet_control,
+            "output_joint": skull_joint,
+        }
 
     def build(self)->module_info:
 
