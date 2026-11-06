@@ -10,7 +10,7 @@ from Workshop.canon_autorigger.build_management.load_guides import load_guides
 from Workshop.canon_autorigger.build_management.skin_geo import apply_skins, skin_meshes
 from Workshop.canon_autorigger import modules
 from Workshop.tag.core import get_tags
-from Workshop.canon_autorigger.canon_rig_config import generate_foot_guides
+from Workshop.canon_autorigger.modules.foot.roll_guides import generate_foot_guides
 
 
 @dataclass

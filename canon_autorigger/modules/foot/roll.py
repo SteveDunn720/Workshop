@@ -2,7 +2,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from .foot import foot_guides
+    from . import foot_guides
 
 
 from dataclasses import dataclass
