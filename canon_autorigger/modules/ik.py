@@ -1,4 +1,4 @@
-from attr import dataclass
+from dataclasses import dataclass
 import maya.cmds as cmds
 from Workshop.transform.utils import create_transform, match_location, get_distance_between, get_plane_normal, get_position, convert_to_matrix
 from Workshop.control.core import Control

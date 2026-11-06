@@ -1,6 +1,6 @@
 
 
-from attr import dataclass
+from dataclasses import dataclass
 import maya.cmds as cmds
 
 from Workshop.transform.utils import create_transform

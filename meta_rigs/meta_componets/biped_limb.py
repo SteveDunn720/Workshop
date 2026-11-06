@@ -1,4 +1,4 @@
-from attr import dataclass
+from dataclasses import dataclass
 import maya.cmds as cmds
 from Workshop.meta_rigs.meta_componets.ik import create_IK_rotate_plane, create_IK_single_chain
 from Workshop.control.core import create_control

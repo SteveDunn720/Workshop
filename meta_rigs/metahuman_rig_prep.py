@@ -1,4 +1,4 @@
-from attr import dataclass
+from dataclasses import dataclass
 import maya.cmds as cmds
 
 from Workshop.transform.utils import create_transform, get_distance_between, get_flat_y_aim_rotation

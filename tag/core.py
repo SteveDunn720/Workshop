@@ -1,4 +1,4 @@
-from attr import dataclass
+from dataclasses import dataclass
 import maya.cmds as cmds
 from Workshop.tag.lock_hide_key import hide_channels, lock_channels, not_keyable_channels, object_reference, object_visibility
 from Workshop.tag.apply_rig_color import apply_color_tag

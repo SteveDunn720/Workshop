@@ -1,4 +1,4 @@
-from attr import dataclass
+from dataclasses import dataclass
 
 from Workshop.control.core import create_control
 from Workshop.joint import create_joint

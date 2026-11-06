@@ -5,7 +5,7 @@ if TYPE_CHECKING:
     from .foot import foot_guides
 
 
-from attr import dataclass
+from dataclasses import dataclass
 from Workshop.control.core import Control
 import maya.cmds as cmds
 

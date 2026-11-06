@@ -1,4 +1,4 @@
-from attr import dataclass
+from dataclasses import dataclass
 
 from Workshop.control.core import Control, align_control_shape_world_z
 from Workshop.transform.constraint import constraint

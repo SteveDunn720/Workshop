@@ -1,4 +1,4 @@
-from attr import dataclass
+from dataclasses import dataclass
 
 from Workshop.control.core import Control
 from Workshop.transform.constraint import constraint

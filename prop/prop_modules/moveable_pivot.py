@@ -1,4 +1,4 @@
-from attr import dataclass
+from dataclasses import dataclass
 import maya.cmds as cmds
 
 from Workshop.control.core import create_control, Control

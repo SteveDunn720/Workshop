@@ -1,4 +1,4 @@
-from attr import dataclass
+from dataclasses import dataclass
 import maya.cmds as cmds
 
 from Workshop.canon_autorigger.build_management.config_scene import configure_canon_scene

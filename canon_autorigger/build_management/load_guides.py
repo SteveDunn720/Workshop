@@ -1,4 +1,4 @@
-from attr import dataclass
+from dataclasses import dataclass
 import maya.cmds as cmds
 
 RIG_BUILD_DIRECTORY = r'C:\Users\sldun\Documents\maya\projects\rig_build'
