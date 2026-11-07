@@ -1,6 +1,8 @@
 from __future__ import annotations
 from typing import TYPE_CHECKING
 
+from Workshop.canon_autorigger.build_management.dev import create_dev_attribute
+
 if TYPE_CHECKING:
     from . import foot_guides
 
@@ -86,7 +88,7 @@ class Roll:
             erx=(True, False),
         )
 
-        lock_tag(object=self.smart_roll.ctrl, rotate=(False, True, False), extra_channels=['DEV_bank_sensitivity'], hide_tag=True)
+        lock_tag(object=self.smart_roll.ctrl, rotate=(False, True, False), hide_tag=True)
 
         self.smart_twist = create_control(
                 name=f'{self.parent_part}_twist_{self.side}',
@@ -102,13 +104,20 @@ class Roll:
 
         lock_tag(object=self.smart_twist.ctrl, translate=(False,False,False), rotate=(True, False, True), hide_tag=True)
         
-        for attr in ['roll_twist', 'roll_sway', 'roll_angle', 'bank_width', 'DEV_bank_sensitivity']:
+        for attr in ['roll_twist', 'roll_sway', 'roll_angle', 'bank_width',]:
             cmds.addAttr(self.smart_roll.ctrl, longName=attr, attributeType='double', keyable=True)
+
+        dev_bank = create_dev_attribute(
+            attribute_name=f"{self.side}_bank_sensitivity",
+            control=self.smart_roll.ctrl,
+            rig_part=self.parent_part,
+            attr_type="float",
+            default=1,
+
+        )
         
         cmds.setAttr(f'{self.smart_roll.ctrl}.roll_angle', self.default_roll_angle) #type:ignore
-        cmds.setAttr(f'{self.smart_roll.ctrl}.DEV_bank_sensitivity', 1) #type:ignore
 
-    
         roll_center = create_transform(name=f'roll_{self.side}_center', transform=self.guides.true_ball.name)
         roll_tforms.append(roll_center)
 
@@ -126,7 +135,7 @@ class Roll:
         sensitivty.input1.z.connect_from(f'{self.smart_roll.ctrl}.roll_angle')
         sensitivty.input2.z.set(-1)
         sensitivty.input1.x.connect_from(f'{self.smart_roll.ctrl}.rotateZ')
-        sensitivty.input2.x.connect_from(f'{self.smart_roll.ctrl}.DEV_bank_sensitivity')
+        sensitivty.input2.x.connect_from(dev_bank)
 
         #toe_tip_roll
 

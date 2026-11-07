@@ -1,4 +1,6 @@
 
+from typing import Any
+
 import maya.cmds as cmds
 
 from Workshop.maya_api.attribute_utils import (
@@ -22,22 +24,38 @@ def create_dev_control(parent:str, size:float, offset:tuple=(0,0,0)):
         color_type='DEV',
         size=size
     )
-    lock_tag(dev, hide_tag=True)
+    lock_tag(dev.ctrl, hide_tag=True)
 
 def create_dev_attribute(
     attribute_name: str,
     control: str,
     rig_part: str,
+    default: Any = None,
+    min: float | None = None,
+    max: float | None = None,
+    enum_index: list[str] | None = None,
+    connect_from: str | None = None,
+    connect_to: list[str] | None = None,
+    attr_type: str = "bool",
+    proxy_name: str | None = None,
 ) -> str:
     """
     Create a development attribute on DEV_CONTROL and proxy
-    it onto the specified control.
+    it onto a specified control.
 
-    Creates a rig-part header if one doesn't already exist.
+    Creates a rig-part header if missing.
+
+    Development attributes are always visible, keyable,
+    and unlocked.
+
+    Returns:
+        Full attribute path on DEV_CONTROL.
     """
 
     if not cmds.objExists(DEV_CONTROL):
-        raise ValueError(f"Development control '{DEV_CONTROL}' does not exist")
+        raise ValueError(
+            f"Development control '{DEV_CONTROL}' does not exist"
+        )
 
     if not cmds.objExists(control):
         raise ValueError(f"Control '{control}' does not exist")
@@ -56,12 +74,21 @@ def create_dev_attribute(
     dev_attr = f"{DEV_CONTROL}.{dev_attr_name}"
 
     if not cmds.objExists(dev_attr):
-        create_attribute(
+        return create_attribute(
             primary_object=DEV_CONTROL,
             attr_name=dev_attr_name,
-            attr_type="bool",
-            default=False,
+            default=default,
+            min=min,
+            max=max,
+            enum_index=enum_index,
             proxy_objects=[control],
+            connect_from=connect_from,
+            connect_to=connect_to,
+            attr_type=attr_type,
+            keyable=True,
+            hidden=False,
+            locked=False,
+            proxy_name=proxy_name,
         )
 
     return dev_attr
