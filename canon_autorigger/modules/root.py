@@ -245,7 +245,7 @@ class Root:
         for rig_vis_type in ['skel', 'geo', 'rig', 'controls']:
             cmds.addAttr(self.vis_control.ctrl, longName=f'{rig_vis_type}_vis', defaultValue=1, maxValue=1, minValue=0, keyable=True)
 
-        create_dev_control(parent=self.root_ctrl.ctrl, size=self.rig_size, offset=(self.rig_size, self.rig_size, 0))
+        create_dev_control(parent=self.root_ctrl.ctrl, size=self.rig_size/4, offset=(self.rig_size, self.rig_size, 0))
 
         root_info = module_info(root_control =self.root_ctrl, local_control=self.local_ctrl, offset_control=self.offset_ctrl, joint=self.root_joint)
         return root_info

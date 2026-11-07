@@ -20,6 +20,7 @@ def create_dev_control(parent:str, size:float, offset:tuple=(0,0,0)):
         shape_position_offset=offset,
         control_shape='DEV',
         color_type='DEV',
+        size=size
     )
     lock_tag(dev, hide_tag=True)
 
