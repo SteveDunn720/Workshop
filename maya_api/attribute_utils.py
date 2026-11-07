@@ -80,10 +80,7 @@ def create_attribute(
         kwargs["maxValue"] = max
 
     if attr_type == "enum":
-        if not enum_index:
-            raise ValueError("enum_index is required for enum attributes")
-
-        kwargs["enumName"] = ":".join(enum_index)
+        kwargs["enumName"] = ":".join(enum_index) if enum_index else " "
 
     # Validate proxy nodes before creating anything
     for proxy_object in proxy_objects or []:
@@ -123,6 +120,20 @@ def create_attribute(
         cmds.setAttr(attr, lock=True)
 
     return attr
+
+
+def add_proxy(source: str, proxy_list:list, proxy_name:str | None):
+    for proxy_object in proxy_list:
+
+        _, attr_name = source.rsplit(".", 1)
+
+        name = proxy_name or attr_name
+
+        cmds.addAttr(
+            proxy_object,
+            longName=name,
+            proxy=source,
+        )
 
 
 def connect_attributes(
@@ -167,10 +178,157 @@ def connect_attributes(
                 cmds.setAttr(attr, lock=False)
 
             if existing_source:
-                cmds.disconnectAttr(existing_source, attr)
+                cmds.disconnectAttr(existing_source, attr) #type:ignore
 
             cmds.connectAttr(source, attr)
 
         finally:
             if is_locked:
                 cmds.setAttr(attr, lock=True)
+
+
+
+def add_attribute_header(target:str, name:str):
+
+    create_attribute(
+        primary_object=target,
+        attr_name=name,
+        attr_type="enum",
+        enum_index=["-------------"],
+        locked=True,
+    )
+
+
+
+def rename_attribute(
+    attr: str,
+    new_name: str,
+    display_only: bool = False,
+) -> str:
+    """
+    Rename a user-defined Maya attribute or change its display name.
+
+    Built-in attributes cannot be renamed.
+
+    Args:
+        attr: Full attribute path (node.attribute).
+        new_name: New attribute name or display name.
+        display_only: Only change the displayed name.
+
+    Returns:
+        Full attribute path.
+    """
+
+    if not cmds.objExists(attr):
+        raise ValueError(f"Attribute '{attr}' does not exist")
+
+    node, old_name = attr.rsplit(".", 1)
+
+    user_attrs = cmds.listAttr(
+        node,
+        userDefined=True,
+    ) or []
+
+    # Check if attribute is user-defined
+    if old_name not in user_attrs:
+        print(f"Cannot rename '{attr}': attribute is not user-defined.")
+        return attr
+
+    # Change display name only
+    if display_only:
+        cmds.addAttr(
+            attr,
+            edit=True,
+            niceName=new_name,
+        )
+        return attr
+
+    # Rename actual attribute
+    if old_name == new_name:
+        return attr
+
+    new_attr = f"{node}.{new_name}"
+
+    if cmds.objExists(new_attr):
+        raise ValueError(
+            f"Attribute '{new_attr}' already exists"
+        )
+
+    cmds.renameAttr(attr, new_name)
+
+    return new_attr
+
+
+def disconnect_attribute(attr: str) -> None:
+    """Disconnect the incoming connection to a Maya attribute."""
+
+    if not cmds.objExists(attr):
+        raise ValueError(f"Attribute '{attr}' does not exist")
+
+    source = cmds.connectionInfo(
+        attr,
+        sourceFromDestination=True,
+    )
+
+    if source:
+        cmds.disconnectAttr(source, attr) #type:ignore
+
+
+
+
+def set_channel_box_order(
+    node: str,
+    order: list[str],
+    channel_box: str = "mainChannelBox",
+) -> None:
+    """
+    Reorder attributes in Maya's Channel Box display.
+
+    Attributes not included in `order` are preserved and
+    displayed after the specified attributes.
+
+    Note:
+        This modifies the Channel Box UI, not the node's
+        underlying attribute order.
+
+    Args:
+        node: Maya node containing the attributes.
+        order: Attribute names in the desired display order.
+        channel_box: Name of the Maya Channel Box control.
+    """
+
+    if not cmds.objExists(node):
+        raise ValueError(f"Node '{node}' does not exist")
+
+    # Get keyable and channel box visible attributes
+    attrs = cmds.listAttr(node, keyable=True) or []
+
+    visible_attrs = cmds.listAttr(
+        node,
+        channelBox=True,
+    ) or []
+
+    # Combine without duplicates
+    for attr in visible_attrs:
+        if attr not in attrs:
+            attrs.append(attr)
+
+    # Validate requested attributes
+    for attr in order:
+        if attr not in attrs:
+            raise ValueError(
+                f"Attribute '{node}.{attr}' is not visible "
+                "in the Channel Box"
+            )
+
+    # Requested attributes first, remaining attributes afterward
+    reordered = order + [
+        attr for attr in attrs
+        if attr not in order
+    ]
+
+    cmds.channelBox(
+        channel_box,
+        edit=True,
+        fixedAttrList=reordered,
+    )
