@@ -34,7 +34,12 @@ class Roll:
         control_parent: str | None = None,
         rig_size: float = 1.0,
         joints: list = ['foot_l', 'ball_l'],
-
+        roll_size:float = 1/8,
+        twist_size:float = 1/8,
+        parent_part:str = 'foot',
+        roll_shape:str = "sphere",
+        twist_shape:str = "roll",
+        default_roll_angle:float = 70.0
     ):
         self.part: str = part
         self.side: str = side
@@ -44,6 +49,12 @@ class Roll:
         self.joints: list = joints
         self.main_control_color = 'SubLeft' if self.side == 'L' else 'SubRight' 
         self.guides = guides
+        self.roll_size = roll_size
+        self.twist_size = twist_size
+        self.parent_part = parent_part
+        self.roll_shape = roll_shape
+        self.twist_shape = twist_shape
+        self.default_roll_angle = default_roll_angle
 
     # -------------------
     # Build steps
@@ -56,12 +67,12 @@ class Roll:
 
         roll_ctrls = []
         self.smart_roll = create_control(
-                name=f'foot_roll_{self.side}',
+                name=f'{self.parent_part}_roll_{self.side}',
                 parent=roll_group,
                 transform=self.guides.true_foot.name,
-                size=self.rig_size/8,
-                control_shape="sphere",
-                direction="x",
+                size=self.rig_size * self.roll_size,
+                control_shape=self.roll_shape,
+                direction="y",
                 color_type=self.main_control_color,
                 ignore_rotations=True,
             )
@@ -78,11 +89,11 @@ class Roll:
         lock_tag(object=self.smart_roll.ctrl, rotate=(False, True, False), extra_channels=['DEV_bank_sensitivity'], hide_tag=True)
 
         self.smart_twist = create_control(
-                name=f'foot_twist_{self.side}',
+                name=f'{self.parent_part}_twist_{self.side}',
                 parent=roll_group,
                 transform=self.guides.true_ball.name,
-                size=self.rig_size/8,
-                control_shape="roll",
+                size=self.rig_size * self.twist_size,
+                control_shape=self.twist_shape,
                 direction="y",
                 color_type=self.main_control_color,
                 ignore_rotations=True,
@@ -94,8 +105,8 @@ class Roll:
         for attr in ['roll_twist', 'roll_sway', 'roll_angle', 'bank_width', 'DEV_bank_sensitivity']:
             cmds.addAttr(self.smart_roll.ctrl, longName=attr, attributeType='double', keyable=True)
         
-        cmds.setAttr(f'{self.smart_roll.ctrl}.roll_angle', 70)
-        cmds.setAttr(f'{self.smart_roll.ctrl}.DEV_bank_sensitivity', 1)
+        cmds.setAttr(f'{self.smart_roll.ctrl}.roll_angle', self.default_roll_angle) #type:ignore
+        cmds.setAttr(f'{self.smart_roll.ctrl}.DEV_bank_sensitivity', 1) #type:ignore
 
     
         roll_center = create_transform(name=f'roll_{self.side}_center', transform=self.guides.true_ball.name)
