@@ -82,11 +82,11 @@ class Roll:
 
         cmds.transformLimits(
             self.smart_roll.ctrl,
-            rz=(-45, 45),
-            erz=(True, True),
-            rx=(-45, 45),
-            erx=(True, False),
-        )
+            rz=(-45, 45), #type:ignore
+            erz=(True, True), #type:ignore
+            rx=(-45, 45), #type:ignore
+            erx=(True, False), #type:ignore
+        ) 
 
         lock_tag(object=self.smart_roll.ctrl, rotate=(False, True, False), hide_tag=True)
 
@@ -254,8 +254,8 @@ class Roll:
             cmds.connectAttr(f'{bank_width_mult.output.x}', f'{outbank_offset}.translateX')
             bank_pos.output.connect_to(f'{inbank_main}.rotateZ')
             bank_neg.output.connect_to(f'{outbank_main}.rotateZ')
-            bank_condition.out_color.g.connect_to(f'{constraint[0]}.{weight_attrs[0]}')
-            bank_condition.out_color.r.connect_to(f'{constraint[0]}.{weight_attrs[1]}')
+            bank_condition.out_color.g.connect_to(f'{constraint[0]}.{weight_attrs[0]}') #type:ignore
+            bank_condition.out_color.r.connect_to(f'{constraint[0]}.{weight_attrs[1]}') #type:ignore
 
         else:
             cmds.connectAttr(f'{bank_width_mult.output.y}', f'{inbank_main}.translateX')
@@ -264,8 +264,8 @@ class Roll:
             cmds.connectAttr(f'{bank_width_mult.output.y}', f'{outbank_offset}.translateX')
             bank_neg.output.connect_to(f'{inbank_main}.rotateZ')
             bank_pos.output.connect_to(f'{outbank_main}.rotateZ')
-            bank_condition.out_color.r.connect_to(f'{constraint[0]}.{weight_attrs[0]}')
-            bank_condition.out_color.g.connect_to(f'{constraint[0]}.{weight_attrs[1]}')
+            bank_condition.out_color.r.connect_to(f'{constraint[0]}.{weight_attrs[0]}') #type:ignore
+            bank_condition.out_color.g.connect_to(f'{constraint[0]}.{weight_attrs[1]}') #type:ignore
 
         cmds.parent(roll_center, bank_twist_offset)
 
@@ -274,10 +274,7 @@ class Roll:
 
         for t in roll_tforms:
             lock_tag(object=t, hide_tag=False)
-
-
-
-
+            
         #bank_ref
 
         bank_in = create_control(
