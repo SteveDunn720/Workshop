@@ -54,6 +54,14 @@ class Foot:
         ik_hook:list=[],
         fkik_switch_attr:str = '',
         joint_parent:str = 'foot_joint',
+        fk_start_size:float = 6.0,
+        fk_shape:str = "fk",
+        fk_twist:tuple = (0,90,0),
+        ik_foot_size:float = 1/4,
+        ik_foot_shape:str = "foot",
+        ik_toe_shape:str = "ik_toes",
+        ik_toe_size:float = 1/8,
+        ik_foot_twist:tuple = (0,180,0),
 
         
 
@@ -72,6 +80,15 @@ class Foot:
         self.fkik_switch_attr = fkik_switch_attr
         self.leg_info = leg_info
         self.joint_parent = joint_parent
+        self.fk_start_size = fk_start_size
+        self.fk_shape = fk_shape
+        self.fk_twist = fk_twist
+        self.ik_foot_size = ik_foot_size
+        self.ik_foot_shape = ik_foot_shape
+        self.ik_toe_shape = ik_toe_shape
+        self.ik_toe_size = ik_toe_size
+        self.ik_foot_twist = ik_foot_twist
+
     # -------------------
     # Build steps
     # -------------------
@@ -115,11 +132,11 @@ class Foot:
                 name=f'FK_{jnt.descriptor}',
                 parent=ctrl_par,
                 transform=jnt.name,
-                size=self.rig_size/(6 * (i + 1)),
-                control_shape="fk",
+                size=self.rig_size * 1/(self.fk_start_size * (i + 1)),
+                control_shape=self.fk_shape,
                 direction="y",
                 color_type=self.main_control_color,
-                shape_rotation_offset=(0,90,0)
+                shape_rotation_offset=self.fk_twist
             )
 
             fk_jnt = create_joint(name=f'FK_{jnt.descriptor}', transform=ctrl.ctrl, parent=jnt_par, bind_set= False, ue_set=False,)
@@ -159,12 +176,12 @@ class Foot:
                 name=f'IK_{self.guides[0].descriptor}_main',
                 parent=ctrl_par,
                 transform=temp_guide,
-                size=self.rig_size/4,
-                control_shape="foot",
+                size=self.rig_size * self.ik_foot_size,
+                control_shape=self.ik_foot_shape,
                 direction="y",
                 color_type=self.main_control_color,
                 shape_position_offset=(0, -ground_offset, -self.rig_size/10),
-                shape_rotation_offset=(0,180,0)
+                shape_rotation_offset=self.ik_foot_twist
             )
 
         cmds.delete(temp_guide)
@@ -176,8 +193,8 @@ class Foot:
                 name=f'IK_{self.guides[1].descriptor}',
                 parent=ctrl_par,
                 transform=f'{self.guides[1].name}',
-                size=self.rig_size/8,
-                control_shape="ik_toes",
+                size=self.rig_size * self.ik_toe_size,
+                control_shape=self.ik_toe_shape,
                 direction="y",
                 color_type=self.main_control_color,
             )
