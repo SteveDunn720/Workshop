@@ -1,0 +1,1601 @@
+from turtle import position
+
+from dataclasses import dataclass
+
+import maya.cmds as cmds
+
+from Workshop.control.core import Control
+from Workshop.transform.constraint import Constraint, constraint
+from Workshop.control import create_control, Control
+from Workshop.joint import create_joint
+from Workshop.guide.core import GuideInfo, align_guides, create_guide_from_position, mirror_guide
+from Workshop.maya_api.node import DecomposeMatrixNode, MultMatrixNode, MultiplyDivideNode, NearestPointOnCurveNode, PointOnCurveNode, RemapValueNode, SumNode
+from Workshop.tag.core import lock_tag
+from Workshop.transform.utils import create_transform
+from Workshop.spline.matrix_spline.build import matrix_spline_from_transforms
+from Workshop.skin.split.tag import tag_for_weight_split
+
+from .module_shared import create_driver_offset,module_prep, module_space
+
+
+@dataclass
+class module_info:
+    master:Control
+    master_joint:str
+    path_pins:dict
+    corner_controls:dict
+    macro:dict
+
+class Mouth:
+    def __init__(
+        self,
+        muppet,
+        guides: dict[str, GuideInfo],
+        jaw:Control,
+        part: str = "mouth",
+        side: str = "M",
+        parent: str = "components",
+        control_parent: str | None = None,
+        rig_size: float = 1.0,
+        joint_parent:str = 'skel',
+        control_space:list = [],
+        divisions:int = 6
+
+    ):
+        self.part: str = part
+        self.side: str = side
+        self.parent: str = parent
+        self.control_parent: str | None = control_parent
+        self.rig_size: float = rig_size
+        self.guides: dict[str, GuideInfo] = guides
+        self.joint_parent = joint_parent
+        self.control_space = control_space
+        self.jaw = jaw
+        self.divisions = divisions
+        self.muppet = muppet
+
+
+        self.main_M_color = 'Middle'
+        self.sub_M_color = 'SubMiddle'
+    
+        self.main_L_color = 'Left'
+        self.sub_L_color = 'SubLeft'
+    
+        self.main_R_color = 'Right'
+        self.sub_R_color = 'SubRight'
+
+    # -------------------
+    # Build steps
+    # -------------------
+
+
+    def drive_with_blend_matrix(
+        self,
+        driven: str,
+        base_driver: str,
+        blend_driver: str,
+        weight_plug: str,
+        name: str,
+    ):
+        # Intermediate transform that matches the joint's
+        # default world transform / handedness.
+        driver = create_transform(
+            name=f"{name}_driver",
+            transform=base_driver,
+            parent=self.guts,
+        )
+
+        # Blend between the normal control and sticky midpoint.
+        blend = cmds.createNode(
+            "blendMatrix",
+            name=f"{name}_BM",
+        )
+
+        cmds.connectAttr(
+            f"{base_driver}.worldMatrix[0]",
+            f"{blend}.inputMatrix",
+            force=True,
+        )
+
+        cmds.connectAttr(
+            f"{blend_driver}.worldMatrix[0]",
+            f"{blend}.target[0].targetMatrix",
+            force=True,
+        )
+
+        cmds.connectAttr(
+            weight_plug,
+            f"{blend}.target[0].weight",
+            force=True,
+        )
+
+        # Convert the blended world matrix into the
+        # intermediate driver's local space.
+        mult = MultMatrixNode(
+            name=f"{name}_local_MM"
+        )
+
+        mult.matrix_in[0].connect_from(
+            f"{blend}.outputMatrix"
+        )
+
+        mult.matrix_in[1].connect_from(
+            f"{self.guts}.worldInverseMatrix[0]"
+        )
+
+        decompose = DecomposeMatrixNode(
+            name=f"{name}_DCM"
+        )
+
+        decompose.input_matrix.connect_from(
+            mult.matrix_sum
+        )
+
+        decompose.output_translate.connect_to(
+            f"{driver}.translate"
+        )
+
+        decompose.output_rotate.connect_to(
+            f"{driver}.rotate"
+        )
+
+        # Let Maya handle the relationship between the
+        # clean driver transform and the actual joint.
+        constraint(
+            driven=driven,
+            drivers=[driver],
+            constraint_type="parent",
+            maintain_offset=True,
+            parent=self.guts,
+        )
+
+    
+
+    def create_sticky_midpoint(
+        self,
+        upper_control: str,
+        lower_control: str,
+        name: str,
+    ) -> str:
+
+        midpoint = create_transform(
+            name=name,
+            transform=upper_control,
+            parent=self.guts,
+        )
+
+        blend = cmds.createNode(
+            "blendMatrix",
+            name=f"{name}_BM",
+        )
+
+        # Base matrix
+        cmds.connectAttr(
+            f"{upper_control}.worldMatrix[0]",
+            f"{blend}.inputMatrix",
+            force=True,
+        )
+
+        # Blend halfway toward lower
+        cmds.connectAttr(
+            f"{lower_control}.worldMatrix[0]",
+            f"{blend}.target[0].targetMatrix",
+            force=True,
+        )
+
+        cmds.setAttr(
+            f"{blend}.target[0].weight",
+            0.5,
+        )
+
+        # Convert resulting world matrix into midpoint's
+        # parent space.
+        mult = MultMatrixNode(
+            name=f"{name}_local_MM"
+        )
+
+        mult.matrix_in[0].connect_from(
+            f"{blend}.outputMatrix"
+        )
+
+        mult.matrix_in[1].connect_from(
+            f"{self.guts}.worldInverseMatrix[0]"
+        )
+
+        decompose = DecomposeMatrixNode(
+            name=f"{name}_DCM"
+        )
+
+        decompose.input_matrix.connect_from(
+            mult.matrix_sum
+        )
+
+        decompose.output_translate.connect_to(
+            f"{midpoint}.translate"
+        )
+
+        decompose.output_rotate.connect_to(
+            f"{midpoint}.rotate"
+        )
+
+        decompose.output_scale.connect_to(
+            f"{midpoint}.scale"
+        )
+
+        return midpoint
+
+    def connect_sticky_weight(
+        self,
+        left_sticky_attr: str,
+        right_sticky_attr: str,
+        index: int,
+        count: int,
+        step: float,
+        blend_distance: float,
+        name: str,
+    ):
+        # Distance at which this sub is completely sticky
+        # when propagation comes from each side.
+        left_full = (index + 1) * step
+        right_full = (count - index) * step
+
+        # Begin blending two divisions before reaching
+        # the fully-sticky position.
+        left_start = max(
+            0.0,
+            left_full - blend_distance,
+        )
+
+        right_start = max(
+            0.0,
+            right_full - blend_distance,
+        )
+
+
+        # LEFT SIDE
+        left_remap = RemapValueNode(
+            name=f"{name}_left_sticky_RMV"
+        )
+
+        left_remap.input_min.set(left_start)
+        left_remap.input_max.set(left_full)
+
+        left_remap.output_min.set(0.0)
+        left_remap.output_max.set(1.0)
+
+        left_remap.input_value.connect_from(
+            left_sticky_attr
+        )
+
+
+        # RIGHT SIDE
+        right_remap = RemapValueNode(
+            name=f"{name}_right_sticky_RMV"
+        )
+
+        right_remap.input_min.set(right_start)
+        right_remap.input_max.set(right_full)
+
+        right_remap.output_min.set(0.0)
+        right_remap.output_max.set(1.0)
+
+        right_remap.input_value.connect_from(
+            right_sticky_attr
+        )
+
+
+        # Add the contribution from both corners.
+        sticky_sum = SumNode(
+            name=f"{name}_sticky_SUM"
+        )
+
+        sticky_sum.input[0].connect_from(
+            left_remap.output
+        )
+
+        sticky_sum.input[1].connect_from(
+            right_remap.output
+        )
+
+
+        # Clamp the combined sticky value to 0 -> 1.
+        sticky_remap = RemapValueNode(
+            name=f"{name}_sticky_RMV"
+        )
+
+        sticky_remap.input_min.set(0.0)
+        sticky_remap.input_max.set(1.0)
+
+        sticky_remap.output_min.set(0.0)
+        sticky_remap.output_max.set(1.0)
+
+        sticky_remap.input_value.connect_from(
+            sticky_sum.output
+        )
+
+        return sticky_remap.output
+
+    def create_soft_driver(
+            self,
+            control: Control,
+            influences: list[tuple[Control, tuple[float, float, float]]] = [],
+        ):
+        # Follows the COMPLETE resulting control transform:
+        # top + jaw + sdk + animator movement + path movement.
+        driver_base = create_transform(
+            name=f"{control.name}_driver_base",
+            transform=control.ctrl,
+            parent=self.guts,
+        )
+
+        driver = create_transform(
+            name=f"{control.name}_driver",
+            transform=control.ctrl,
+            parent=driver_base,
+
+        )
+
+        # Since driver is underneath an already-matched base,
+        # zero it into that space.
+        cmds.setAttr(f"{driver}.translate", 0, 0, 0)
+        cmds.setAttr(f"{driver}.rotate", 0, 0, 0)
+
+        # Drive BASE from the final control world matrix.
+        mm = MultMatrixNode(
+            name=f"{control.name}_driver_base_MM"
+        )
+
+        mm.matrix_in[0].connect_from(
+            f"{control.ctrl}.worldMatrix[0]"
+        )
+
+        mm.matrix_in[1].connect_from(
+            f"{self.guts}.worldInverseMatrix[0]"
+        )
+
+        dec = DecomposeMatrixNode(
+            name=f"{control.name}_driver_base_DCM"
+        )
+
+        dec.input_matrix.connect_from(mm.matrix_sum)
+
+        dec.output_translate.connect_to(
+            f"{driver_base}.translate"
+        )
+
+        dec.output_rotate.connect_to(
+            f"{driver_base}.rotate"
+        )
+
+        # -------------------------
+        # Soft neighbor influence
+        # -------------------------
+
+        translate_sum = [
+            SumNode(name=f"{driver}_translate{axis}_SUM")
+            for axis in "XYZ"
+        ]
+
+        for index, (influence, weight) in enumerate(influences):
+
+            mult = MultiplyDivideNode(
+                name=f"{driver}_{influence.name}_soft_MD"
+            )
+
+            mult.input1.connect_from(
+                f"{influence.ctrl}.translate"
+            )
+
+            mult.input2.set(weight)
+
+            translate_sum[0].input[index].connect_from(mult.output.x)
+            translate_sum[1].input[index].connect_from(mult.output.y)
+            translate_sum[2].input[index].connect_from(mult.output.z)
+
+        translate_sum[0].output.connect_to(f"{driver}.translateX")
+        translate_sum[1].output.connect_to(f"{driver}.translateY")
+        translate_sum[2].output.connect_to(f"{driver}.translateZ")
+
+        return driver
+
+    def connect_cluster_y(
+        self,
+        cluster: str,
+        driver: Control,
+        weight_plug=None,
+    ):
+        up_sum = SumNode(
+            name=f"{cluster}_Y_SUM"
+        )
+
+        # Corner control
+        up_sum.input[0].connect_from(
+            f"{driver.ctrl}.translateY"
+        )
+
+        # Jaw contribution goes here later
+        # up_sum.input[1].connect_from(jaw_y_output)
+
+        if weight_plug:
+            mult = MultiplyDivideNode(
+                name=f"{cluster}_Y_weight_MD"
+            )
+
+            mult.input1.x.connect_from(up_sum.output)
+            mult.input2.x.connect_from(weight_plug)
+
+            mult.output.x.connect_to(
+                f"{cluster}.translateY"
+            )
+
+        else:
+            up_sum.output.connect_to(
+                f"{cluster}.translateY"
+            )
+
+    def create_cluster_weight(
+        self,
+        driver: Control,
+        name: str,
+        input_min: float,
+        input_max: float,
+        output_min: float,
+        output_max: float,
+    ):
+        remap = RemapValueNode(
+            name=f"{name}_weight_RMV"
+        )
+
+        remap.input_min.set(input_min)
+        remap.input_max.set(input_max)
+
+        remap.output_min.set(output_min)
+        remap.output_max.set(output_max)
+
+        remap.input_value.connect_from(
+            f"{driver.ctrl}.translateX"
+        )
+
+        return remap.output
+
+    def get_curve_percent(self, guide:GuideInfo, curve:str)->float:
+        near = NearestPointOnCurveNode(name=f'{self.part}_NPOC')
+        dec = DecomposeMatrixNode(name=f'{self.part}_DCM')
+
+        dec.input_matrix.connect_from(f'{guide.name}.worldMatrix[0]')
+        near.in_position.connect_from(dec.output_translate)
+        near.input_curve.connect_from(f'{curve}.worldSpace[0]')
+        num = near.result.parameter.get()
+
+        cmds.delete(dec.name, near.name)
+        return num
+
+    def connect_to_path(
+        self,
+        path_curve: str,
+        transform: str,
+        control:Control,
+        driver_control: Control,
+        path_percent: float,
+        reference_percent: float = .4,
+        percent_max: float = .999,
+        percent_min: float = .1,
+        twist_percent:float = .5,
+
+    ):
+
+        
+        arc_length = cmds.arclen(path_curve)
+
+        control_max = arc_length * (1-reference_percent)  #type:ignore
+        control_min = -arc_length * reference_percent #type:ignore
+
+        half_default = path_percent * 0.5
+
+        positive = RemapValueNode(
+            name=f"{transform}_positive_remap"
+        )
+
+        positive.input_max.set(control_max)
+
+        positive.output_min.set(half_default)
+        positive.output_max.set(
+            percent_max - half_default
+        )
+
+        positive.input_value.connect_from(f'{driver_control.ctrl}.translateX')
+
+
+        negative = RemapValueNode(
+            name=f"{transform}_negative_remap"
+        )
+
+        negative.input_min.set(0.0)
+        negative.input_max.set(control_min)
+
+        negative.output_min.set(half_default)
+        negative.output_max.set(
+            percent_min - half_default
+        )
+
+        negative.input_value.connect_from(f'{driver_control.ctrl}.translateX')
+
+
+        total = SumNode(
+            name=f"{transform}_curve_drive_sum"
+        )
+
+        total.input[0].connect_from(positive.output)
+        total.input[1].connect_from(negative.output)
+
+
+        poc = PointOnCurveNode(name=f"{transform}_curve_poc")
+
+        curve_shape = cmds.listRelatives(
+            path_curve,
+            shapes=True,
+            noIntermediate=True,
+        )[0]
+
+        poc.input_curve.connect_from(f"{curve_shape}.worldSpace[0]")
+        poc.parameter.connect_from(total.output)
+
+        poc.position.connect_to(f'{transform}.translate')
+
+        constraint = cmds.tangentConstraint(
+            path_curve,
+            transform,
+            aimVector=(1, 0, 0),
+            upVector=(0, 1, 0),
+            worldUpType="vector",
+            worldUpVector=(0, 1, 0),
+        )
+
+        cmds.transformLimits(
+            driver_control.ctrl,
+            tx=(control_min, control_max),
+            etx=(True, True),
+        )
+
+        original_inverse_matrix = cmds.getAttr(f'{control.top}.worldInverseMatrix[0]')
+
+        mm = MultMatrixNode(name=f"{transform}_MM")
+
+        mm.matrix_in[0].connect_from(f"{transform}.worldMatrix[0]")
+        mm.matrix_in[1].set(original_inverse_matrix)
+
+        dec = DecomposeMatrixNode(name=f"{transform}_MM")
+
+        dec.input_matrix.connect_from(mm.matrix_sum)
+
+        dec.output_translate.connect_to(f'{control.sdk}.translate')
+        dec.output_rotate.x.connect_to(f'{control.sdk}.rotateX')
+        dec.output_rotate.y.connect_to(f'{control.sdk}.rotateY')
+
+        rot_Z_sum = SumNode(name=f"{transform}_sum")
+
+        if twist_percent == 1:
+            ctrl_twist=f'{driver_control.ctrl}.rotateZ'
+        else:
+            mult = MultiplyDivideNode(name=f"{transform}_MD")
+            mult.input1.x.connect_from(f'{driver_control.ctrl}.rotateZ')
+            mult.input2.x.set(twist_percent)
+            ctrl_twist = mult.output.x
+
+        rot_Z_sum.input[0].connect_from(dec.output_rotate.z)
+        rot_Z_sum.input[1].connect_from(ctrl_twist)
+        rot_Z_sum.output.connect_to(f'{control.sdk}.rotateZ')
+
+    def connect_cluster_push(
+        self,
+        cluster: str,
+        driver: Control,
+        control_min: float,
+        push_amount: float,
+    ):
+        push_remap = RemapValueNode(
+            name=f"{cluster}_push_RMV"
+        )
+
+        # At default position, no push.
+        # At maximum inward position, full push.
+        push_remap.input_min.set(control_min)
+        push_remap.input_max.set(0.0)
+
+        push_remap.output_min.set(push_amount)
+        push_remap.output_max.set(0.0)
+
+        push_remap.input_value.connect_from(
+            f"{driver.ctrl}.translateX"
+        )
+
+        push_remap.output.connect_to(
+            f"{cluster}.translateZ"
+        )
+ 
+
+    def connect_jaw(self, control:Control, jaw:Control, x_range:tuple=(-90,90), y_range:tuple=(-20,20), z_range:tuple=(-90,90), trans_mult:float= .5, rot_mult:float=1, extra_offset:bool=False, x_mult=1, jaw_forward:bool=False):
+        control.jaw_pos = create_transform(name=f'{control.name}_jaw_pos', parent=control.top, transform=jaw.ctrl)
+        if jaw_forward:
+            control.jaw_slide = create_transform(
+                name=f'{control.name}_jaw_slide',
+                parent=control.jaw_pos,
+                transform=jaw.ctrl,
+            )
+
+            jaw_offset_parent = control.jaw_slide
+
+        else:
+            jaw_offset_parent = control.jaw_pos
+        control.jaw_offset = create_transform(name=f'{control.name}_jaw_offset', parent=jaw_offset_parent, transform=jaw.ctrl)
+
+        
+
+        if extra_offset:
+            control.extra_offset = create_transform(name=f'{control.name}_extra_offset', parent=control.jaw_offset, transform=control.ctrl)
+            cmds.parent(control.sdk, control.extra_offset)
+        else:
+            cmds.parent(control.sdk, control.jaw_offset)
+
+        lock_tag(object=control.jaw_pos)
+        lock_tag(object=control.jaw_offset)
+
+        remapx = RemapValueNode(name=f"{control.name}_remapX")
+        remapx.input_max.set(x_range[1])
+        remapx.input_min.set(x_range[0])
+        remapx.output_max.set(x_range[1] * x_mult)
+        remapx.output_min.set(x_range[0] * x_mult)
+        remapx.input_value.connect_from(f'{jaw.ctrl}.rotateX')
+        remapx.output.connect_to(f'{control.jaw_offset}.rotateX')
+
+        remapz = RemapValueNode(name=f"{control.name}_remapZ")
+        remapz.input_max.set(z_range[1])
+        remapz.input_min.set(z_range[0])
+        remapz.output_max.set(z_range[1] * rot_mult)
+        remapz.output_min.set(z_range[0] * rot_mult)
+        remapz.input_value.connect_from(f'{jaw.ctrl}.rotateZ')
+        remapz.output.connect_to(f'{control.jaw_offset}.rotateZ')
+
+        remapy = RemapValueNode(name=f"{control.name}_remapY")
+        remapy.input_max.set(y_range[1])
+        remapy.input_min.set(y_range[0])
+        remapy.output_max.set(y_range[1] * rot_mult)
+        remapy.output_min.set(y_range[0] * rot_mult)
+        remapy.input_value.connect_from(f'{jaw.ctrl}.rotateY')
+        remapy.output.connect_to(f'{control.jaw_offset}.rotateY')
+
+        mult = MultiplyDivideNode(name=f"{control.name}_mult")
+        mult.input1.connect_from(f'{jaw.ctrl}.translate')
+        mult.input2.set((trans_mult, trans_mult, trans_mult))
+        mult.output.connect_to(
+                        f'{control.jaw_offset}.translate'
+                    )
+
+        if jaw_forward:
+            forward_remap = RemapValueNode(
+                name=f"{control.name}_forward_remap"
+            )
+
+            forward_remap.input_value.connect_from(
+                f'{jaw.ctrl}.rotateX'
+            )
+
+            forward_remap.input_max.set(90)
+
+            forward_remap.output_max.connect_from(
+                f'{jaw.ctrl}.jaw_mult'
+            )
+
+            forward_remap.output.connect_to(
+                f'{control.jaw_slide}.translateZ'
+            )
+
+
+    def connect_center_push(
+        self,
+        control: Control,
+        left_corner: Control,
+        right_corner: Control,
+        left_inward: float,
+        right_inward: float,
+        push_amount: float,
+    ):
+        left_push = RemapValueNode(
+            name=f"{control.name}_L_push_RMV"
+        )
+
+        left_push.input_min.set(0)
+        left_push.input_max.set(left_inward)
+        left_push.output_min.set(0)
+        left_push.output_max.set(push_amount)
+
+        left_push.input_value.connect_from(
+            f"{left_corner.ctrl}.translateX"
+        )
+
+
+        right_push = RemapValueNode(
+            name=f"{control.name}_R_push_RMV"
+        )
+
+        right_push.input_min.set(0)
+        right_push.input_max.set(right_inward)
+        right_push.output_min.set(0)
+        right_push.output_max.set(push_amount)
+
+        right_push.input_value.connect_from(
+            f"{right_corner.ctrl}.translateX"
+        )
+
+
+        push_sum = SumNode(
+            name=f"{control.name}_push_SUM"
+        )
+
+        push_sum.input[0].connect_from(left_push.output)
+        push_sum.input[1].connect_from(right_push.output)
+
+        push_sum.output.connect_to(
+            f"{control.sdk}.translateZ"
+        )
+
+
+    def build(self):
+
+        #modeule prep work
+        prep = module_prep(part=self.part, parent=self.parent, side=self.side, fkik=False, gut=True)
+        self.main_grp = prep.main_grp
+        self.control_grp = prep.control_grp
+        self.guts = prep.guts
+
+        self.main_controls = {}
+        self.upper_controls = []
+        self.lower_controls = []
+        path_pin_dict = {}
+        corner_controls = {}
+        macro = {}
+
+        center_pos = cmds.pointOnCurve(
+                    self.guides['L_mouth'].name,
+                    parameter=0,
+                    position=True,
+                    turnOnPercentage=True,
+                )
+
+        center_guide = create_guide_from_position(guide_name='mouth_center_M', pos=center_pos, parent='guides')
+
+        for side in ['L', 'R']:
+
+            path=cmds.duplicate(self.guides[f'{side}_path'].name, name=f'path_{side}_curve')[0]
+            cmds.parent(path, self.guts)
+
+            mid_pos = cmds.pointOnCurve(
+                        self.guides[f'{side}_mouth'].name,
+                        parameter=.5,
+                        position=True,
+                        turnOnPercentage=True,
+                    )
+    
+            mid_guide = create_guide_from_position(guide_name=f'mouth_mid_{side}', pos=mid_pos, parent='guides')
+                
+            corner_pos = cmds.pointOnCurve(
+                        self.guides[f'{side}_mouth'].name,
+                        parameter=1,
+                        position=True,
+                        turnOnPercentage=True,
+                    )
+    
+            corner_guide = create_guide_from_position(guide_name=f'mouth_corner_{side}', pos=corner_pos, parent='guides')
+
+
+            if side == 'L':
+
+                mid_percent = self.get_curve_percent(curve=self.guides[f'{side}_path'].name, guide=mid_guide)
+                
+                corner_percent = self.get_curve_percent(curve=self.guides[f'{side}_path'].name, guide=corner_guide)
+            
+                lipcenter_pos = cmds.pointOnCurve(
+                                                    self.guides[f'{side}_path'].name,
+                                                    parameter=0,
+                                                    position=True,
+                                                    turnOnPercentage=True,
+                                                )
+                                
+                lipcenter_guide = create_guide_from_position(guide_name='lip_center_M', pos=lipcenter_pos, parent='guides')
+
+
+                lipmid_pos = cmds.pointOnCurve(
+                    self.guides[f'{side}_path'].name,
+                    parameter=mid_percent,
+                    position=True,
+                    turnOnPercentage=True,
+                )
+                                
+                lipmid_guide = create_guide_from_position(guide_name=f'lip_mid_{side}', pos=lipmid_pos, parent='guides')
+
+                lipcorner_pos = cmds.pointOnCurve(
+                    self.guides[f'{side}_path'].name,
+                    parameter=corner_percent,
+                    position=True,
+                    turnOnPercentage=True,
+                )
+                                
+                lipcorner_guide = create_guide_from_position(guide_name=f'lip_corner_{side}', pos=lipcorner_pos, parent='guides')
+
+                align_guides(guide_01=lipcorner_guide, guide_02=lipmid_guide, flip=True)
+                align_guides(guide_01=lipmid_guide, guide_02=lipcorner_guide)
+
+                # -----------------------------------
+                # Right macro spline-orient guides
+                # -----------------------------------
+
+                right_mid_pos = cmds.pointOnCurve(
+                    self.guides['R_path'].name,
+                    parameter=mid_percent,
+                    position=True,
+                    turnOnPercentage=True,
+                )
+
+                right_corner_pos = cmds.pointOnCurve(
+                    self.guides['R_path'].name,
+                    parameter=corner_percent,
+                    position=True,
+                    turnOnPercentage=True,
+                )
+
+                right_mid_spline_guide = create_guide_from_position(
+                    guide_name='lip_mid_R_spline',
+                    pos=right_mid_pos,
+                    parent='guides',
+                )
+
+                right_corner_spline_guide = create_guide_from_position(
+                    guide_name='lip_corner_R_spline',
+                    pos=right_corner_pos,
+                    parent='guides',
+                )
+
+                align_guides(
+                    guide_01=right_corner_spline_guide,
+                    guide_02=right_mid_spline_guide,
+                    flip=False,
+                )
+
+                align_guides(
+                    guide_01=right_mid_spline_guide,
+                    guide_02=right_corner_spline_guide,
+                    flip=True
+                )
+
+                self.mouth = create_control(
+                    name='mouth_main_M',
+                    parent=self.control_grp,
+                    transform=lipcenter_guide.name,
+                    size=self.rig_size/15,
+                    control_shape='bracket',
+                    direction="y",
+                    color_type=self.main_M_color,
+                    shape_position_offset=(0,0,-self.rig_size/90),
+                    shape_rotation_offset=(90, 0, 0),
+                    dimensions=(1.3,1,1)
+                )
+
+
+                self.l_corner = create_control(
+                    name=f'lip_corner_{side}',
+                    parent=self.mouth.ctrl,
+                    transform=lipcorner_guide.name,
+                    size=self.rig_size/60,
+                    control_shape='triangle',
+                    direction="y",
+                    sdk_offset=True,
+                    color_type=self.main_L_color if side == 'L' else self.main_R_color,
+                    shape_position_offset=(0, 0, self.rig_size/80),
+                    shape_rotation_offset=(90, 0, -90)
+                )
+
+                corner_controls['L'] = self.l_corner
+
+                self.connect_jaw(jaw=self.jaw, control=self.l_corner, rot_mult=.4, x_mult=.4, )
+
+                lock_tag(object=self.l_corner.ctrl, translate=(False,False,True), rotate=(True,True,False), scale=(True,True,True), visibility=True, hide_tag=True)
+
+
+            else:
+
+                lipcorner_guide = mirror_guide(guide=lipcorner_guide)
+                lipmid_guide = mirror_guide(guide=lipmid_guide)
+
+                self.r_corner = create_control(
+                    name=f'lip_corner_{side}',
+                    parent=self.mouth.ctrl,
+                    transform=lipcorner_guide.name,
+                    size=self.rig_size/60,
+                    control_shape='triangle',
+                    sdk_offset=True,
+                    direction="y",
+                    color_type=self.main_L_color if side == 'L' else self.main_R_color,
+                    shape_position_offset=(0, 0, self.rig_size/80),
+                    shape_rotation_offset=(90, 0, -90)
+                )
+
+                corner_controls['R'] = self.r_corner
+
+                self.connect_jaw(jaw=self.jaw, control=self.r_corner, rot_mult=.4, x_mult=.4, )
+
+                lock_tag(object=self.r_corner.ctrl, translate=(False,False,True), rotate=(True,True,False), scale=(True,True,True), visibility=True, hide_tag=True)
+
+
+            for vertical in ['upper', 'lower']:
+                true_list = self.upper_controls if vertical == "upper" else self.lower_controls
+                v_mod = 1 if vertical == 'upper' else -1
+
+                if side == 'L':
+                    if vertical == 'upper':
+                        self.upper_lip = create_control(
+                            name=f'Main_{vertical}_M',
+                            parent=self.mouth.ctrl,
+                            transform=lipcenter_guide.name,
+                            size=self.rig_size/60,
+                            control_shape='line',
+                            direction="y",
+                            sdk_offset=True,
+                            color_type=self.main_M_color,
+                            shape_position_offset=(0,self.rig_size/35*v_mod,self.rig_size/90),
+                            shape_rotation_offset=(0, 0, 0)
+                        ) 
+
+                        self.connect_jaw(jaw=self.jaw, control=self.upper_lip, x_range=(-90,0), rot_mult=.2, trans_mult=.25)
+                        create_driver_offset(control=self.upper_lip, driver=self.muppet, x_range=(-90,0))
+
+                    if vertical == 'lower':
+                        self.lower_lip = create_control(
+                            name=f'Main_{vertical}_M',
+                            parent=self.mouth.ctrl,
+                            transform=lipcenter_guide.name,
+                            size=self.rig_size/60,
+                            control_shape='line',
+                            direction="y",
+                            sdk_offset=True,
+                            color_type=self.main_M_color,
+                            shape_position_offset=(0,self.rig_size/35*v_mod,self.rig_size/90),
+                            shape_rotation_offset=(0, 0, 0)
+                        )
+                        self.connect_jaw(jaw=self.jaw, control=self.lower_lip, rot_mult=.6, jaw_forward=True, trans_mult=.8)
+
+                if side == 'L':
+
+                    lip_center = create_control(
+                                name=f'{vertical}_lip_M',
+                                parent=self.upper_lip.ctrl if vertical == 'upper' else self.lower_lip.ctrl,
+                                transform=lipcenter_guide.name,
+                                size=self.rig_size/100,
+                                control_shape='triangle',
+                                direction="y",
+                                sdk_offset=True,
+                                color_type=self.main_M_color,
+                                shape_position_offset=(0,self.rig_size/70*v_mod,self.rig_size/80),
+                                shape_rotation_offset=(90*v_mod,0,0)
+                            )
+
+                    macro[f'{vertical}_M'] = lip_center
+
+                    true_list.append(lip_center)
+                    
+
+                    #self.connect_to_path(transform=center_pin, control=lip_center, path_curve=path, path_percent=0, driver_control=self.r_corner if side =='R' else self.l_corner, percent_max=0, percent_min=0, twist_percent=0)
+                    
+
+                    self.main_controls[f'{vertical}_M_center'] = lip_center
+
+                mid_pin = create_transform(name=f'{vertical}_lip_mid_{side}_pin', transform=lipmid_guide.name, parent=self.guts)
+
+                lip_mid = create_control(
+                        name=f'{vertical}_lip_mid_{side}',
+                        parent=self.upper_lip.ctrl if vertical == 'upper' else self.lower_lip.ctrl,
+                        transform=lipmid_guide.name,
+                        size=self.rig_size/100,
+                        control_shape='triangle',
+                        direction="y",
+                        sdk_offset=True,
+                        color_type=self.main_L_color if side == 'L' else self.main_R_color,
+                        shape_position_offset=(0,self.rig_size/70*v_mod,self.rig_size/80),
+                        shape_rotation_offset=(90*v_mod,0,0)
+                    )
+
+                macro[f'{vertical}_mid_{side}'] = lip_mid
+
+                true_list.append(lip_mid)
+
+                corner_pin = create_transform(name=f'{vertical}_lip_corner_{side}_pin', transform=lipmid_guide.name, parent=self.guts)
+
+                lip_corner = create_control(
+                    name=f'{vertical}_lip_corner_{side}',
+                    parent=self.mouth.ctrl,
+                    transform=lipcorner_guide.name,
+                    size=self.rig_size/100,
+                    control_shape='triangle',
+                    direction="y",
+                    sdk_offset=True,
+                    color_type=self.main_L_color if side == 'L' else self.main_R_color,
+                    shape_position_offset=(0,self.rig_size/70*v_mod,self.rig_size/80),
+                    shape_rotation_offset=(90*v_mod,0,0)
+                )
+                true_list.append(lip_corner)
+
+                macro[f'{vertical}_corner_{side}'] = lip_corner
+
+                self.connect_jaw(jaw=self.jaw, control=lip_corner, rot_mult=.4, extra_offset=True, x_mult=.4, )
+
+                #cmds.hide(lip_corner.top)
+
+                self.main_controls[f'{vertical}_{side}_mid'] = lip_mid
+                self.main_controls[f'{vertical}_{side}_corner'] = lip_corner
+
+                ################################# 
+
+                self.connect_to_path(transform=corner_pin, control=lip_corner, path_curve=path, path_percent=corner_percent, driver_control=self.r_corner if side =='R' else self.l_corner, twist_percent=1)
+                self.connect_to_path(transform=mid_pin, control=lip_mid, path_curve=path, path_percent=mid_percent, driver_control=self.r_corner if side =='R' else self.l_corner, percent_max=.5, percent_min=.05, twist_percent=0)
+
+
+            start = cmds.cluster(f"{path}.cv[0]",name=f"{self.part}_{side}_start_cluster",)
+            end = cmds.cluster(f"{path}.cv[3]", name=f"{self.part}_{side}end_cluster")
+            midout = cmds.cluster(f"{path}.cv[2]", name=f"{self.part}_{side}midout_cluster")
+            midin = cmds.cluster(f"{path}.cv[1]", name=f"{self.part}_{side}midout_cluster")
+
+            arc_length = cmds.arclen(path)
+
+            for cluster in (start, midin, midout, end):
+                cmds.parent(cluster[1], self.guts)
+
+            driver = self.l_corner if side == 'L' else self.r_corner
+            
+            #cmds.connectAttr(f'{driver.ctrl}.translateY', f'{end[1]}.translateY')
+
+            # END
+            # Always follows 100%.
+            self.connect_cluster_y(
+                cluster=end[1],
+                driver=driver,
+            )
+
+            control_min = cmds.getAttr(f'{driver}.minTransXLimit')
+            control_max = cmds.getAttr(f'{driver}.maxTransXLimit')
+
+            self.connect_cluster_push(
+                cluster=start[1],
+                driver=driver,
+                control_min=control_min,
+                push_amount=arc_length /10 ,
+            )
+
+
+            # MID OUT
+            # Fully stretched = 0
+            # Moving inward = ramps toward 1
+
+            midout_weight = self.create_cluster_weight(
+                driver=driver,
+                name=f"{driver.name}_midout",
+                input_min=control_max,
+                input_max=0,
+                output_min=0,
+                output_max=1,
+            )
+
+            self.connect_cluster_y(
+                cluster=midout[1],
+                driver=driver,
+                weight_plug=midout_weight,
+            )
+
+
+            # MID IN
+            # Doesn't participate until farther inward.
+
+            midin_weight = self.create_cluster_weight(
+                driver=driver,
+                name=f"{driver.name}_midin",
+                input_min=0,
+                input_max=control_min,
+                output_min=0,
+                output_max=1,
+            )
+
+            self.connect_cluster_y(
+                cluster=midin[1],
+                driver=driver,
+                weight_plug=midin_weight,
+            )
+
+            self.connect_cluster_push(
+                cluster=midin[1],
+                driver=driver,
+                control_min=control_min,
+                push_amount=arc_length /30 ,
+            )
+
+            """ up_sum = SumNode(name=f'{driver.name}_SUM')
+
+            up_sum.input[0].connect_from(f'{driver.ctrl}.translateY')
+
+            up_sum.output.connect_to(f'{end[1]}.translateY')"""
+
+        for vertical in ["upper", "lower"]:
+
+            center = self.main_controls[f"{vertical}_M_center"]
+
+            self.connect_center_push(
+                control=center,
+                left_corner=self.l_corner,
+                right_corner=self.r_corner,
+                left_inward=cmds.getAttr(
+                    f"{self.l_corner.ctrl}.minTransXLimit"
+                ),
+                right_inward=cmds.getAttr(
+                    f"{self.r_corner.ctrl}.minTransXLimit"
+                ),
+                push_amount=arc_length/ 20,
+            )
+
+
+        root_jnt = create_joint(name=f'def_{self.part}_root', transform=center_guide.name, parent=self.joint_parent, connect=False)
+        cmds.xform(root_jnt, translation=(0,0, -self.rig_size / 10,), relative=True, objectSpace=True)
+
+        sub_mouth_grp = create_transform(name=f'{self.part}_subcontrols', parent=self.control_grp)
+
+        percent = 1/(self.divisions - 1)
+
+        # -----------------------------------
+        # Sub control guides
+        # -----------------------------------
+
+        sub_guides = []
+        flip_guides = {}
+
+        last_left_guide = None
+        last_right_flip_guide = None
+
+        for i in range(self.divisions - 1):
+
+            pos = cmds.pointOnCurve(
+                self.guides['L_mouth'].name,
+                parameter=percent * i,
+                position=True,
+                turnOnPercentage=True,
+            )
+
+            side = 'M' if i == 0 else 'L'
+
+            guide = create_guide_from_position(
+                guide_name=f'sub{self.part}_{i:02d}_{side}',
+                pos=pos,
+                parent='guides',
+            )
+
+            # -------------------------
+            # CENTER
+            # -------------------------
+
+            if i == 0:
+                sub_guides.append(guide)
+
+                last_left_guide = guide
+                last_right_flip_guide = guide
+
+                continue
+
+            # -------------------------
+            # LEFT
+            # -------------------------
+
+            align_guides(
+                guide_01=guide,
+                guide_02=last_left_guide,
+                flip=True,
+            )
+
+            sub_guides.append(guide)
+
+            # -------------------------
+            # RIGHT CONTROL GUIDE
+            # -------------------------
+
+            # This remains the true mirrored guide.
+            right_guide = mirror_guide(
+                guide=guide,
+            )
+
+            sub_guides.append(right_guide)
+
+            # -------------------------
+            # RIGHT FLIP GUIDE
+            # -------------------------
+
+            # Start with the mirrored position.
+            right_flip_guide = create_guide_from_position(
+                guide_name=f'sub{self.part}_{i:02d}_R_flip',
+                pos=cmds.xform(
+                    right_guide.name,
+                    query=True,
+                    worldSpace=True,
+                    translation=True,
+                ),
+                parent='guides',
+            )
+
+            # But calculate its orientation using the SAME
+            # alignment behavior as the left chain.
+            align_guides(
+                guide_01=right_flip_guide,
+                guide_02=last_right_flip_guide,
+                flip=False,
+            )
+
+            flip_guides[right_guide.name] = right_flip_guide
+
+            last_left_guide = guide
+            last_right_flip_guide = right_flip_guide
+
+
+        sorted_guides = sorted(
+        sub_guides,
+        key=lambda obj: cmds.xform(obj.name, query=True, worldSpace=True, translation=True)[0] #type:ignore
+        )
+
+        lower_pins = []
+        lower_controls = []
+        upper_pins = []
+        upper_controls = []
+        joints = []
+
+        for vertical in ["upper", "lower"]:
+
+
+
+            driven = []
+
+            v_mod = 1 if vertical == "upper" else -1
+
+            center_control = self.main_controls[f"{vertical}_M_center"]
+            left_mid_control = self.main_controls[f"{vertical}_L_mid"]
+            left_corner_control = self.main_controls[f"{vertical}_L_corner"]
+            right_mid_control = self.main_controls[f"{vertical}_R_mid"]
+            right_corner_control = self.main_controls[f"{vertical}_R_corner"]
+
+            center_driver = self.create_soft_driver(
+                control=center_control,
+                influences=[
+                    (left_mid_control, (.25,.05,.25)),
+                    (right_mid_control, (-.25,.05,.25)),
+                ],
+            )
+
+            left_mid_driver = self.create_soft_driver(
+                control=left_mid_control,
+                influences=[
+                    (center_control, (.25,.05,.25)),
+                ],
+            )
+
+            right_mid_driver = self.create_soft_driver(
+                control=right_mid_control,
+                influences=[
+                    (center_control,(-.25,.05,.25)),
+                ],
+            )
+
+            left_corner_driver = self.create_soft_driver(
+                control=left_corner_control,
+            )
+
+            right_corner_driver = self.create_soft_driver(
+                control=right_corner_control,
+            )
+
+            right_mid_spline_driver = create_transform(
+                name=f"{right_mid_driver}_spline",
+                transform=right_mid_spline_guide.name,
+                parent=right_mid_driver,
+            )
+
+            right_corner_spline_driver = create_transform(
+                name=f"{right_corner_driver}_spline",
+                transform=right_corner_spline_guide.name,
+                parent=right_corner_driver,
+            )
+
+            joints = []
+            controls = []
+            
+
+
+
+
+            for guide in sorted_guides:
+
+                side = next(
+                    (
+                        side
+                        for side in ("L", "R", "M")
+                        if f"_{side}" in guide.name
+                    ),
+                    None
+                )
+
+                if side == "L":
+                    color = self.sub_L_color
+                elif side == "R":
+                    color = self.sub_R_color
+                else:
+                    color = self.sub_M_color
+
+                # Center sub-control follows the actual center control directly.
+                
+                control_parent = sub_mouth_grp
+
+                control = create_control(
+                    name=f"{vertical}_{guide.descriptor}",
+                    parent=control_parent,
+                    transform=guide.name,
+                    size=self.rig_size / 120,
+                    control_shape="circle",
+                    direction="y",
+                    color_type=color,
+                    shape_rotation_offset=(0,0,90)
+                )
+
+                jnt = create_joint(
+                    name=f"{vertical}_{guide.descriptor}",
+                    transform=control.ctrl,
+                    parent=root_jnt,
+                    connect=False
+                )
+
+                joints.append(jnt)
+
+                #constraint(driven=jnt, drivers=[control.ctrl], constraint_type="parent")
+
+                if side == 'M':
+                    middle_driven = jnt
+
+                if side == "R":
+
+                    flip_guide = flip_guides[guide.name]
+
+                    control.flip = create_transform(
+                        name=f'{control.name}_FLIP',
+                        transform=flip_guide.name,
+                        parent=control_parent,
+                    )
+                    cmds.parent(
+                        control.top,
+                        control.flip,
+                    )
+
+                    driven.append(control.flip)
+                else:
+
+                    driven.append(control.top)
+                controls.append(control.ctrl)
+
+
+            driven = sorted(
+                driven,
+                key=lambda transform: cmds.xform(
+                    transform,
+                    query=True,
+                    worldSpace=True,
+                    translation=True,
+                )[0], #type:ignore
+            )
+
+            controls = sorted(
+                controls,
+                key=lambda transform: cmds.xform(
+                    transform,
+                    query=True,
+                    worldSpace=True,
+                    translation=True,
+                )[0], #type:ignore
+            )
+
+            drivers = [
+                right_corner_spline_driver,
+                right_mid_spline_driver,
+                center_driver,
+                left_mid_driver,
+                left_corner_driver,
+            ]
+
+            tag_for_weight_split(
+                influence= middle_driven,  # <-- your SOURCE joint (must already exist)
+                split_influences=joints,  # <-- the ones you just created
+            )
+
+            matrix_spline = matrix_spline_from_transforms(
+                name=f"{vertical}_{self.part}_ms",
+                pinned_transforms=len(driven),
+                cv_transforms=drivers,
+                parent=self.guts,
+                degree=2,
+            )
+
+            for spline_pin, driven_transform in zip(
+                matrix_spline.pinned_transforms,
+                driven,
+            ):
+                constraint(
+                    driven=driven_transform,
+                    drivers=[spline_pin],
+                    constraint_type="parent",
+                    maintain_offset=True,
+                )
+
+            if vertical == "upper":
+                upper_pins = matrix_spline.pinned_transforms
+                upper_controls = controls
+                upper_joints = joints
+            else:
+                lower_pins = matrix_spline.pinned_transforms
+                lower_controls = controls
+                lower_joints = joints
+
+
+        sticky_transforms = []
+
+        sticky_max = arc_length * 2.0
+
+        # Number of intervals between subs.
+        step = sticky_max / len(upper_controls)
+
+        # Each sub begins blending two divisions before
+        # the sticky front fully reaches it.
+        blend_distance = step * 2.0
+
+
+        cmds.addAttr(
+            self.l_corner.ctrl,
+            longName="sticky",
+            attributeType="double",
+            minValue=0.0,
+            maxValue=sticky_max,
+            defaultValue=0.0,
+            keyable=True,
+        )
+
+        cmds.addAttr(
+            self.r_corner.ctrl,
+            longName="sticky",
+            attributeType="double",
+            minValue=0.0,
+            maxValue=sticky_max,
+            defaultValue=0.0,
+            keyable=True,
+        )
+
+
+        for index, (upper_control, lower_control) in enumerate(
+            zip(upper_controls, lower_controls)
+        ):
+            # --------------------------------------------------
+            # Create the 50/50 upper/lower midpoint
+            # --------------------------------------------------
+
+            sticky_transform = self.create_sticky_midpoint(
+                upper_control=upper_control,
+                lower_control=lower_control,
+                name=f"{self.part}_sticky_{index:02d}",
+            )
+
+            sticky_transforms.append(sticky_transform)
+
+
+            # --------------------------------------------------
+            # Calculate sticky amount for this lip position
+            # --------------------------------------------------
+
+            sticky_weight = self.connect_sticky_weight(
+                left_sticky_attr=f"{self.r_corner.ctrl}.sticky",
+                right_sticky_attr=f"{self.l_corner.ctrl}.sticky",
+                index=index,
+                count=len(upper_controls),
+                step=step,
+                blend_distance=blend_distance,
+                name=f"{self.part}_{index:02d}",
+            )
+
+
+            # --------------------------------------------------
+            # Upper joint
+            #
+            # 0 = upper control
+            # 1 = sticky midpoint
+            # --------------------------------------------------
+
+            self.drive_with_blend_matrix(
+                driven=upper_joints[index],
+                base_driver=upper_control,
+                blend_driver=sticky_transform,
+                weight_plug=sticky_weight,
+                name=f"upper_{self.part}_{index:02d}_sticky",
+            )
+
+
+            # --------------------------------------------------
+            # Lower joint
+            #
+            # 0 = lower control
+            # 1 = sticky midpoint
+            # --------------------------------------------------
+
+            self.drive_with_blend_matrix(
+                driven=lower_joints[index],
+                base_driver=lower_control,
+                blend_driver=sticky_transform,
+                weight_plug=sticky_weight,
+                name=f"lower_{self.part}_{index:02d}_sticky",
+            )
+                    
+
+
+
+            
+
+
+                    
+
+                
+
+
+
+
+
+
+
+
+                    
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+        module_space(control=self.mouth, space_list=self.control_space)
+        mouth_info = module_info(master=self.mouth, master_joint=root_jnt, path_pins=path_pin_dict, corner_controls=corner_controls, macro=macro)
+        return mouth_info
+        """#controls
+        self.mouth_ctrl = create_control(
+            name=f'{self.part}_{self.side}',
+            parent=self.control_grp,
+            transform=self.guides[0].name,
+            size=self.rig_size,
+            control_shape=self.control_shape,
+            direction="y",
+            color_type=self.control_color
+        )
+
+
+        #joints
+
+        self.mouth_joint = create_joint(name=f'def_{self.part}_{self.side}', transform=self.mouth_ctrl.ctrl, connect=True, parent=self.joint_parent)
+
+        constraint(drivers=[self.mouth_ctrl.ctrl], driven=self.mouth_joint, constraint_type='parent', parent=self.guts)
+
+        mouth_info = module_info(control =self.mouth_ctrl, joint=self.mouth_joint)
+        return mouth_info"""
