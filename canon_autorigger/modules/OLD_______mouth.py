@@ -1,4 +1,3 @@
-from turtle import position
 
 from dataclasses import dataclass
 

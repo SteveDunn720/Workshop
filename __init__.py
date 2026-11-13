@@ -1,5 +1,4 @@
 from . import color as color
-from . import component as component
 from . import control as control
 from . import joint as joint
 from . import math as math
