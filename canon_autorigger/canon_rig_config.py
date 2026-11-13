@@ -45,6 +45,7 @@ class cannon_guide_config:
     brow:list[GuideInfo]
     cheek:dict[str, list[GuideInfo]]
     ear:dict[str,GuideInfo]
+    eye:dict[str,dict[str,GuideInfo]]
 
     primary_geo:str
 
@@ -86,12 +87,15 @@ def read_guides(rig_name:str='Canon')->cannon_guide_config:
     nose = {}
     cheek = {}
     ear = {}
+    eye = {}
+    
     hip_correctives = {}
     knee_correctives = {}
     ankle_correctives = {}
     elbow_correctives = {}
     wrist_correctives = {}
     chest_correctives = {}
+    
 
     for side in ['L', 'R']:
         leg[side] = [read_guide(f'upperleg_{side}_guide'), read_guide(f'knee_{side}_guide'), read_guide(f'foot_{side}_guide')]
@@ -122,6 +126,22 @@ def read_guides(rig_name:str='Canon')->cannon_guide_config:
         ear[f'{side}_lower'] = read_guide(f'ear_lower_{side}_guide')
         ear[f'{side}_upper'] = read_guide(f'ear_upper_{side}_guide')
         ear[f'{side}_outer'] = read_guide(f'ear_outer_{side}_guide')
+        eye[side] = {
+                    "center": read_guide(f"eye_center_{side}_guide"),
+                    "aim": read_guide(f"look_{side}_guide"),
+                    "upblink": read_guide(f"eyelid_upblink_{side}_guide"),
+                    "upper": read_guide(f"eyelid_upper_{side}_guide"),
+                    "blink": read_guide(f"eyelid_blink_{side}_guide"),
+                    "lower": read_guide(f"eyelid_lower_{side}_guide"),
+                    "lowblink": read_guide(f"eyelid_lowblink_{side}_guide"),
+                    "socket_upper": read_guide(f"socket_upper_{side}_guide"),
+                    "socket_lower": read_guide(f"socket_lower_{side}_guide"),
+                    "eye_diam": read_guide(f"eye_{side}_guide"),
+                    "iris_diam": read_guide(f"iris_{side}_guide"),
+                    "pupil_diam": read_guide(f"pupil_{side}_guide"),
+                }
+        
+        
         hip_correctives[side] = [read_guide(f'psoasup_{side}_guide'), read_guide(f'psoasdown_{side}_guide'), read_guide(f'glutelow_{side}_guide'), read_guide(f'glutemid_{side}_guide'), read_guide(f'gluteup_{side}_guide'), read_guide(f'trochanter_{side}_guide')]
         knee_correctives[side] = [read_guide(f'kneecap_{side}_guide'), read_guide(f'hamstring_{side}_guide'), read_guide(f'calf_{side}_guide'),]
         ankle_correctives[side] = [read_guide(f'tibialis_{side}_guide'), read_guide(f'achilles_{side}_guide'), read_guide(f'medialmalleolus_{side}_guide'), read_guide(f'lateralmalleolus_{side}_guide'),]
@@ -185,6 +205,7 @@ def read_guides(rig_name:str='Canon')->cannon_guide_config:
         brow=brow,
         cheek=cheek,
         ear=ear,
+        eye=eye,
 
         primary_geo=primary_mesh,
     )

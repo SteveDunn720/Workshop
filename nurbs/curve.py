@@ -117,3 +117,95 @@ def create_curve_through_positions(
         degree=actual_degree,
         editPoint=[tuple(point) for point in positions],
     )
+
+def get_nurbs_curve_radius(curve: str) -> float:
+    """
+    Returns the radius of a NURBS circle.
+
+    Args:
+        obj (str): Transform of the NURBS circle
+
+    Returns:
+        float: radius
+    """
+
+    bbox: list[int | float] = cmds.exactWorldBoundingBox(curve)
+
+    x: int | float = bbox[3] - bbox[0]
+    y: int | float = bbox[4] - bbox[1]
+    z: int | float = bbox[5] - bbox[2]
+
+    return max(x, y, z) * 0.5
+
+
+
+def smooth_curve_weights(
+        curve: str,
+        iterations: int = 5,
+        strength: float = 0.5,
+        preserve_ends: bool = True,
+    ) -> None:
+        """Smooth skin weights along a NURBS curve."""
+
+        strength = max(0.0, min(1.0, strength))
+
+        history = cmds.listHistory(curve) or []
+        skins = cmds.ls(history, type="skinCluster")  # type:ignore
+
+        if not skins:
+            raise ValueError(f"No skinCluster found on {curve}")
+
+        skin = skins[0]
+
+        influences = cmds.skinCluster(
+            skin,
+            query=True,
+            influence=True,
+        )
+
+        cvs = cmds.ls(
+            f"{curve}.cv[*]",
+            flatten=True,
+        )
+
+        if not cvs:
+            raise ValueError(f"No CVs found on {curve}")
+
+        for _ in range(iterations):
+            weights = [
+                [
+                    cmds.skinPercent(
+                        skin,
+                        cv,
+                        query=True,
+                        transform=joint,
+                    )
+                    for joint in influences  # type:ignore
+                ]
+                for cv in cvs
+            ]
+
+            for i, cv in enumerate(cvs):
+                if preserve_ends and i in (0, len(cvs) - 1):
+                    continue
+
+                neighbors = [weights[j] for j in (i - 1, i + 1) if 0 <= j < len(cvs)]
+
+                if not neighbors:
+                    continue
+
+                new_weights = []
+
+                for j, weight in enumerate(weights[i]):
+                    average = sum(neighbor[j] for neighbor in neighbors) / len(neighbors)  # type:ignore
+
+                    smoothed = weight * (1.0 - strength) + average * strength  # type:ignore
+
+                    new_weights.append(smoothed)
+
+                cmds.skinPercent(
+                    skin,
+                    cv,
+                    transformValue=list(zip(influences, new_weights, strict=True)),  # type:ignore
+                    normalize=True,
+                )

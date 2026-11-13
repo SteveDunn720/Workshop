@@ -122,7 +122,7 @@ def create_attribute(
     return attr
 
 
-def add_proxy(source: str, proxy_list:list, proxy_name:str | None):
+def add_proxy(source: str, proxy_list:list, proxy_name:str | None = None):
     for proxy_object in proxy_list:
 
         _, attr_name = source.rsplit(".", 1)
