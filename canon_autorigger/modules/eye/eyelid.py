@@ -35,7 +35,10 @@ class Eyelid:
         orient_sub_expression_controls: bool = False,
         collison_gap_default:float = 0.07,
         soft_distance = .1,
+        expression_control_shape:str = "hexagon",
+        expresison_control_size:list = [.2, .25, 12]
     ) -> None:
+        
         if guides is None:
             guides = {}
         self.side = side
@@ -54,6 +57,8 @@ class Eyelid:
         self.orient_sub_expression_controls = orient_sub_expression_controls
         self.collison_gap_default = collison_gap_default
         self.soft_distance = soft_distance
+        self.expression_control_shape = expression_control_shape
+        self.expresison_control_size = expresison_control_size
 
     # -------------------
     # Helper Functions
@@ -386,6 +391,7 @@ class Eyelid:
         fake_parent: str,
         size: float,
         mirror_offset: bool = False,
+        control_shape:str = "hexagon",
     ) -> tuple[Control, str]:
         """Create matching real and fake expression controls.
 
@@ -403,16 +409,15 @@ class Eyelid:
             parent=control_parent,
             transform=matrix,
             size=size,
-            control_shape="hexagon",
+            control_shape=control_shape,
             direction="z",
         )
 
         # ---------------------------------------------------------
         # Fake offset
         # ---------------------------------------------------------
-
         fake_offset = create_transform(
-            name=f"{name}_fake_offset",
+            name=f"{name}_logic_offset",
             parent=fake_parent,
             transform=control.ctrl,
         )
@@ -420,28 +425,18 @@ class Eyelid:
         # ---------------------------------------------------------
         # Mirror both offsets
         # ---------------------------------------------------------
-
         if mirror_offset:
-            set_attr(
-                f"{control.offset}.scaleX",
-                -1.0,  # type:ignore
-            )
-
-            set_attr(
-                f"{fake_offset}.scaleX",
-                -1.0,  # type:ignore
-            )
+            set_attribute(f"{control.top}.scaleX", -1)
+            set_attribute(f"{fake_offset}.scaleX", -1)
 
         # ---------------------------------------------------------
         # Fake driver
         # ---------------------------------------------------------
-
         fake_driver = create_transform(
-            name=f"{name}_fake_driver",
+            name=f"{name}_logic_driver",
             parent=fake_offset,
             transform=control.ctrl,
         )
-
         return control, fake_driver
 
     def build_expression_controls(self) -> None:
@@ -466,7 +461,6 @@ class Eyelid:
         # ---------------------------------------------------------
         # Setup groups
         # ---------------------------------------------------------
-
         self.expression_control_grps = {}
 
         for vertical in ("upper", "lower"):
@@ -605,8 +599,9 @@ class Eyelid:
                 matrix=matrix,
                 control_parent=self.main_ctrl.ctrl,
                 fake_parent=self.expression_driver_grp,
-                size=self.control_size * 0.2,
+                size=self.control_size * self.expresison_control_size[0],
                 mirror_offset=macro_mirror["upper"][index],
+                control_shape=self.expression_control_shape
             )
 
             self.expression_major_controls[corner] = control
@@ -624,8 +619,9 @@ class Eyelid:
                 matrix=matrix,
                 control_parent=self.expression_control_grps[vertical],
                 fake_parent=self.expression_follow_grp,
-                size=self.control_size * 0.25,
+                size=self.control_size * self.expresison_control_size[1],
                 mirror_offset=macro_mirror[vertical][2],
+                control_shape= self.expression_control_shape
             )
 
             self.expression_major_controls[f"{vertical}_mid"] = control
@@ -654,8 +650,9 @@ class Eyelid:
                     matrix=matrix,
                     control_parent=major_control.ctrl,
                     fake_parent=major_driver,
-                    size=self.control_size * 0.12,
+                    size=self.control_size * self.expresison_control_size[2],
                     mirror_offset=macro_mirror[vertical][index],
+                    control_shape= self.expression_control_shape
                 )
 
                 self.expression_macro_controls[vertical].append(control)
@@ -680,6 +677,7 @@ class Eyelid:
         # ---------------------------------------------------------
         # Create the real SDK
         # ---------------------------------------------------------
+        create_transform(name=f"{transform}_sdk", parent=control.top)
 
         sdk = cmds.createNode(
             "transform",
@@ -2134,6 +2132,7 @@ class Eyelid:
                     size=self.control_size / 10,
                     control_shape="circle",
                     direction="z",
+                    sdk_offset=True,
                 )
                 sub_jnt = create_joint(
                     name=f"{vertical}_{i}_{self.side}",
