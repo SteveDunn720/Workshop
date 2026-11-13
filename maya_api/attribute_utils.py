@@ -136,6 +136,56 @@ def add_proxy(source: str, proxy_list:list, proxy_name:str | None):
         )
 
 
+def set_attribute(
+    attr: str,
+    value: Any,
+    force: bool = True,
+) -> str:
+    """
+    Set a Maya attribute's value.
+
+    Args:
+        attr: Full attribute path (node.attribute).
+        value: Value to assign.
+        force: Temporarily unlock the attribute if necessary.
+
+    Returns:
+        Full attribute path.
+    """
+
+    if not cmds.objExists(attr):
+        raise ValueError(f"Attribute '{attr}' does not exist")
+
+    is_locked = cmds.getAttr(attr, lock=True)
+
+    if is_locked and not force:
+        raise RuntimeError(f"Attribute '{attr}' is locked")
+
+    attr_type = cmds.getAttr(attr, type=True)
+
+    try:
+        if is_locked:
+            cmds.setAttr(attr, lock=False)
+
+        if attr_type == "string":
+            cmds.setAttr(attr, value, type="string")
+
+        elif attr_type in {"double3", "float3"}:
+            cmds.setAttr(attr, *value, type=attr_type)
+
+        elif attr_type == "matrix":
+            cmds.setAttr(attr, *value, type="matrix")
+
+        else:
+            cmds.setAttr(attr, value)
+
+    finally:
+        if is_locked:
+            cmds.setAttr(attr, lock=True)
+
+    return attr
+
+
 def connect_attributes(
     source: str,
     destination: list[str],

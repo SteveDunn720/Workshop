@@ -1,5 +1,6 @@
 
 from dataclasses import dataclass
+from weakref import proxy
 import maya.cmds as cmds
 
 from Workshop.control import create_control
@@ -8,6 +9,7 @@ from Workshop.joint import create_joint
 from Workshop.maya_api.node import ConditionNode, DistanceBetweenNode, MultiplyDivideNode, ReverseNode
 from Workshop.guide.core import GuideInfo
 from Workshop.transform.constraint import constraint
+from Workshop.maya_api.attribute_utils import add_proxy, set_attribute
 
 from ..ik import auto_pv_space, create_IK_single_chain
 from ..module_shared import fkik_switch, module_prep, module_space
@@ -170,7 +172,7 @@ class Foot:
         for axis in ['X', 'Y', 'Z']:
             num = 180 if axis == 'X' else 0
 
-            cmds.setAttr(f'{temp_guide}.jointOrient{axis}', num)
+            set_attribute(f'{temp_guide}.jointOrient{axis}', num)
 
         self.ik_foot = create_control(
                 name=f'IK_{self.guides[0].descriptor}_main',
@@ -226,15 +228,18 @@ class Foot:
 
         cmds.parent(roll_info.roll_grp, self.ik_foot.ctrl)
 
+        add_proxy(source=self.leg_info.ik_stretch_attr, proxy_list=[self.ik_foot.ctrl], proxy_name='stretch')
+
+        # connecting the rool to the foot and leg
+
         constraint(drivers=[roll_info.down_driver], driven=roll_ik.handle, constraint_type='parent', parent=self.guts)
-        cmds.orientConstraint(roll_info.down_driver, self.ik_roll_joints[1], maintainOffset=True)   #FIX
+        constraint(drivers=[roll_info.down_driver], driven=self.ik_roll_joints[1], constraint_type='orient', parent=self.guts)
         constraint(drivers=[roll_info.up_driver], driven=self.ik_hook[0], constraint_type='parent', parent=self.guts)
         constraint(drivers=[self.ik_hook[1]], driven=self.ik_roll_joints[0], constraint_type='parent', parent=self.guts)
         constraint(drivers=[self.ik_roll_joints[0]], driven=self.ik_joints[0], constraint_type='parent', parent=self.guts)
         constraint(drivers=[roll_info.down_driver], driven=self.ik_toes.top, constraint_type='parent', parent=self.guts)
-        cmds.addAttr(self.ik_foot.ctrl, longName='stretch', proxy = self.leg_info.ik_stretch_attr)
         constraint(drivers=[self.ik_foot.ctrl], driven=self.leg_info.ik_len[0].handle, constraint_type='parent', parent=self.guts)
-        cmds.orientConstraint(self.ik_foot.ctrl, self.leg_info.ik_len[2], maintainOffset=True)  #FIX
+        constraint(drivers=[self.ik_foot.ctrl], driven=self.leg_info.ik_len[2], constraint_type='orient', parent=self.guts)
         constraint(drivers=[self.leg_info.ik_len[2]], driven=roll_info.roll_grp, constraint_type='parent', parent=self.guts)
         constraint(drivers=[self.ik_foot.ctrl], driven=self.leg_info.end_ik_hook[2], constraint_type='parent', parent=self.guts)
 
