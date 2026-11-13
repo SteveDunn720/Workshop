@@ -16,6 +16,7 @@ class Pull:
     def __init__(
         self,
         driver: str,
+        parent_part:str | None = None, 
         part: str = "pull",
         side: str = "M",
         parent: str = "rig",

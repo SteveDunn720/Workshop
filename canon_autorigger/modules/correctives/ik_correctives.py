@@ -26,6 +26,7 @@ class Ik_correctives:
 
     def __init__(
         self,
+        parent_part:str | None = None, 
         part: str = "pec",
         side: str = "M",
         parent: str = "components",

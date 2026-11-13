@@ -92,9 +92,11 @@ class IK_Bone:
 
     def __init__(
         self,
+        
         root_driver: str,
         end_driver: str,
 
+        parent_part:str | None = None, 
         part: str = "bone",
         side: str = "M",
 

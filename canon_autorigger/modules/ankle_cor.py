@@ -42,11 +42,11 @@ class Ankle_Cor:
 
 
         
-        lateral = Blend(part = 'lateral', side=self.side, parent=self.main_grp, joint_parent= self.joint_parent, guides=[self.guides[3]], driver = self.driver, )
+        lateral = Blend(parent_part =self.part, part = 'lateral', side=self.side, parent=self.main_grp, joint_parent= self.joint_parent, guides=[self.guides[3]], driver = self.driver, )
         lateralinfo = lateral.build()
-        medial = Blend(part = 'medial', side=self.side, parent=self.main_grp, joint_parent= self.joint_parent, guides=[self.guides[2]], driver = self.driver, )
+        medial = Blend(parent_part =self.part,part = 'medial', side=self.side, parent=self.main_grp, joint_parent= self.joint_parent, guides=[self.guides[2]], driver = self.driver, )
         medialinfo = medial.build()
-        achilles = Blend(part = 'achilles', side=self.side, parent=self.main_grp, joint_parent= self.joint_parent, guides=[self.guides[1]], driver = self.driver, )
+        achilles = Blend(parent_part =self.part, part = 'achilles', side=self.side, parent=self.main_grp, joint_parent= self.joint_parent, guides=[self.guides[1]], driver = self.driver, )
         achillesinfo = achilles.build()
-        tibialis = Blend(part = 'tibialis', side=self.side, parent=self.main_grp, joint_parent= self.joint_parent, guides=[self.guides[0]], driver = self.driver, )
+        tibialis = Blend(parent_part =self.part, part = 'tibialis', side=self.side, parent=self.main_grp, joint_parent= self.joint_parent, guides=[self.guides[0]], driver = self.driver, )
         tibialisinfo = tibialis.build()

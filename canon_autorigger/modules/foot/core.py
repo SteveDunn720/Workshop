@@ -222,12 +222,8 @@ class Foot:
         roll = Roll(part='roll', rig_size=self.rig_size, side=self.side, joints= [f'foot_{self.side}', f'ball_{self.side}'], guides=self.feet_guides, control_parent=self.ik_foot.ctrl)
         roll_info = roll.build()
 
-        #self.build_compressible_ik_length(name=f'{self.part}_{self.side}_roll', root_reference=roll_info.roll_ctrl.top, ik_control=roll_info.down_driver, down_axis='X', length_joint=self.ik_roll_joints[1])
-
-        match_transform(transform=roll_info.roll_grp, target_transform=self.feet_guides.og_foot_pos[-2])
-
+        match_transform(transform=roll_info.roll_grp, target_transform=self.feet_guides.og_foot_pos[-2]) #type:ignore
         cmds.parent(roll_info.roll_grp, self.ik_foot.ctrl)
-
         add_proxy(source=self.leg_info.ik_stretch_attr, proxy_list=[self.ik_foot.ctrl], proxy_name='stretch')
 
         # connecting the rool to the foot and leg

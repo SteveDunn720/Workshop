@@ -19,6 +19,7 @@ class Blend:
     def __init__(
         self,
         driver: str,
+        parent_part:str | None = None, 
         part: str = "blend",
         side: str = "M",
         parent: str = "rig",
@@ -55,6 +56,7 @@ class Blend:
 
         self.pop_amount = pop_amount
         self.pop_axis = pop_axis
+        self.parent_part = parent_part
 
     def build(self):
 
