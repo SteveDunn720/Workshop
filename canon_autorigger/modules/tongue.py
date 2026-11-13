@@ -1,5 +1,7 @@
 from dataclasses import dataclass
 
+from Workshop.canon_autorigger.module_schema import ModuleCurveGuide, ModuleRelationship, ModuleSetting
+
 from Workshop.control.core import Control
 from Workshop.transform.constraint import constraint
 from Workshop.control import create_control
@@ -18,6 +20,23 @@ class module_info:
     joint:str
 
 class Tongue:
+    MODULE_NAME = "tongue"
+    DISPLAY_NAME = "Tongue"
+    GUIDES = (ModuleCurveGuide(name="tongue"),)
+    SETTINGS = (
+        ModuleSetting(name="rig_size", setting_type="float", default=1.0),
+        ModuleSetting(name="divisions", setting_type="int", default=7),
+        ModuleSetting(name="control_shape", setting_type="control_shape", default="circle"),
+        ModuleSetting(name="control_size", setting_type="float", default=0.01),
+        ModuleSetting(name="control_direction", setting_type="string", default="y"),
+        ModuleSetting(name="control_color", setting_type="string", default="Middle"),
+        ModuleSetting(name="guide_parent", setting_type="string", default="guides"),
+    )
+    RELATIONSHIPS = (
+        ModuleRelationship(name="joint_parent", relationship_type="joint", default="auto"),
+        ModuleRelationship(name="control_space", relationship_type="control_space", default="auto"),
+    )
+
     def __init__(
         self,
         part: str = "tongue",
@@ -25,11 +44,15 @@ class Tongue:
         parent: str = "components",
         control_parent: str | None = None,
         rig_size: float = 1.0,
-        guides: list = [],
+        guides: list | None = None,
         joint_parent:str = 'skel',
-        control_space:list = [],
+        control_space:list | None = None,
         control_shape:str = 'circle',
         divisions:int= 7,
+        control_size: float = 0.01,
+        control_direction: str = "y",
+        control_color: str = "Middle",
+        guide_parent: str = "guides",
 
     ):
         self.part: str = part
@@ -37,13 +60,16 @@ class Tongue:
         self.parent: str = parent
         self.control_parent: str | None = control_parent
         self.rig_size: float = rig_size
-        self.guides: list = guides
+        self.guides: list = guides if guides is not None else []
         self.joint_parent = joint_parent
-        self.control_space = control_space
-        self.main_M_color = 'Middle'
+        self.control_space = control_space if control_space is not None else []
+        self.main_M_color = control_color
         self.sub_M_color = 'SubMiddle'
         self.control_shape = control_shape
         self.divisions = divisions
+        self.control_size = control_size
+        self.control_direction = control_direction
+        self.guide_parent = guide_parent
 
     # -------------------
     # Build steps
@@ -70,7 +96,10 @@ class Tongue:
 
     def build(self):
 
-        #modeule prep work
+        if self.divisions < 1:
+            raise ValueError("Tongue divisions must be at least 1")
+
+        #module prep work
         prep = module_prep(part=self.part, parent=self.parent, side=self.side, fkik=False, gut=True)
         self.main_grp = prep.main_grp
         self.control_grp = prep.control_grp
@@ -91,7 +120,7 @@ class Tongue:
                 position=True,
                 turnOnPercentage=True,
             )
-            g = create_guide_from_position(guide_name=f'{self.part}_0{i}_{self.side}', pos=pos, parent='guides')
+            g = create_guide_from_position(guide_name=f'{self.part}_0{i}_{self.side}', pos=pos, parent=self.guide_parent)
             guides.append(g)
 
             if i == 0:
@@ -103,9 +132,9 @@ class Tongue:
                 name=g.descriptor,
                 parent=ctrl_par,
                 transform=g.name,
-                size=self.rig_size/100,
-                control_shape='circle',
-                direction="y",
+                size=self.rig_size * self.control_size,
+                control_shape=self.control_shape,
+                direction=self.control_direction,
                 color_type=self.main_M_color
             )
 
@@ -125,30 +154,3 @@ class Tongue:
             influence= joints[0],  # <-- your SOURCE joint (must already exist)
             split_influences=joints,  # <-- the ones you just created
         )
-
-
-
-
-
-
-        """#controls
-        self.tongue_ctrl = create_control(
-            name=f'{self.part}_{self.side}',
-            parent=self.control_grp,
-            transform=self.guides[0].name,
-            size=self.rig_size,
-            control_shape=self.control_shape,
-            direction="y",
-            color_type=self.control_color
-        )
-
-        module_space(control=self.tongue_ctrl, space_list=self.control_space)
-
-        #joints
-
-        self.tongue_joint = create_joint(name=f'def_{self.part}_{self.side}', transform=self.tongue_ctrl.ctrl, connect=True, parent=self.joint_parent)
-
-        constraint(drivers=[self.tongue_ctrl.ctrl], driven=self.tongue_joint, constraint_type='parent', parent=self.guts)
-
-        tongue_info = module_info(control =self.tongue_ctrl, joint=self.tongue_joint)
-        return tongue_info"""

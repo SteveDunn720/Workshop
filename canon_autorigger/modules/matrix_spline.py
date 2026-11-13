@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-import maya.cmds as cmds
 from maya.api import OpenMaya as om
 
 from Workshop.control import create_control
@@ -129,6 +128,8 @@ class MatrixSpline:
             setting_type="string",
             default="parent",
         ),
+        ModuleSetting(name="control_direction", setting_type="string", default="y"),
+        ModuleSetting(name="control_size_multiplier", setting_type="float", default=1.0),
     )
 
     RELATIONSHIPS = (
@@ -160,6 +161,8 @@ class MatrixSpline:
         control_shape: str = "circle",
         control_color: str = "MISC",
         constraint_type: str = "parent",
+        control_direction: str = "y",
+        control_size_multiplier: float = 1.0,
     ):
         self.part = part
         self.side = side
@@ -176,6 +179,8 @@ class MatrixSpline:
         self.control_shape = control_shape
         self.control_color = control_color
         self.constraint_type = constraint_type
+        self.control_direction = control_direction
+        self.control_size_multiplier = control_size_multiplier
 
     @classmethod
     def preview(
@@ -274,9 +279,9 @@ class MatrixSpline:
                 name=name,
                 parent=self.control_grp,
                 transform=matrix,
-                size=self.rig_size,
+                size=self.rig_size * self.control_size_multiplier,
                 control_shape=self.control_shape,
-                direction="y",
+                direction=self.control_direction,
                 color_type=self.control_color,
             )
 
@@ -352,10 +357,11 @@ class MatrixSpline:
             self.joints,
         ):
             if self.constraint_type == "parent":
-                cmds.parentConstraint(
-                    pinned,
-                    joint,
-                    maintainOffset=False,
+                constraint(
+                    drivers=[pinned],
+                    driven=joint,
+                    constraint_type="parent",
+                    parent=self.guts,
                 )
             else:
                 constraint(

@@ -8,10 +8,29 @@ from Workshop.transform.quat import (
 )
 from Workshop.maya_api.node import RemapValueNode
 
+from Workshop.canon_autorigger.build_management.dev import create_dev_attribute
+from Workshop.canon_autorigger.module_schema import ModuleRelationship, ModuleSetting
+from Workshop.maya_api.attribute_utils import set_attribute
+
 from ..module_shared import module_prep
 
 
 class Pull:
+    MODULE_NAME = "pull"
+    DISPLAY_NAME = "Pull Corrective"
+    GUIDES = ()
+    SETTINGS = (
+        ModuleSetting(name="rig_size", setting_type="float", default=1.0),
+        ModuleSetting(name="range", setting_type="vector2", default=(-90, 90)),
+        ModuleSetting(name="driver_axis", setting_type="string", default="X"),
+        ModuleSetting(name="pull_axis", setting_type="string", default="Y"),
+        ModuleSetting(name="pull_amount", setting_type="float", default=1.0),
+    )
+    RELATIONSHIPS = (
+        ModuleRelationship(name="driver", relationship_type="joint", default="auto"),
+        ModuleRelationship(name="joint_parent", relationship_type="joint", default="auto"),
+    )
+
 
     def __init__(
         self,
@@ -67,6 +86,17 @@ class Pull:
 
         guide = self.guides[0]
         descriptor = guide.descriptor
+
+        def dev_value(name: str, value: float, **kwargs: float) -> str:
+            """Expose a driver value without changing its initial behavior."""
+            return create_dev_attribute(
+                attribute_name=f"{self.part}_{self.side}_{descriptor}_{name}",
+                control=self.control_grp,
+                rig_part=self.part,
+                default=value,
+                attr_type="double",
+                **kwargs,
+            )
 
         if self.driver_axis not in ("X", "Y", "Z"):
             raise ValueError(
@@ -184,20 +214,16 @@ class Pull:
         # Reverse the output when the range is descending.
 
         if start_angle < end_angle:
-
-            pull_remap.input_min.set(start_angle)
-            pull_remap.input_max.set(end_angle)
-
-            pull_remap.output_min.set(0.0)
-            pull_remap.output_max.set(self.pull_amount)
-
+            input_min, input_max = start_angle, end_angle
+            output_min, output_max = 0.0, self.pull_amount
         else:
+            input_min, input_max = end_angle, start_angle
+            output_min, output_max = self.pull_amount, 0.0
 
-            pull_remap.input_min.set(end_angle)
-            pull_remap.input_max.set(start_angle)
-
-            pull_remap.output_min.set(self.pull_amount)
-            pull_remap.output_max.set(0.0)
+        pull_remap.input_min.connect_from(dev_value("input_min", input_min))
+        pull_remap.input_max.connect_from(dev_value("input_max", input_max))
+        pull_remap.output_min.connect_from(dev_value("output_min", output_min))
+        pull_remap.output_max.connect_from(dev_value("output_max", output_max))
 
         pull_remap.input_value.connect_from(
             activation_angle

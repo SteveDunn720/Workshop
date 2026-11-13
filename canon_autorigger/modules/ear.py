@@ -78,11 +78,10 @@ class Ear:
             setting_type="vector3",
             default=(0.03, 0.03, 0.0),
         ),
-        ModuleSetting(
-            name="root_rot",
-            setting_type="vector3",
-            default=(90.0, 0.0, 0.0),
-        ),
+        ModuleSetting(name="root_rot", setting_type="vector3", default=(90.0, 0.0, 0.0)),
+        ModuleSetting(name="control_direction", setting_type="string", default="y"),
+        ModuleSetting(name="lower_follow", setting_type="float", default=0.5),
+        ModuleSetting(name="use_sdk_offset", setting_type="bool", default=True),
     )
 
     RELATIONSHIPS = (
@@ -117,14 +116,19 @@ class Ear:
         parent: str = "components",
         control_parent: str | None = None,
         rig_size: float = 1.0,
-        guides: dict = {},
+        guides: dict | None = None,
         joint_parent:str = 'skel',
         shape:str = 'sphere',
         main_shape:str = 'round_square',
         root_size:float = 1/100,
         sub_size:float = 1/150,
         root_offset:tuple = ( .03, .03, 0),
-        root_rot:tuple = (90,0,0)
+        root_rot:tuple = (90,0,0),
+        control_direction: str = "y",
+        main_color: str | None = None,
+        sub_color: str | None = None,
+        lower_follow: float = 0.5,
+        use_sdk_offset: bool = True,
 
 
     ):
@@ -133,16 +137,15 @@ class Ear:
         self.parent: str = parent
         self.control_parent: str | None = control_parent
         self.rig_size: float = rig_size
-        self.guides= guides
+        self.guides = guides if guides is not None else {}
         self.joint_parent = joint_parent
         self.main_shape = main_shape
         self.shape = shape
-        if self.side == 'L':
-            self.main_color = 'Left'
-            self.sub_color = 'SubLeft'
-        else:
-            self.main_color = 'Right'
-            self.sub_color = 'SubRight'
+        self.main_color = main_color or ("Left" if side == "L" else "Right")
+        self.sub_color = sub_color or ("SubLeft" if side == "L" else "SubRight")
+        self.control_direction = control_direction
+        self.lower_follow = lower_follow
+        self.use_sdk_offset = use_sdk_offset
         self.main_space = main_space
         self.driver = driver
         self.head_space = head_space
@@ -233,9 +236,9 @@ class Ear:
             transform=self.guides[f'{self.side}_root'].name,
             size=self.rig_size * self.root_size,
             control_shape=self.main_shape,
-            direction="y",
+            direction=self.control_direction,
             color_type=self.main_color,
-            sdk_offset=True,
+            sdk_offset=self.use_sdk_offset,
             shape_position_offset=tuple(value * self.rig_size for value in self.root_offset),
             shape_rotation_offset=self.root_rot
         )
@@ -252,9 +255,9 @@ class Ear:
                 transform=self.guides[f'{self.side}_{mod}'].name,
                 size=self.rig_size * self.sub_size,
                 control_shape=self.shape,
-                direction="y",
+                direction=self.control_direction,
                 color_type=self.main_color,
-                sdk_offset=True
+                sdk_offset=self.use_sdk_offset
             )
             #joints
 
@@ -264,7 +267,7 @@ class Ear:
             sub_joints.append(joint)
 
             if mod == 'lower':
-                create_blend_driver_offset(default_mult=.5, control=ctrl, driver=self.driver, parent_space=self.main_space[0].ctrl,)
+                create_blend_driver_offset(default_mult=self.lower_follow, control=ctrl, driver=self.driver, parent_space=self.main_space[0].ctrl,)
 
         ear_info = module_info(control =self.main_ctrl, joint=self.main_joint, sub_controls=sub_controls, sub_joints=sub_joints)
         return ear_info

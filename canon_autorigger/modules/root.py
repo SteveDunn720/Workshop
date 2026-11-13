@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 from Workshop.control.core import Control
-import maya.cmds as cmds
+from Workshop.maya_api.attribute_utils import create_attribute
 
 from Workshop.transform.constraint import constraint
 from Workshop.control import create_control
@@ -70,11 +70,16 @@ class Root:
             setting_type="string",
             default="local",
         ),
-        ModuleSetting(
-            name="offset_name",
-            setting_type="string",
-            default="offset",
-        ),
+        ModuleSetting(name="offset_name", setting_type="string", default="offset"),
+        ModuleSetting(name="local_size_scale", setting_type="float", default=0.56),
+        ModuleSetting(name="offset_size_scale", setting_type="float", default=0.4),
+        ModuleSetting(name="settings_size_scale", setting_type="float", default=0.05),
+        ModuleSetting(name="settings_offset_character", setting_type="float", default=0.88),
+        ModuleSetting(name="settings_offset_other", setting_type="float", default=0.71),
+        ModuleSetting(name="visibility_control_name", setting_type="string", default="visibility_options"),
+        ModuleSetting(name="color_control_name", setting_type="string", default="color_options"),
+        ModuleSetting(name="dev_size_scale", setting_type="float", default=0.25),
+        ModuleSetting(name="dev_offset_scale", setting_type="float", default=1.0),
     )
 
     RELATIONSHIPS = ()
@@ -86,7 +91,7 @@ class Root:
         parent: str = "rig",
         control_parent: str | None = None,
         rig_size: float = 1.0,
-        guides: list = [],
+        guides: list | None = None,
         joint_parent:str = 'skel',
         root_control_shape:str = "Character_base",
         root_control_color:str = "Root",
@@ -96,6 +101,15 @@ class Root:
         control_color:str = "MISC",
         local_name:str = "local",
         offset_name:str = "offset",
+        local_size_scale: float = 0.56,
+        offset_size_scale: float = 0.4,
+        settings_size_scale: float = 0.05,
+        settings_offset_character: float = 0.88,
+        settings_offset_other: float = 0.71,
+        visibility_control_name: str = "visibility_options",
+        color_control_name: str = "color_options",
+        dev_size_scale: float = 0.25,
+        dev_offset_scale: float = 1.0,
 
 
     ):
@@ -104,7 +118,7 @@ class Root:
         self.parent: str = parent
         self.control_parent: str | None = control_parent
         self.rig_size: float = rig_size
-        self.guides: list = guides
+        self.guides: list = guides if guides is not None else []
         self.joint_parent = joint_parent
         self.root_control_shape = root_control_shape
         self.root_control_color = root_control_color
@@ -114,6 +128,15 @@ class Root:
         self.control_color = control_color
         self.local_name = local_name
         self.offset_name = offset_name
+        self.local_size_scale = local_size_scale
+        self.offset_size_scale = offset_size_scale
+        self.settings_size_scale = settings_size_scale
+        self.settings_offset_character = settings_offset_character
+        self.settings_offset_other = settings_offset_other
+        self.visibility_control_name = visibility_control_name
+        self.color_control_name = color_control_name
+        self.dev_size_scale = dev_size_scale
+        self.dev_offset_scale = dev_offset_scale
     # -------------------
     # Build steps
     # -------------------
@@ -149,8 +172,8 @@ class Root:
         local_control = f"{local_name}_{side}_ctrl"
         offset_control = f"{offset_name}_{side}_ctrl"
 
-        visibility_control = "visibility_options_ctrl"
-        color_control = "color_options_ctrl"
+        visibility_control = f'{settings.get("visibility_control_name", "visibility_options")}_ctrl'
+        color_control = f'{settings.get("color_control_name", "color_options")}_ctrl' 
 
         root_joint = f"def_{part}_{side}_jnt"
 
@@ -192,7 +215,7 @@ class Root:
             name=f'{self.local_name}_{self.side}',
             parent=self.root_ctrl.ctrl,
             transform=self.guides[0].name,
-            size=self.rig_size * .56,
+            size=self.rig_size * self.local_size_scale,
             control_shape=self.control_shape,
             direction="y",
             color_type=self.control_color
@@ -202,7 +225,7 @@ class Root:
             name=f'{self.offset_name}_{self.side}',
             parent=self.local_ctrl.ctrl,
             transform=self.guides[0].name,
-            size=self.rig_size * .4,
+            size=self.rig_size * self.offset_size_scale,
             control_shape=self.control_shape,
             direction="y",
             color_type=self.control_color
@@ -210,12 +233,12 @@ class Root:
 
         #rig option controls
 
-        settings_offset = 0.88 if self.root_control_shape == 'Character_base' else .71
+        settings_offset = (self.settings_offset_character if self.root_control_shape == 'Character_base' else self.settings_offset_other)
         self.vis_control = create_control(
-            name='visibility_options',
+            name=self.visibility_control_name,
             parent=self.root_ctrl.ctrl,
             transform=self.guides[0].name,
-            size=self.rig_size * .05,
+            size=self.rig_size * self.settings_size_scale,
             control_shape=self.settings_control_shape,
             direction="y",
             shape_position_offset=(self.rig_size * settings_offset, 0, 0 ),
@@ -223,10 +246,10 @@ class Root:
         )
 
         self.color_control = create_control(
-            name='color_options',
+            name=self.color_control_name,
             parent=self.root_ctrl.ctrl,
             transform=self.guides[0].name,
-            size=self.rig_size * .05,
+            size=self.rig_size * self.settings_size_scale,
             control_shape=self.settings_control_shape,
             direction="y",
             shape_position_offset=(self.rig_size * -settings_offset, 0, 0 ),
@@ -243,9 +266,16 @@ class Root:
 
         #default attr
         for rig_vis_type in ['skel', 'geo', 'rig', 'controls']:
-            cmds.addAttr(self.vis_control.ctrl, longName=f'{rig_vis_type}_vis', defaultValue=1, maxValue=1, minValue=0, keyable=True)
+            create_attribute(
+                primary_object=self.vis_control.ctrl,
+                attr_name=f"{rig_vis_type}_vis",
+                default=1,
+                min=0,
+                max=1,
+                attr_type="bool",
+            )
 
-        create_dev_control(parent=self.root_ctrl.ctrl, size=self.rig_size/4, offset=(self.rig_size, self.rig_size, 0))
+        create_dev_control(parent=self.root_ctrl.ctrl, size=self.rig_size * self.dev_size_scale, offset=(self.rig_size * self.dev_offset_scale, self.rig_size * self.dev_offset_scale, 0))
 
         root_info = module_info(root_control =self.root_ctrl, local_control=self.local_ctrl, offset_control=self.offset_ctrl, joint=self.root_joint)
         return root_info

@@ -1,5 +1,8 @@
 from dataclasses import dataclass
 
+from Workshop.canon_autorigger.module_schema import ModuleCurveGuide, ModuleRelationship, ModuleSetting
+from Workshop.canon_autorigger.build_management.dev import create_dev_attribute
+
 from Workshop.control.core import Control
 from Workshop.transform.constraint import constraint
 from Workshop.control import create_control
@@ -21,6 +24,27 @@ class module_info:
     joint:str
 
 class NL_Fold:
+    MODULE_NAME = "nl_fold"
+    DISPLAY_NAME = "Nasolabial Fold"
+    GUIDES = (ModuleCurveGuide(name="nl_fold"),)
+    SETTINGS = (
+        ModuleSetting(name="rig_size", setting_type="float", default=1.0),
+        ModuleSetting(name="divisions", setting_type="int", default=5),
+        ModuleSetting(name="control_size", setting_type="float", default=0.01),
+        ModuleSetting(name="control_shape", setting_type="control_shape", default="circle"),
+        ModuleSetting(name="control_direction", setting_type="string", default="y"),
+        ModuleSetting(name="driver_blend", setting_type="float", default=0.5),
+        ModuleSetting(name="corner_output_scale", setting_type="float", default=1 / 45),
+        ModuleSetting(name="guide_parent", setting_type="string", default="guides"),
+    )
+    RELATIONSHIPS = (
+        ModuleRelationship(name="joint_parent", relationship_type="joint", default="auto"),
+        ModuleRelationship(name="control_space", relationship_type="control_space", default="auto"),
+        ModuleRelationship(name="upper_driver", relationship_type="control", default="auto"),
+        ModuleRelationship(name="lower_driver", relationship_type="control", default="auto"),
+        ModuleRelationship(name="corner", relationship_type="control", default="auto"),
+    )
+
     def __init__(
         self,
         upper_driver,
@@ -31,12 +55,17 @@ class NL_Fold:
         parent: str = "components",
         control_parent: str | None = None,
         rig_size: float = 1.0,
-        guides: list = [],
+        guides: list | None = None,
         joint_parent:str = 'skel',
-        control_space:list = [],
+        control_space:list | None = None,
         control_color:str = 'MISC',
         control_shape:str = 'circle',
-        divisions:int=5
+        divisions:int=5,
+        control_size: float = 0.01,
+        control_direction: str = "y",
+        driver_blend: float = 0.5,
+        corner_output_scale: float = 1 / 45,
+        guide_parent: str = "guides",
 
     ):
         self.part: str = part
@@ -44,12 +73,17 @@ class NL_Fold:
         self.parent: str = parent
         self.control_parent: str | None = control_parent
         self.rig_size: float = rig_size
-        self.guides: list = guides
+        self.guides: list = guides if guides is not None else []
         self.joint_parent = joint_parent
-        self.control_space = control_space
+        self.control_space = control_space if control_space is not None else []
         self.control_color = control_color
         self.control_shape = control_shape
         self.divisions = divisions
+        self.control_size = control_size
+        self.control_direction = control_direction
+        self.driver_blend = driver_blend
+        self.corner_output_scale = corner_output_scale
+        self.guide_parent = guide_parent
         if self.side == 'L':
             self.main_color = 'Left'
             self.sub_color = 'SubLeft'
@@ -85,7 +119,10 @@ class NL_Fold:
 
     def build(self)->module_info:
 
-        #modeule prep work
+        if self.divisions < 1:
+            raise ValueError("NL Fold divisions must be at least 1")
+
+        #module prep work
         prep = module_prep(part=self.part, parent=self.parent, side=self.side, fkik=False, gut=True)
         self.main_grp = prep.main_grp
         self.control_grp = prep.control_grp
@@ -111,15 +148,15 @@ class NL_Fold:
             if self.side == 'R':
                 g = mirror_guide(guide=read_guide(f'{self.part}_0{i}_driver_L_guide'))
             else:
-                g = create_guide_from_position(guide_name=f'{self.part}_0{i}_driver_{self.side}', pos=pos, parent='guides')
+                g = create_guide_from_position(guide_name=f'{self.part}_0{i}_driver_{self.side}', pos=pos, parent=self.guide_parent)
 
             ctrl = create_control(
                 name=g.descriptor,
                 parent=self.control_grp,
                 transform=g.name,
-                size=self.rig_size/100,
-                control_shape='circle',
-                direction="y",
+                size=self.rig_size * self.control_size,
+                control_shape=self.control_shape,
+                direction=self.control_direction,
                 color_type=self.main_color,
                 sdk_offset=True
             )
@@ -128,13 +165,27 @@ class NL_Fold:
         module_space(control=controls[0], space_list=[self.upper_driver])
         module_space(control=controls[2], space_list=[self.lower_driver])
         module_space(control=controls[1], space_list=self.control_space)
-        create_mid_blend_driver_offset(control=controls[1], driver_a=controls[0], driver_b=controls[2], parent_space=self.control_space[0],blend=.5 )
+        create_mid_blend_driver_offset(control=controls[1], driver_a=controls[0], driver_b=controls[2], parent_space=self.control_space[0],blend=self.driver_blend )
         
         control_max = cmds.getAttr(f'{self.corner.ctrl}.maxTransXLimit')
         corner_remap = RemapValueNode(name = f'{controls[2].name}_remap')
         corner_remap.input_value.connect_from(f'{self.corner.ctrl}.translateX')
-        corner_remap.input_max.set(control_max)
-        corner_remap.output_max.set(self.rig_size/45)
+        input_max_attr = create_dev_attribute(
+            attribute_name=f"{self.part}_{self.side}_corner_input_max",
+            control=controls[2].ctrl,
+            rig_part=self.part,
+            default=control_max,
+            attr_type="double",
+        )
+        output_max_attr = create_dev_attribute(
+            attribute_name=f"{self.part}_{self.side}_corner_output_max",
+            control=controls[2].ctrl,
+            rig_part=self.part,
+            default=self.rig_size * self.corner_output_scale,
+            attr_type="double",
+        )
+        corner_remap.input_max.connect_from(input_max_attr)
+        corner_remap.output_max.connect_from(output_max_attr)
         corner_remap.output.connect_to(f'{controls[2].sdk}.translateX')
         corner_remap.output.connect_to(f'{controls[2].sdk}.translateZ')
 
@@ -150,7 +201,7 @@ class NL_Fold:
             if self.side == 'R':
                 g = mirror_guide(guide=read_guide(f'{self.part}_0{i}_L_guide'))
             else:
-                g = create_guide_from_position(guide_name=f'{self.part}_0{i}_{self.side}', pos=pos, parent='guides')
+                g = create_guide_from_position(guide_name=f'{self.part}_0{i}_{self.side}', pos=pos, parent=self.guide_parent)
             guides.append(g)
 
             if i == 0:
@@ -158,16 +209,6 @@ class NL_Fold:
             else:
                 self.align_guides(guide_01=g, guide_02=guides[i-1], flip_y=True)
             
-            """ctrl = create_control(
-                name=g.descriptor,
-                parent=ctrl_par,
-                transform=g.name,
-                size=self.rig_size/100,
-                control_shape='circle',
-                direction="y",
-                color_type=self.main_color
-            )"""
-
             pin = create_transform(name=f'{g.descriptor}_pin', transform=g.name, parent=self.guts)
 
             joint = create_joint(name=f'def_{g.descriptor}', transform=pin, connect=True, parent=joint_parent)
@@ -191,25 +232,3 @@ class NL_Fold:
             parent=self.guts,
             degree=2,
         )
-
-        """#controls
-        self.nl_fold_ctrl = create_control(
-            name=f'{self.part}_{self.side}',
-            parent=self.control_grp,
-            transform=self.guides[0].name,
-            size=self.rig_size,
-            control_shape=self.control_shape,
-            direction="y",
-            color_type=self.control_color
-        )
-
-        module_space(control=self.nl_fold_ctrl, space_list=self.control_space)
-
-        #joints
-
-        self.nl_fold_joint = create_joint(name=f'def_{self.part}_{self.side}', transform=self.nl_fold_ctrl.ctrl, connect=True, parent=self.joint_parent)
-
-        constraint(drivers=[self.nl_fold_ctrl.ctrl], driven=self.nl_fold_joint, constraint_type='parent', parent=self.guts)
-
-        nl_fold_info = module_info(control =self.nl_fold_ctrl, joint=self.nl_fold_joint)
-        return nl_fold_info"""

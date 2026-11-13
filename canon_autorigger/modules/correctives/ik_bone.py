@@ -9,6 +9,11 @@ from Workshop.joint import create_joint
 from Workshop.guide.core import GuideInfo
 from Workshop.transform.utils import create_transform
 
+from Workshop.canon_autorigger.module_schema import ModuleRelationship, ModuleSetting
+from Workshop.canon_autorigger.build_management.dev import create_dev_attribute
+from Workshop.maya_api.attribute_utils import create_attribute, set_attribute, connect_attributes
+from Workshop.transform.constraint import constraint
+
 from ..module_shared import module_prep
 from ..ik import create_IK_single_chain
 
@@ -89,6 +94,24 @@ def _generate_offset_position(
 
 
 class IK_Bone:
+    MODULE_NAME = "ik_bone"
+    DISPLAY_NAME = "IK Bone"
+    GUIDES = ()
+    SETTINGS = (
+        ModuleSetting(name="rig_size", setting_type="float", default=1.0),
+        ModuleSetting(name="offset", setting_type="float", default=1.0),
+        ModuleSetting(name="primary_axis", setting_type="string", default="Y"),
+        ModuleSetting(name="control_shape", setting_type="control_shape", default="circle"),
+        ModuleSetting(name="control_color", setting_type="string", default="MISC"),
+        ModuleSetting(name="stretch_default", setting_type="float", default=1.0),
+        ModuleSetting(name="mid_control_size_multiplier", setting_type="float", default=1.0),
+        ModuleSetting(name="mid_control_name", setting_type="string", default="mid"),
+    )
+    RELATIONSHIPS = (
+        ModuleRelationship(name="root_driver", relationship_type="joint", default="auto"),
+        ModuleRelationship(name="end_driver", relationship_type="joint", default="auto"),
+        ModuleRelationship(name="joint_parent", relationship_type="joint", default="auto"),
+    )
 
     def __init__(
         self,
@@ -114,6 +137,8 @@ class IK_Bone:
         control_color: str = "MISC",
 
         stretch_default: float = 1.0,
+        mid_control_size_multiplier: float = 1.0,
+        mid_control_name: str = "mid",
     ):
 
         self.root_driver = root_driver
@@ -136,6 +161,8 @@ class IK_Bone:
         self.control_color = control_color
 
         self.stretch_default = stretch_default
+        self.mid_control_size_multiplier = mid_control_size_multiplier
+        self.mid_control_name = mid_control_name
 
     # --------------------------------------------------
     # Guides
@@ -264,10 +291,7 @@ class IK_Bone:
         # Preserve the root orientation and zero the
         # end joint's local rotation orientation.
 
-        cmds.setAttr(
-            f"{end_ik}.jointOrient",
-            0, 0, 0,
-        )
+        set_attribute(f"{end_ik}.jointOrient", (0, 0, 0))
 
         # Ensure the endpoint lies on the primary axis.
         # This assumes guides define a straight bone.
@@ -284,15 +308,9 @@ class IK_Bone:
         sign = -1 if local_end < 0 else 1
 
         for axis in "XYZ":
-            cmds.setAttr(
-                f"{end_ik}.translate{axis}",
-                0,
-            )
+            set_attribute(f"{end_ik}.translate{axis}", 0)
 
-        cmds.setAttr(
-            f"{end_ik}.translate{self.primary_axis}",
-            length * sign,
-        )
+        set_attribute(f"{end_ik}.translate{self.primary_axis}", length * sign)
 
         return root_ik, end_ik
 
@@ -344,14 +362,13 @@ class IK_Bone:
             node=control.ctrl,
             exists=True,
         ):
-            cmds.addAttr(
-                control.ctrl,
-                longName="stretch",
-                attributeType="double",
-                minValue=0.0,
-                maxValue=1.0,
-                defaultValue=self.stretch_default,
-                keyable=True,
+            create_attribute(
+                primary_object=control.ctrl,
+                attr_name="stretch",
+                attr_type="double",
+                min=0.0,
+                max=1.0,
+                default=self.stretch_default,
             )
 
         # --------------------------------------------------
@@ -363,15 +380,9 @@ class IK_Bone:
             name=f"{descriptor}_stretch_distance",
         )
 
-        cmds.connectAttr(
-            f"{root_target}.worldMatrix[0]",
-            f"{distance_node}.inMatrix1",
-        )
+        connect_attributes(f"{root_target}.worldMatrix[0]", [f"{distance_node}.inMatrix1"])
 
-        cmds.connectAttr(
-            f"{end_target}.worldMatrix[0]",
-            f"{distance_node}.inMatrix2",
-        )
+        connect_attributes(f"{end_target}.worldMatrix[0]", [f"{distance_node}.inMatrix2"])
 
         # --------------------------------------------------
         # Blend rest length and target distance
@@ -382,15 +393,17 @@ class IK_Bone:
             name=f"{descriptor}_stretch_blend",
         )
 
-        cmds.setAttr(
-            f"{stretch_blend}.color1R",
-            rest_length,
+        # Preserve the build-time rest length as an editable live driver.
+        rest_length_attr = create_dev_attribute(
+            attribute_name="rest_length",
+            control=control.ctrl,
+            rig_part=f"{self.part}_{self.side}",
+            attr_type="double",
+            default=rest_length,
         )
+        connect_attributes(rest_length_attr, [f"{stretch_blend}.color1R"])
 
-        cmds.connectAttr(
-            f"{distance_node}.distance",
-            f"{stretch_blend}.color2R",
-        )
+        connect_attributes(f"{distance_node}.distance", [f"{stretch_blend}.color2R"])
 
         # --------------------------------------------------
         # Reverse stretch attribute
@@ -409,15 +422,9 @@ class IK_Bone:
             name=f"{descriptor}_stretch_reverse",
         )
 
-        cmds.connectAttr(
-            stretch_attr,
-            f"{stretch_reverse}.inputX",
-        )
+        connect_attributes(stretch_attr, [f"{stretch_reverse}.inputX"])
 
-        cmds.connectAttr(
-            f"{stretch_reverse}.outputX",
-            f"{stretch_blend}.blender",
-        )
+        connect_attributes(f"{stretch_reverse}.outputX", [f"{stretch_blend}.blender"])
 
         # --------------------------------------------------
         # Restore joint translation direction
@@ -428,29 +435,28 @@ class IK_Bone:
             name=f"{descriptor}_stretch_sign",
         )
 
-        cmds.setAttr(
-            f"{stretch_sign}.operation",
-            1,
-        )
+        set_attribute(f"{stretch_sign}.operation", 1)
 
-        cmds.setAttr(
-            f"{stretch_sign}.input2X",
-            rest_sign,
+        sign_attr = create_dev_attribute(
+            attribute_name="stretch_direction",
+            control=control.ctrl,
+            rig_part=f"{self.part}_{self.side}",
+            attr_type="double",
+            default=rest_sign,
+            min=-1.0,
+            max=1.0,
         )
+        connect_attributes(sign_attr, [f"{stretch_sign}.input2X"])
 
-        cmds.connectAttr(
-            f"{stretch_blend}.outputR",
-            f"{stretch_sign}.input1X",
-        )
+        connect_attributes(f"{stretch_blend}.outputR", [f"{stretch_sign}.input1X"])
 
         # --------------------------------------------------
         # Drive IK chain length
         # --------------------------------------------------
 
-        cmds.connectAttr(
+        connect_attributes(
             f"{stretch_sign}.outputX",
-            f"{end_ik}.translate{axis}",
-            force=True,
+            [f"{end_ik}.translate{axis}"],
         )
 
         return stretch_blend
@@ -496,10 +502,10 @@ class IK_Bone:
         # --------------------------------------------------
 
         control = create_control(
-            name=f"{descriptor}_mid",
+            name=f"{descriptor}_{self.mid_control_name}",
             transform=midpoint_driver,
             parent=self.control_parent or self.control_grp,
-            size=self.rig_size,
+            size=self.rig_size * self.mid_control_size_multiplier,
             control_shape=self.control_shape,
             color_type=self.control_color,
             direction=self.primary_axis.lower(),
@@ -520,10 +526,11 @@ class IK_Bone:
         # Orientation
         # --------------------------------------------------
 
-        cmds.orientConstraint(
-            root_ik,
-            midpoint_driver,
-            maintainOffset=False,
+        constraint(
+            drivers=[root_ik],
+            driven=midpoint_driver,
+            constraint_type="orient",
+            parent=self.guts,
         )
 
         # Follow the midpoint driver, while preserving
@@ -702,20 +709,11 @@ class IK_Bone:
         # Hide internals
         # --------------------------------------------------
 
-        cmds.setAttr(
-            f"{root_ik}.visibility",
-            False,
-        )
+        set_attribute(f"{root_ik}.visibility", False)
 
-        cmds.setAttr(
-            f"{ik.handle}.visibility",
-            False,
-        )
+        set_attribute(f"{ik.handle}.visibility", False)
 
-        cmds.setAttr(
-            f"{midpoint_driver}.visibility",
-            False,
-        )
+        set_attribute(f"{midpoint_driver}.visibility", False)
 
         # Generated guides are temporary placement objects.
 

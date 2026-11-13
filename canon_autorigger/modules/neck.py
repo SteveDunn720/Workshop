@@ -3,6 +3,11 @@ from dataclasses import dataclass
 import maya.cmds as cmds
 
 from Workshop.control.core import Control
+from Workshop.maya_api.attribute_utils import set_attribute
+from Workshop.canon_autorigger.build_management.dev import create_dev_attribute
+from Workshop.canon_autorigger.module_schema import (
+    ModuleRelationship, ModuleSetting, ModuleSplineGuide,
+)
 from Workshop.transform.constraint import constraint
 from Workshop.control import create_control
 from Workshop.joint import create_joint
@@ -21,6 +26,28 @@ class module_info:
     joint:list[str]
 
 class Neck:
+    MODULE_NAME = "neck"
+    DISPLAY_NAME = "Neck"
+    GUIDES = (ModuleSplineGuide(name="neck"),)
+    SETTINGS = (
+        ModuleSetting(name="rig_size", setting_type="float", default=1.0),
+        ModuleSetting(name="simple_fk", setting_type="bool", default=False),
+        ModuleSetting(name="divisions", setting_type="int", default=4),
+        ModuleSetting(name="roll_control_name", setting_type="string", default="autohead"),
+        ModuleSetting(name="roll_control_shape", setting_type="control_shape", default="round_square"),
+        ModuleSetting(name="main_control_shape", setting_type="control_shape", default="circle"),
+        ModuleSetting(name="roll_control_size_scale", setting_type="float", default=0.2),
+        ModuleSetting(name="main_control_size_scale", setting_type="float", default=0.125),
+        ModuleSetting(name="roll_shape_offset_scale", setting_type="float", default=1.5),
+        ModuleSetting(name="roll_shape_rotation", setting_type="vector3", default=(90, 0, 0)),
+        ModuleSetting(name="control_direction", setting_type="string", default="y"),
+        ModuleSetting(name="follow_divisor", setting_type="float", default=10.0),
+    )
+    RELATIONSHIPS = (
+        ModuleRelationship(name="joint_parent", relationship_type="joint", default="auto"),
+        ModuleRelationship(name="control_space", relationship_type="control_space", default="auto"),
+    )
+
     def __init__(
         self,
         guides:SplineGuideInfo,
@@ -30,9 +57,18 @@ class Neck:
         control_parent: str | None = None,
         rig_size: float = 1.0,
         joint_parent:str = 'skel',
-        control_space:list = [],
+        control_space:list | None = None,
         simple_fk:bool=False,
-        divisions:int=4
+        divisions:int=4,
+        roll_control_name: str = "autohead",
+        roll_control_shape: str = "round_square",
+        main_control_shape: str = "circle",
+        roll_control_size_scale: float = 0.2,
+        main_control_size_scale: float = 0.125,
+        roll_shape_offset_scale: float = 1.5,
+        roll_shape_rotation: tuple[float, float, float] = (90, 0, 0),
+        control_direction: str = "y",
+        follow_divisor: float = 10.0,
 
     ):
         self.part: str = part
@@ -43,7 +79,20 @@ class Neck:
         self.guides = guides
         self.joint_parent = joint_parent
         self.simple_fk = simple_fk
+        if divisions < 1:
+            raise ValueError("Neck divisions must be at least 1")
+        if follow_divisor == 0:
+            raise ValueError("follow_divisor must be non-zero")
         self.divisions = divisions + 1
+        self.roll_control_name = roll_control_name
+        self.roll_control_shape = roll_control_shape
+        self.main_control_shape = main_control_shape
+        self.roll_control_size_scale = roll_control_size_scale
+        self.main_control_size_scale = main_control_size_scale
+        self.roll_shape_offset_scale = roll_shape_offset_scale
+        self.roll_shape_rotation = roll_shape_rotation
+        self.control_direction = control_direction
+        self.follow_divisor = follow_divisor
         if self.side == "M":
             self.main_control_color = 'Middle'
             self.sub_control_color = 'SubMiddle'
@@ -53,7 +102,7 @@ class Neck:
         else:
             self.main_control_color = 'Right'
             self.sub_control_color = 'SubRight'
-        self.control_space = control_space
+        self.control_space = control_space if control_space is not None else []
 
 
     def align_guides(self, guide_01:GuideInfo, guide_02:GuideInfo, flip_y:bool=False):
@@ -99,26 +148,43 @@ class Neck:
         offset = get_distance_between(self.guides.lower.name, self.guides.upper.name)
 
         self.roll_ctrl = create_control(
-            name=f'autohead_{self.side}',
+            name=f'{self.roll_control_name}_{self.side}',
             parent=self.control_grp,
             transform=self.guides.lower.name,
-            size=self.rig_size/5,
-            control_shape="round_square",
-            direction="y",
+            size=self.rig_size * self.roll_control_size_scale,
+            control_shape=self.roll_control_shape,
+            direction=self.control_direction,
             color_type=self.sub_control_color,
-            shape_position_offset=(0, offset * 1.5, 0),
-            shape_rotation_offset=(90,0,0)
+            shape_position_offset=(0, offset * self.roll_shape_offset_scale, 0),
+            shape_rotation_offset=self.roll_shape_rotation
         )
 
-        mult = (self.divisions /2)/10
+        mult = (self.divisions / 2) / self.follow_divisor
 
         for attrs in ['X', 'Y', 'Z']:
-            cmds.setAttr(f'{self.roll_ctrl.top}.rotate{attrs}', 0)
+            set_attribute(f'{self.roll_ctrl.top}.rotate{attrs}', 0)
         module_space(control=self.roll_ctrl, space_list=[self.control_space])
         self.rot_mult = MultiplyDivideNode(name='neck_rot_mult')
         self.trans_mult = MultiplyDivideNode(name='neck_trans_mult')
-        self.rot_mult.input2.set((mult,mult,mult))
-        self.trans_mult.input2.set((mult,mult,mult))
+        # The original computed multiplier becomes an editable rig-time parameter.
+        rot_follow = create_dev_attribute(
+            attribute_name=f"{self.part}_{self.side}_rotation_follow",
+            control=self.roll_ctrl.ctrl,
+            rig_part=self.part,
+            default=mult,
+            attr_type="double",
+        )
+        trans_follow = create_dev_attribute(
+            attribute_name=f"{self.part}_{self.side}_translation_follow",
+            control=self.roll_ctrl.ctrl,
+            rig_part=self.part,
+            default=mult,
+            attr_type="double",
+        )
+        for axis in "xyz":
+            # Both follow attributes drive all three multiplier components.
+            getattr(self.rot_mult.input2, axis).connect_from(rot_follow)
+            getattr(self.trans_mult.input2, axis).connect_from(trans_follow)
         self.rot_mult.input1.connect_from(f'{self.roll_ctrl.ctrl}.rotate')
         self.trans_mult.input1.connect_from(f'{self.roll_ctrl.ctrl}.translate')
 
@@ -154,9 +220,9 @@ class Neck:
                 name=guide.descriptor,
                 parent=control_par,
                 transform=guide.name,
-                size=self.rig_size/8,
-                control_shape="circle",
-                direction="y",
+                size=self.rig_size * self.main_control_size_scale,
+                control_shape=self.main_control_shape,
+                direction=self.control_direction,
                 color_type=self.main_control_color,
                 sdk_offset=True
             )

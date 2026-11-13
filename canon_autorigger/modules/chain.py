@@ -1,8 +1,8 @@
 from dataclasses import dataclass
 
-import maya.cmds as cmds
 
 from Workshop.control.core import Control
+from Workshop.maya_api.attribute_utils import connect_attributes
 from Workshop.transform.constraint import constraint
 from Workshop.control import create_control
 from Workshop.joint import create_joint
@@ -63,11 +63,11 @@ class Chain:
             setting_type="bool",
             default=True,
         ),
-        ModuleSetting(
-            name="driver_name",
-            setting_type="string",
-            default='curl',
-        ),
+        ModuleSetting(name="driver_name", setting_type="string", default="curl"),
+        ModuleSetting(name="main_control_size_scale", setting_type="float", default=1 / 32),
+        ModuleSetting(name="roll_control_size_scale", setting_type="float", default=1 / 64),
+        ModuleSetting(name="roll_control_offset_scale", setting_type="float", default=-1 / 16),
+        ModuleSetting(name="control_direction", setting_type="string", default="y"),
     )
 
     RELATIONSHIPS = (
@@ -91,15 +91,19 @@ class Chain:
         parent: str = "components",
         control_parent: str | None = None,
         rig_size: float = 1.0,
-        guides: list = [],
+        guides: list | None = None,
         joint_parent:str = 'skel',
-        control_space:list = [],
+        control_space:list | None = None,
         main_control_shape: str = "circle",
         main_control_color: str | None = None,
         roll_control_shape: str = "four_star",
         roll_control_color: str | None = None,
         roll: bool = True,
-        driver_name:str = 'curl'
+        driver_name:str = 'curl',
+        main_control_size_scale: float = 1 / 32,
+        roll_control_size_scale: float = 1 / 64,
+        roll_control_offset_scale: float = -1 / 16,
+        control_direction: str = "y",
 
     ):
         self.part: str = part
@@ -107,9 +111,9 @@ class Chain:
         self.parent: str = parent
         self.control_parent: str | None = control_parent
         self.rig_size: float = rig_size
-        self.guides: list = guides
+        self.guides: list = guides if guides is not None else []
         self.joint_parent = joint_parent
-        self.control_space = control_space
+        self.control_space = control_space if control_space is not None else []
         self.roll = roll
         self.main_control_shape = main_control_shape
         self.roll_control_shape = roll_control_shape
@@ -130,6 +134,10 @@ class Chain:
             else "MISC"
         )
         self.driver_name = driver_name
+        self.main_control_size_scale = main_control_size_scale
+        self.roll_control_size_scale = roll_control_size_scale
+        self.roll_control_offset_scale = roll_control_offset_scale
+        self.control_direction = control_direction
 
     @classmethod
     def preview(
@@ -150,7 +158,7 @@ class Chain:
 
         if roll:
             controls.append(
-                f"{part}_curl_{side}_ctrl"
+                f"{part}_{settings.get('driver_name', 'curl')}_{side}_ctrl"
             )
 
         chain_controls = []
@@ -218,11 +226,11 @@ class Chain:
                             name=f'{self.part}_{self.driver_name}_{self.side}',
                             parent=self.control_grp,
                             transform=self.guides[0].name,
-                            size=self.rig_size/64,
+                            size=self.rig_size * self.roll_control_size_scale,
                             control_shape=self.roll_control_shape,
-                            direction="y",
+                            direction=self.control_direction,
                             color_type=self.roll_control_color,
-                            shape_position_offset=(-(self.rig_size/16), 0, 0)
+                            shape_position_offset=(self.rig_size * self.roll_control_offset_scale, 0, 0)
                         )
             module_space(control=self.roll_ctrl, space_list=self.control_space)
 
@@ -236,18 +244,18 @@ class Chain:
                 name=guide.descriptor,
                 parent=ctrl_par,
                 transform=guide.name,
-                size=self.rig_size/32,
+                size=self.rig_size * self.main_control_size_scale,
                 control_shape=self.main_control_shape,
-                direction="y",
+                direction=self.control_direction,
                 color_type=self.main_control_color,
                 sdk_offset=self.roll
             )
             self.chain_ctrls.append(ctrl)
             if self.roll:
-                cmds.connectAttr(f'{self.roll_ctrl.ctrl}.rotateZ', f'{ctrl.sdk}.rotateZ')
+                connect_attributes(f'{self.roll_ctrl.ctrl}.rotateZ', [f'{ctrl.sdk}.rotateZ'])
                 if i == 0:
-                    cmds.connectAttr(f'{self.roll_ctrl.ctrl}.rotateX', f'{ctrl.sdk}.rotateX')
-                    cmds.connectAttr(f'{self.roll_ctrl.ctrl}.rotateY', f'{ctrl.sdk}.rotateY')
+                    connect_attributes(f'{self.roll_ctrl.ctrl}.rotateX', [f'{ctrl.sdk}.rotateX'])
+                    connect_attributes(f'{self.roll_ctrl.ctrl}.rotateY', [f'{ctrl.sdk}.rotateY'])
             #joints
             joint = create_joint(name=f'def_{guide.descriptor}', transform=ctrl.ctrl, connect=True, parent=jnt_par)
             self.chain_joints.append(joint)

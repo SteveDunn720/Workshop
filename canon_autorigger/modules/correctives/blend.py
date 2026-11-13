@@ -11,10 +11,31 @@ from Workshop.transform.quat import (
 )
 from Workshop.maya_api.node import MultiplyDivideNode, RemapValueNode
 
+from Workshop.canon_autorigger.build_management.dev import create_dev_attribute
+from Workshop.canon_autorigger.module_schema import ModuleRelationship, ModuleSetting
+from Workshop.maya_api.attribute_utils import connect_attributes, set_attribute
+
 from ..module_shared import module_prep
 
 
 class Blend:
+    MODULE_NAME = "blend"
+    DISPLAY_NAME = "Blend Corrective"
+    GUIDES = ()
+    SETTINGS = (
+        ModuleSetting(name="blend", setting_type="float", default=0.5),
+        ModuleSetting(name="translate_blend", setting_type="float", default=1.0),
+        ModuleSetting(name="driver_axis", setting_type="string", default=None),
+        ModuleSetting(name="driver_rot_range", setting_type="vector2", default=(-90, 90)),
+        ModuleSetting(name="mult_range", setting_type="vector2", default=(0.0, 1.0)),
+        ModuleSetting(name="pop_amount", setting_type="float", default=None),
+        ModuleSetting(name="pop_axis", setting_type="string", default="Y"),
+    )
+    RELATIONSHIPS = (
+        ModuleRelationship(name="driver", relationship_type="joint", default="auto"),
+        ModuleRelationship(name="joint_parent", relationship_type="joint", default="auto"),
+    )
+
 
     def __init__(
         self,
@@ -75,6 +96,17 @@ class Blend:
         guide = self.guides[0]
         descriptor = guide.descriptor
 
+        def dev_value(name: str, value: float, **kwargs: float) -> str:
+            """Expose a driver value without changing its initial behavior."""
+            return create_dev_attribute(
+                attribute_name=f"{self.part}_{self.side}_{descriptor}_{name}",
+                control=self.control_grp,
+                rig_part=self.part,
+                default=value,
+                attr_type="double",
+                **kwargs,
+            )
+
         # --------------------------------------------------
         # Parent follow
         # --------------------------------------------------
@@ -107,17 +139,8 @@ class Blend:
             transform=self.driver,
         )
 
-        cmds.setAttr(
-            f"{switch_blend}.translate",
-            0, 0, 0,
-            type="double3",
-        )
-
-        cmds.setAttr(
-            f"{switch_blend}.rotate",
-            0, 0, 0,
-            type="double3",
-        )
+        set_attribute(f"{switch_blend}.translate", (0, 0, 0))
+        set_attribute(f"{switch_blend}.rotate", (0, 0, 0))
 
         # --------------------------------------------------
         # Guide offset
@@ -176,20 +199,17 @@ class Blend:
                 name=f"{descriptor}_activation_remap"
             )
 
-            activation.input_min.set(
-                self.driver_rot_range[0]
+            activation.input_min.connect_from(
+                dev_value("activation_input_min", self.driver_rot_range[0])
             )
-
-            activation.input_max.set(
-                self.driver_rot_range[1]
+            activation.input_max.connect_from(
+                dev_value("activation_input_max", self.driver_rot_range[1])
             )
-
-            activation.output_min.set(
-                self.mult_range[0]
+            activation.output_min.connect_from(
+                dev_value("activation_output_min", self.mult_range[0])
             )
-
-            activation.output_max.set(
-                self.mult_range[1]
+            activation.output_max.connect_from(
+                dev_value("activation_output_max", self.mult_range[1])
             )
 
             activation.input_value.connect_from(
@@ -218,12 +238,19 @@ class Blend:
                 activation.output
             )
 
-            rotation_mult.input2.x.set(
-                self.blend
+            rotation_mult.input2.x.connect_from(
+                dev_value("rotation_weight", self.blend)
             )
 
             rotation_mult.output.x.connect_to(
                 f"{descriptor}_weighted_slerp.inputT"
+            )
+
+        else:
+            # The weighted quaternion helper initialized this value; expose it live.
+            connect_attributes(
+                dev_value("rotation_weight", self.blend),
+                [f"{descriptor}_weighted_slerp.inputT"],
             )
 
         drive_rotation_with_quat(
@@ -245,13 +272,9 @@ class Blend:
             relative.translation
         )
 
-        translation_mult.input2.set(
-            (
-                self.translate_blend,
-                self.translate_blend,
-                self.translate_blend,
-            )
-        )
+        translation_weight = dev_value("translation_weight", self.translate_blend)
+        for axis in "xyz":
+            getattr(translation_mult.input2, axis).connect_from(translation_weight)
 
         translation_mult.output.connect_to(
             f"{switch_blend}.translate"
@@ -286,18 +309,15 @@ class Blend:
                 name=f"{descriptor}_pop_remap"
             )
 
-            pop_remap.input_min.set(
-                self.driver_rot_range[0]
+            pop_remap.input_min.connect_from(
+                dev_value("pop_input_min", self.driver_rot_range[0])
             )
-
-            pop_remap.input_max.set(
-                self.driver_rot_range[1]
+            pop_remap.input_max.connect_from(
+                dev_value("pop_input_max", self.driver_rot_range[1])
             )
-
-            pop_remap.output_min.set(0.0)
-
-            pop_remap.output_max.set(
-                self.pop_amount
+            pop_remap.output_min.connect_from(dev_value("pop_output_min", 0.0))
+            pop_remap.output_max.connect_from(
+                dev_value("pop_amount", self.pop_amount)
             )
 
             pop_remap.input_value.connect_from(

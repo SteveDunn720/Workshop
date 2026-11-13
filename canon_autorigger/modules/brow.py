@@ -1,5 +1,7 @@
 from dataclasses import dataclass
 
+from Workshop.canon_autorigger.module_schema import ModuleCurveGuide, ModuleRelationship, ModuleSetting
+
 from Workshop.control.core import Control, align_control_shape_world_z
 from Workshop.transform.constraint import constraint
 from Workshop.control import create_control
@@ -19,6 +21,33 @@ class module_info:
     joint:str
 
 class Brow:
+    MODULE_NAME = "brow"
+    DISPLAY_NAME = "Brow"
+    GUIDES = (ModuleCurveGuide(name="brow"),)
+    SETTINGS = (
+        ModuleSetting(name="rig_size", setting_type="float", default=1.0),
+        ModuleSetting(name="divisions", setting_type="int", default=7),
+        ModuleSetting(name="master_size", setting_type="float", default=1 / 80),
+        ModuleSetting(name="macro_size", setting_type="float", default=1 / 120),
+        ModuleSetting(name="driver_size", setting_type="float", default=1 / 120),
+        ModuleSetting(name="sub_size", setting_type="float", default=1 / 180),
+        ModuleSetting(name="master_shape", setting_type="control_shape", default="round_square"),
+        ModuleSetting(name="macro_shape", setting_type="control_shape", default="round_square"),
+        ModuleSetting(name="driver_shape", setting_type="control_shape", default="round_square"),
+        ModuleSetting(name="control_shape", setting_type="control_shape", default="circle"),
+        ModuleSetting(name="control_direction", setting_type="string", default="y"),
+        ModuleSetting(name="master_rotation", setting_type="vector3", default=(90.0, 0.0, 0.0)),
+        ModuleSetting(name="master_offset", setting_type="vector3", default=(-1 / 40, 1 / 50, 1 / 30)),
+        ModuleSetting(name="macro_offset", setting_type="vector3", default=(-1 / 40, 1 / 50, 0.0)),
+        ModuleSetting(name="driver_offset", setting_type="vector3", default=(0.0, 0.0, 1 / 60)),
+        ModuleSetting(name="master_width_mult", setting_type="float", default=0.5),
+        ModuleSetting(name="guide_parent", setting_type="string", default="guides"),
+    )
+    RELATIONSHIPS = (
+        ModuleRelationship(name="joint_parent", relationship_type="joint", default="auto"),
+        ModuleRelationship(name="control_space", relationship_type="control_space", default="auto"),
+    )
+
     def __init__(
         self,
         part: str = "brow",
@@ -26,12 +55,26 @@ class Brow:
         parent: str = "components",
         control_parent: str | None = None,
         rig_size: float = 1.0,
-        guides: list = [],
+        guides: list | None = None,
         joint_parent:str = 'skel',
-        control_space:list = [],
+        control_space:list | None = None,
         control_color:str = 'MISC',
         control_shape:str = 'circle',
-        divisions:int=7
+        divisions:int=7,
+        master_size: float = 1 / 80,
+        macro_size: float = 1 / 120,
+        driver_size: float = 1 / 120,
+        sub_size: float = 1 / 180,
+        master_shape: str = "round_square",
+        macro_shape: str = "round_square",
+        driver_shape: str = "round_square",
+        control_direction: str = "y",
+        master_rotation: tuple[float, float, float] = (90, 0, 0),
+        master_offset: tuple[float, float, float] = (-1 / 40, 1 / 50, 1 / 30),
+        macro_offset: tuple[float, float, float] = (-1 / 40, 1 / 50, 0),
+        driver_offset: tuple[float, float, float] = (0, 0, 1 / 60),
+        master_width_mult: float = 0.5,
+        guide_parent: str = "guides",
 
     ):
         self.part: str = part
@@ -39,12 +82,26 @@ class Brow:
         self.parent: str = parent
         self.control_parent: str | None = control_parent
         self.rig_size: float = rig_size
-        self.guides: list = guides
+        self.guides: list = guides if guides is not None else []
         self.joint_parent = joint_parent
-        self.control_space = control_space
+        self.control_space = control_space if control_space is not None else []
         self.control_color = control_color
         self.control_shape = control_shape
         self.divisions = divisions
+        self.master_size = master_size
+        self.macro_size = macro_size
+        self.driver_size = driver_size
+        self.sub_size = sub_size
+        self.master_shape = master_shape
+        self.macro_shape = macro_shape
+        self.driver_shape = driver_shape
+        self.control_direction = control_direction
+        self.master_rotation = master_rotation
+        self.master_offset = master_offset
+        self.macro_offset = macro_offset
+        self.driver_offset = driver_offset
+        self.master_width_mult = master_width_mult
+        self.guide_parent = guide_parent
         if self.side == 'L':
             self.main_color = 'Left'
             self.sub_color = 'SubLeft'
@@ -58,7 +115,10 @@ class Brow:
 
     def build(self)->module_info:
 
-        #modeule prep work
+        if self.divisions < 1:
+            raise ValueError("Brow divisions must be at least 1")
+
+        #module prep work
         prep = module_prep(part=self.part, parent=self.parent, side=self.side, fkik=False, gut=True)
         self.main_grp = prep.main_grp
         self.control_grp = prep.control_grp
@@ -82,20 +142,20 @@ class Brow:
         if self.side == 'R':
             g = mirror_guide(guide=read_guide(f'{self.part}_master_L_guide'))
         else:
-            g = create_guide_from_position(guide_name=f'{self.part}_master_{self.side}', pos=pos, parent='guides')
+            g = create_guide_from_position(guide_name=f'{self.part}_master_{self.side}', pos=pos, parent=self.guide_parent)
 
         master_ctrl = create_control(
             name=g.descriptor,
             parent=self.control_grp,
             transform=g.name,
-            size=self.rig_size/80,
-            control_shape='round_square',
-            direction="y",
+            size=self.rig_size * self.master_size,
+            control_shape=self.master_shape,
+            direction=self.control_direction,
             color_type=self.main_color,
             sdk_offset=False,
-            dimensions=(arc_length/2, 1, 1),
-            shape_rotation_offset=(90,0,0),
-            shape_position_offset=(-self.rig_size/40,self.rig_size/50, self.rig_size/30)
+            dimensions=(arc_length * self.master_width_mult, 1, 1),
+            shape_rotation_offset=self.master_rotation,
+            shape_position_offset=tuple(v * self.rig_size for v in self.master_offset)
         )
 
         pos_offset = (self.rig_size/30) + pos[2] #type:ignore
@@ -115,19 +175,19 @@ class Brow:
             if self.side == 'R':
                 g = mirror_guide(guide=read_guide(f'{self.part}_{mac}_L_guide'))
             else:
-                g = create_guide_from_position(guide_name=f'{self.part}_{mac}_{self.side}', pos=pos, parent='guides')
+                g = create_guide_from_position(guide_name=f'{self.part}_{mac}_{self.side}', pos=pos, parent=self.guide_parent)
     
             ctrl = create_control(
                 name=g.descriptor,
                 parent=master_ctrl.ctrl,
                 transform=g.name,
-                size=self.rig_size/120,
-                control_shape='round_square',
-                direction="y",
+                size=self.rig_size * self.macro_size,
+                control_shape=self.macro_shape,
+                direction=self.control_direction,
                 color_type=self.main_color,
                 sdk_offset=False,
-                shape_rotation_offset=(90,0,0),
-                shape_position_offset=(-self.rig_size/40,self.rig_size/50,0)
+                shape_rotation_offset=self.master_rotation,
+                shape_position_offset=tuple(v * self.rig_size for v in self.macro_offset)
             )
             macro_controls.append(ctrl)
 
@@ -154,19 +214,19 @@ class Brow:
             if self.side == 'R':
                 g = mirror_guide(guide=read_guide(f'{self.part}_0{i}_driver_L_guide'))
             else:
-                g = create_guide_from_position(guide_name=f'{self.part}_0{i}_driver_{self.side}', pos=pos, parent='guides')
+                g = create_guide_from_position(guide_name=f'{self.part}_0{i}_driver_{self.side}', pos=pos, parent=self.guide_parent)
 
             ctrl = create_control(
                 name=g.descriptor,
                 parent=par.ctrl,
                 transform=g.name,
-                size=self.rig_size/120,
-                control_shape='round_square',
-                direction="y",
+                size=self.rig_size * self.driver_size,
+                control_shape=self.driver_shape,
+                direction=self.control_direction,
                 color_type=self.sub_color,
                 sdk_offset=False,
-                shape_rotation_offset=(90,0,0),
-                shape_position_offset=(0,0,self.rig_size/60)
+                shape_rotation_offset=self.master_rotation,
+                shape_position_offset=tuple(v * self.rig_size for v in self.driver_offset)
                 
             )
             controls.append(ctrl)
@@ -186,7 +246,7 @@ class Brow:
             if self.side == 'R':
                 g = mirror_guide(guide=read_guide(f'{self.part}_0{i}_L_guide'))
             else:
-                g = create_guide_from_position(guide_name=f'{self.part}_0{i}_{self.side}', pos=pos, parent='guides')
+                g = create_guide_from_position(guide_name=f'{self.part}_0{i}_{self.side}', pos=pos, parent=self.guide_parent)
             guides.append(g)
 
             if i == 0:
@@ -219,9 +279,9 @@ class Brow:
                 name=g.descriptor,
                 parent=sub_grp,
                 transform=g.name,
-                size=self.rig_size/180,
-                control_shape='circle',
-                direction="y",
+                size=self.rig_size * self.sub_size,
+                control_shape=self.control_shape,
+                direction=self.control_direction,
                 color_type=self.main_color
             )
 

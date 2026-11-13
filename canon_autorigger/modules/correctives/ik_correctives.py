@@ -9,6 +9,9 @@ from Workshop.maya_api.node import DistanceBetweenNode
 from Workshop.transform.constraint import constraint
 from Workshop.transform.utils import create_transform
 
+from Workshop.canon_autorigger.module_schema import ModuleRelationship, ModuleSetting
+from Workshop.maya_api.attribute_utils import set_attribute
+
 from ..module_shared import module_prep
 from ..ik import create_IK_single_chain
 from ..twist import create_twist, TwistData
@@ -23,6 +26,21 @@ class module_info:
 
 
 class Ik_correctives:
+    MODULE_NAME = "ik_correctives"
+    DISPLAY_NAME = "IK Correctives"
+    GUIDES = ()
+    SETTINGS = (
+        ModuleSetting(name="rig_size", setting_type="float", default=1.0),
+        ModuleSetting(name="control_color", setting_type="string", default="MISC"),
+        ModuleSetting(name="control_shape", setting_type="control_shape", default="circle"),
+        ModuleSetting(name="divisions", setting_type="int", default=1),
+        ModuleSetting(name="mid_control", setting_type="bool", default=False),
+        ModuleSetting(name="primary_axis", setting_type="string", default="Y"),
+    )
+    RELATIONSHIPS = (
+        ModuleRelationship(name="joint_parent", relationship_type="joint", default="auto"),
+        ModuleRelationship(name="control_parent", relationship_type="control_space", default="auto"),
+    )
 
     def __init__(
         self,
@@ -40,6 +58,7 @@ class Ik_correctives:
         control_shape: str = "circle",
         divisions: int = 1,
         mid_control: bool = False,
+        primary_axis: str = "Y",
     ):
         self.part = part
         self.side = side
@@ -56,7 +75,9 @@ class Ik_correctives:
         self.control_color = control_color
         self.control_shape = control_shape
 
-        self.primary_axis = "Y"
+        self.primary_axis = primary_axis.upper()
+        if self.primary_axis not in {"X", "Y", "Z"}:
+            raise ValueError("primary_axis must be X, Y, or Z")
 
         self.divisions = divisions
         self.mid_control = mid_control
@@ -163,10 +184,7 @@ class Ik_correctives:
                 parent=root_ik,
             )
 
-            cmds.setAttr(
-                f"{end_ik}.jointOrient",
-                0, 0, 0,
-            )
+            set_attribute(f"{end_ik}.jointOrient", (0, 0, 0))
 
             # ----------------------------------------------
             # Single chain IK
