@@ -11,11 +11,12 @@ from maya.api.OpenMaya import (
 from Workshop.control import create_control
 from Workshop.control.core import Control
 from Workshop.joint import create_joint
-from Workshop.maya_api.node import BlendMatrixNode, DecomposeMatrixNode, MultMatrixNode, MultiplyDivideNode, PlusMinusAverageNode, RemapValueNode, SumNode
+from Workshop.maya_api.node import BlendColorsNode, BlendMatrixNode, ConditionNode, DecomposeMatrixNode, DistanceBetweenNode, MultMatrixNode, MultiplyDivideNode, PlusMinusAverageNode, RemapValueNode, SumNode
 from Workshop.transform.utils import create_transform
 from Workshop.maya_api.attribute_utils import create_attribute, add_proxy, add_attribute_header, set_attribute, connect_attributes
 from Workshop.skin.split.tag import tag_for_weight_split
 from Workshop.nurbs.curve import smooth_curve_weights
+from Workshop.transform.constraint import Constraint, constraint
 
 from ..ik import create_IK_single_chain
 
@@ -662,7 +663,7 @@ class Eyelid:
         self,
         control: Control,
         end_joint: str,
-    ) -> str:
+    ):
         """Drive a real SDK using an IK-constrained proxy SDK.
 
         The proxy hierarchy lives in the static eye setup.
@@ -672,33 +673,14 @@ class Eyelid:
         Its local TR channels drive the real SDK directly.
         """
 
-        transform = control.ctrl
-
-        # ---------------------------------------------------------
-        # Create the real SDK
-        # ---------------------------------------------------------
-        create_transform(name=f"{transform}_sdk", parent=control.top)
-
-        sdk = cmds.createNode(
-            "transform",
-            name=f"{transform}_sdk",
-            parent=control.offset,
-        )
-
-        cmds.parent(
-            transform,
-            sdk,
-            relative=True,
-        )
-
         # ---------------------------------------------------------
         # Create proxy offset
         # ---------------------------------------------------------
 
         proxy_offset = create_transform(
-            name=f"{transform}_ik_offset",
+            name=f"{control.name}_ik_offset",
             parent=self.ik_driver_grp,
-            transform=sdk,
+            transform=control.sdk,
         )
 
         # ---------------------------------------------------------
@@ -709,44 +691,19 @@ class Eyelid:
         # ---------------------------------------------------------
 
         proxy_sdk = create_transform(
-            name=f"{transform}_ik_sdk",
+            name=f"{control.name}_ik_sdk",
             parent=proxy_offset,
-            transform=sdk,
+            transform=control.sdk,
         )
 
-        # ---------------------------------------------------------
-        # Constrain proxy SDK to IK end joint
-        # ---------------------------------------------------------
-
-        cmds.parentConstraint(
-            end_joint,
-            proxy_sdk,
-            maintainOffset=True,
-        )
+        constraint(drivers=[end_joint], driven=proxy_sdk, constraint_type='parent')
 
         # ---------------------------------------------------------
         # Drive real SDK from proxy SDK
         # ---------------------------------------------------------
+        connect_attributes(source=f"{proxy_sdk}.translate", destination=[f"{control.sdk}.translate"])
+        connect_attributes(source=f"{proxy_sdk}.rotate", destination=[f"{control.sdk}.rotate"])
 
-        connect_attr(
-            f"{proxy_sdk}.translate",
-            f"{sdk}.translate",
-            force=True,
-        )
-
-        connect_attr(
-            f"{proxy_sdk}.rotate",
-            f"{sdk}.rotate",
-            force=True,
-        )
-
-        # ---------------------------------------------------------
-        # Store references
-        # ---------------------------------------------------------
-
-        control.sdk = sdk  # type: ignore
-
-        return sdk
 
     def connect_sub_controls_to_ik(self) -> None:
         """Connect sub-controls to their IK proxy drivers."""
@@ -777,7 +734,7 @@ class Eyelid:
                 chains,
                 strict=True,
             ):
-                sdk = self.create_sub_control_ik_driver(
+                self.create_sub_control_ik_driver(
                     control=control,
                     end_joint=chain["end_joint"],
                 )
@@ -804,7 +761,7 @@ class Eyelid:
         )
 
         # Initialize at the joint's world orientation.
-        cmds.xform(
+        cmds.xform(                                 ###remove later
             driver,
             worldSpace=True,
             matrix=cmds.xform(
@@ -815,7 +772,7 @@ class Eyelid:
             ),  # type:ignore
         )
 
-        cmds.pointOnCurve(
+        cmds.pointOnCurve(                         ###remove later
             curve,
             parameter=parameter,
             turnOnPercentage=True,
@@ -867,86 +824,27 @@ class Eyelid:
 
         # ---------------------------------------------------------
         # Current distance
-        # ---------------------------------------------------------
-
-        distance = cmds.createNode(
-            "distanceBetween",
-            name=f"{name}_distance_DB",
-        )
-
-        # Capture root joint's world matrix at build time.
+        # --------------------------------------------------------
+        distance = DistanceBetweenNode(name=f"{name}_distance_DB")
         root_world_matrix = cmds.getAttr(f"{root_joint}.worldMatrix[0]")
-
-        # Store the matrix as a static value.
-        set_attr(
-            f"{distance}.inMatrix1",
-            *root_world_matrix,
-            type="matrix",
-        )
-
-        connect_attr(
-            f"{ik_handle}.worldMatrix[0]",
-            f"{distance}.inMatrix2",
-        )
-
+        distance.input_matrix1.set(*root_world_matrix)
+        distance.input_matrix2.connect_from(f"{ik_handle}.worldMatrix[0]")
         # ---------------------------------------------------------
         # Current distance / rest distance
         # ---------------------------------------------------------
-
-        ratio = cmds.createNode(
-            "multiplyDivide",
-            name=f"{name}_length_ratio_MD",
-        )
-
-        set_attr(
-            f"{ratio}.operation",
-            2,  # Divide #type:ignore
-        )
-
-        connect_attr(
-            f"{distance}.distance",
-            f"{ratio}.input1X",
-        )
-
-        set_attr(
-            f"{ratio}.input2X",
-            rest_length,  # type:ignore
-        )
-
+        ratio = MultiplyDivideNode(name=f"{name}_length_ratio_MD")
+        ratio.operation.set(2)
+        ratio.input1.x.connect_from(distance.distance)
+        ratio.input2.x.set(rest_length)
         # ---------------------------------------------------------
         # Select stretch vs compression multiplier
         # ---------------------------------------------------------
-
-        condition = cmds.createNode(
-            "condition",
-            name=f"{name}_length_mode_CON",
-        )
-
-        set_attr(
-            f"{condition}.operation",
-            2,  # Greater than #type:ignore
-        )
-
-        connect_attr(
-            f"{ratio}.outputX",
-            f"{condition}.firstTerm",
-        )
-
-        set_attr(
-            f"{condition}.secondTerm",
-            1.0,  # type:ignore
-        )
-
-        connect_attr(
-            f"{control}.stretch",
-            f"{condition}.colorIfTrueR",
-        )
-
-        connect_attr(
-            f"{control}.compress",
-            f"{condition}.colorIfFalseR",
-        )
-
+        condition = ConditionNode(name=f"{name}_length_mode_CON")
+        condition.operation.set(2)
+        condition.first_term.connect_from(ratio.output.x)
+        condition.second_term.set(1.0)
+        condition.color_if_true.r.connect_from(f"{control}.stretch")
+        condition.color_if_false.r.connect_from(f"{control}.compress")
         # ---------------------------------------------------------
         # Blend between rest ratio (1) and current ratio
         # ---------------------------------------------------------
@@ -970,6 +868,7 @@ class Eyelid:
             f"{blend}.color2R",
             1.0,  # type:ignore
         )
+        blend = BlendColorsNode
 
         # ---------------------------------------------------------
         # Store original length on root joint
