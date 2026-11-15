@@ -11,12 +11,14 @@ from maya.api.OpenMaya import (
 from Workshop.control import create_control
 from Workshop.control.core import Control
 from Workshop.joint import create_joint
-from Workshop.maya_api.node import BlendColorsNode, BlendMatrixNode, ConditionNode, DecomposeMatrixNode, DistanceBetweenNode, MultMatrixNode, MultiplyDivideNode, PlusMinusAverageNode, RemapValueNode, SumNode
+from Workshop.maya_api.node import BlendColorsNode, BlendMatrixNode, ComposeMatrixNode, ConditionNode, DecomposeMatrixNode, DistanceBetweenNode, MultMatrixNode, MultiplyDivideNode, PlusMinusAverageNode, PointOnCurveNode, RemapValueNode, SumNode
 from Workshop.transform.utils import create_transform
 from Workshop.maya_api.attribute_utils import create_attribute, add_proxy, add_attribute_header, set_attribute, connect_attributes
 from Workshop.skin.split.tag import tag_for_weight_split
 from Workshop.nurbs.curve import smooth_curve_weights
 from Workshop.transform.constraint import Constraint, constraint
+from Workshop.guide.core import GuideInfo
+from canon_autorigger.build_management.dev import create_dev_attribute
 
 from ..ik import create_IK_single_chain
 
@@ -25,7 +27,7 @@ class Eyelid:
     def __init__(
         self,
         side: str,
-        guides: dict,
+        guides: dict[str, GuideInfo],
         main_ctrl: Control,
         parent: str,
         joint_parent: str,
@@ -490,8 +492,8 @@ class Eyelid:
             "lower": [],
         }
 
-        upper_curve = self.guides["eyelid_upper_rest"]
-        lower_curve = self.guides["eyelid_lower_rest"]
+        upper_curve = self.guides["eyelid_upper_rest"].name
+        lower_curve = self.guides["eyelid_lower_rest"].name
 
         curves = {
             "upper": upper_curve,
@@ -739,7 +741,7 @@ class Eyelid:
                     end_joint=chain["end_joint"],
                 )
 
-                self.sub_control_sdks[vertical].append(sdk)
+                self.sub_control_sdks[vertical].append(control.sdk)
 
     def orient_ik_end_to_curve(
         self,
@@ -822,144 +824,52 @@ class Eyelid:
         if rest_length <= 0.000001:
             raise ValueError(f"Invalid IK rest length for {name}: {rest_length}")
 
-        # ---------------------------------------------------------
-        # Current distance
-        # --------------------------------------------------------
+        # Current distanc
         distance = DistanceBetweenNode(name=f"{name}_distance_DB")
         root_world_matrix = cmds.getAttr(f"{root_joint}.worldMatrix[0]")
         distance.input_matrix1.set(*root_world_matrix)
         distance.input_matrix2.connect_from(f"{ik_handle}.worldMatrix[0]")
-        # ---------------------------------------------------------
         # Current distance / rest distance
-        # ---------------------------------------------------------
         ratio = MultiplyDivideNode(name=f"{name}_length_ratio_MD")
         ratio.operation.set(2)
         ratio.input1.x.connect_from(distance.distance)
         ratio.input2.x.set(rest_length)
-        # ---------------------------------------------------------
         # Select stretch vs compression multiplier
-        # ---------------------------------------------------------
         condition = ConditionNode(name=f"{name}_length_mode_CON")
         condition.operation.set(2)
         condition.first_term.connect_from(ratio.output.x)
         condition.second_term.set(1.0)
         condition.color_if_true.r.connect_from(f"{control}.stretch")
         condition.color_if_false.r.connect_from(f"{control}.compress")
-        # ---------------------------------------------------------
         # Blend between rest ratio (1) and current ratio
-        # ---------------------------------------------------------
-
-        blend = cmds.createNode(
-            "blendColors",
-            name=f"{name}_length_blend_BLC",
-        )
-
-        connect_attr(
-            f"{condition}.outColorR",
-            f"{blend}.blender",
-        )
-
-        connect_attr(
-            f"{ratio}.outputX",
-            f"{blend}.color1R",
-        )
-
-        set_attr(
-            f"{blend}.color2R",
-            1.0,  # type:ignore
-        )
-        blend = BlendColorsNode
-
-        # ---------------------------------------------------------
+        blend = BlendColorsNode(name=f"{name}_length_blend_BLC")
+        blend.blender.connect_from(condition.out_color.r)
+        blend.color1.r.connect_from(ratio.output.x)
+        blend.color2.r.set(1)
         # Store original length on root joint
-        # ---------------------------------------------------------
-
-        if not cmds.attributeQuery(
-            "restLength",
-            node=root_joint,
-            exists=True,
-        ):
-            add_attribute(
-                root_joint,
-                longName="restLength",
-                attributeType="double",
-                defaultValue=rest_length,
-            )
-
-        set_attr(
-            f"{root_joint}.restLength",
-            rest_length,  # type:ignore
-        )
-
-        set_attr(
-            f"{root_joint}.restLength",
-            lock=True,
-        )
-
-        # ---------------------------------------------------------
+        rest_len_attr = create_attribute(primary_object=root_joint, attr_name="restLength", default=rest_length, locked=True)
         # Apply length multiplier
-        # ---------------------------------------------------------
-
-        length_mult = cmds.createNode(
-            "multiplyDivide",
-            name=f"{name}_length_MD",
-        )
-
-        set_attr(
-            f"{length_mult}.operation",
-            1,  # Multiply #type:ignore
-        )
-
-        connect_attr(
-            f"{blend}.outputR",
-            f"{length_mult}.input1X",
-        )
-
+        length_mult = MultiplyDivideNode(name=f"{name}_length_MD")
+        length_mult.operation.set(1)
+        length_mult.input1.x.connect_from(blend.output.r)
         # Use the original signed local joint translation.
         # This supports joints oriented along different axes.
         translate = cmds.getAttr(f"{end_joint}.translate")[0]
-
         axis = max(
             "XYZ",
             key=lambda a: abs(translate["XYZ".index(a)]),
         )
-
         original_value = translate["XYZ".index(axis)]
+        length_mult.input2.x.set(original_value)
+        length_mult.output.x.connect_to(f"{end_joint}.translate{axis}")
 
-        set_attr(
-            f"{length_mult}.input2X",
-            original_value,
-        )
-
-        connect_attr(
-            f"{length_mult}.outputX",
-            f"{end_joint}.translate{axis}",
-            force=True,
-        )
 
     def add_blink_length_attributes(self) -> None:
         """Add stretch/compression controls to both blink controls."""
-
         for vertical in ("upper", "lower"):
             control = self.blink_controls[vertical].ctrl
-
             for attr in ("stretch", "compress"):
-                if cmds.attributeQuery(
-                    attr,
-                    node=control,
-                    exists=True,
-                ):
-                    continue
-
-                add_attribute(
-                    control,
-                    longName=attr,
-                    attributeType="double",
-                    minValue=0.0,
-                    maxValue=1.0,
-                    defaultValue=0.0,
-                    keyable=True,
-                )
+                create_attribute(primary_object=control, attr_name=attr, min=0, max=1, default=0)
 
     def build_eyelid_ik(self, sub_divisions: int = 11, major_division: int = 7) -> None:
         """
@@ -998,29 +908,20 @@ class Eyelid:
             "upper": [],
             "lower": [],
         }
-
         # -----------------------------------------------------
         # Eye center position
         # -----------------------------------------------------
-
-        center = cmds.xform(
-            self.guides["center_piv"],
-            query=True,
-            worldSpace=True,
-            translation=True,
-        )
-
+        center = self.guides["center_piv"].pos
         # -----------------------------------------------------
         # Build upper/lower chains
         # -----------------------------------------------------
-
         for vertical in ("upper", "lower"):
             vertical_grp = create_transform(
                 name=f"{vertical}_ik_{self.side}_grp",
                 parent=self.eye_ik_grp,
             )
 
-            rest_curve = self.blink_guides[f"eyelid_{vertical}_rest"]
+            rest_curve = self.blink_guides[f"eyelid_{vertical}"].name
 
             animated_curve = self.blink_curves[vertical]
 
@@ -1046,7 +947,7 @@ class Eyelid:
 
                 # Use the same matrix as the sub-control.
                 control_matrix = self.get_curve_point_matrix(
-                    curve=self.guides[f"eyelid_{vertical}_rest"],
+                    curve=self.guides[f"eyelid_{vertical}"].name,
                     parameter=percent,
                     tangent_orient=self.orient_sub_expression_controls,
                 )
@@ -1087,21 +988,18 @@ class Eyelid:
                 # Create single-chain IK
                 # ---------------------------------------------
 
-                ik = create_ik_single_chain(
+                ik = create_IK_single_chain(
                     name=name,
                     start_joint=root_joint,
                     end_joint=end_joint,
                 )
-
                 cmds.parent(
                     ik.handle,
                     vertical_grp,
                 )
-
                 # ---------------------------------------------
                 # Create curve pin
                 # ---------------------------------------------
-
                 pin = create_transform(
                     name=f"{name}_pin",
                     parent=vertical_grp,
@@ -1135,28 +1033,8 @@ class Eyelid:
                     maintainOffset=False,
                 )
 
-                # ---------------------------------------------
-                # Store results
-                # ---------------------------------------------
-
-                # -----------------------------------------------------
-                # Rest length
-                # -----------------------------------------------------
 
                 rest_length = sum((position[i] - center[i]) ** 2 for i in range(3)) ** 0.5  # type:ignore
-
-                # -----------------------------------------------------
-                # Stretch/compression
-                # -----------------------------------------------------
-
-                """self.connect_ik_stretch_compress(
-                    name=name,
-                    root_joint=root_joint,
-                    end_joint=end_joint,
-                    ik_handle=ik.handle,
-                    control=self.blink_controls[vertical].ctrl,
-                    rest_length=rest_length,
-                )"""
 
                 self.eyelid_ik[vertical].append(
                     {
@@ -1174,7 +1052,7 @@ class Eyelid:
         curve: str,
         transform: str,
         parameter: float,
-    ) -> str:
+    ) -> PointOnCurveNode:
         """
         Pin a transform to a normalized arc-length position
         on a deforming NURBS curve.
@@ -1209,70 +1087,21 @@ class Eyelid:
         # -----------------------------------------------------
         # Evaluate curve position
         # -----------------------------------------------------
-
-        poc = cmds.createNode(
-            "pointOnCurveInfo",
-            name=f"{transform}_POC",
-        )
-
-        connect_attr(
-            f"{shape}.worldSpace[0]",
-            f"{poc}.inputCurve",
-        )
-
-        set_attr(
-            f"{poc}.turnOnPercentage",
-            True,  # type:ignore
-        )
-
-        set_attr(
-            f"{poc}.parameter",
-            parameter,  # type:ignore
-        )
-
+        poc = PointOnCurveNode(name=f"{transform}_POC")
+        poc.input_curve.connect_from(f"{shape}.worldSpace[0]")
+        poc.turn_on_percentage.set(True)
+        poc.parameter.set(parameter)
         # -----------------------------------------------------
         # Convert world position to parent-local position
         # -----------------------------------------------------
-
-        compose = cmds.createNode(
-            "composeMatrix",
-            name=f"{transform}_CM",
-        )
-
-        connect_attr(
-            f"{poc}.position",
-            f"{compose}.inputTranslate",
-        )
-
-        mult = cmds.createNode(
-            "multMatrix",
-            name=f"{transform}_MM",
-        )
-
-        connect_attr(
-            f"{compose}.outputMatrix",
-            f"{mult}.matrixIn[0]",
-        )
-
-        connect_attr(
-            f"{transform}.parentInverseMatrix[0]",
-            f"{mult}.matrixIn[1]",
-        )
-
-        decompose = cmds.createNode(
-            "decomposeMatrix",
-            name=f"{transform}_DCM",
-        )
-
-        connect_attr(
-            f"{mult}.matrixSum",
-            f"{decompose}.inputMatrix",
-        )
-
-        connect_attr(
-            f"{decompose}.outputTranslate",
-            f"{transform}.translate",
-        )
+        compose = ComposeMatrixNode( name=f"{transform}_CM")
+        compose.input_translate.connect_from(poc.position)
+        mult = MultMatrixNode(name=f"{transform}_MM")
+        mult.matrix_in[0].connect_from(compose.output_matrix)
+        mult.matrix_in[1].connect_from(f"{transform}.parentInverseMatrix[0]")
+        decompose = DecomposeMatrixNode(name=f"{transform}_DCM")
+        decompose.input_matrix.connect_from(mult.matrix_sum)
+        decompose.output_translate.connect_to(f"{transform}.translate")
 
         return poc
 
@@ -1297,47 +1126,22 @@ class Eyelid:
         positions: [(input_position, output_weight), ...]
         """
         positions = sorted(positions, key=lambda item: item[0])
-
-        node = cmds.createNode("remapValue", name=name)
-
-        connect_attr(input_attr, f"{node}.inputValue")
-
-        dev_parameter(
-            control=self.main_ctrl.ctrl, part="eye", side=self.side,
-            name=f"{name}_input_min", value=positions[0][0],
-            destinations=[f"{node}.inputMin"],
-        )
-        dev_parameter(
-            control=self.main_ctrl.ctrl, part="eye", side=self.side,
-            name=f"{name}_input_max", value=positions[-1][0],
-            destinations=[f"{node}.inputMax"],
-        )
-        set_attr(f"{node}.outputMin", 0)  # type:ignore
-        set_attr(f"{node}.outputMax", 1)  # type:ignore
+        node = RemapValueNode(name=name)
+        node.input_value.connect_from(input_attr)
+        create_dev_attribute(control=self.main_ctrl.ctrl, attribute_name=f"{name}_input_min", default=positions[0][0], rig_part=f'{self.side}_eyelid' )
+        create_dev_attribute(control=self.main_ctrl.ctrl, attribute_name=f"{name}_input_max", default=positions[-1][0], rig_part=f'{self.side}_eyelid' )
+        node.output_max.set(1)
+        node.output_min.set(0)
 
         minimum = positions[0][0]
         span = positions[-1][0] - minimum
-
         if span <= 1e-8:
             raise ValueError(f"Invalid remap range: {name}")
-
         for i, (position, weight) in enumerate(positions):
             normalized = (position - minimum) / span
-
-            set_attr(
-                f"{node}.value[{i}].value_Position",
-                normalized,  # type:ignore
-            )
-            set_attr(
-                f"{node}.value[{i}].value_FloatValue",
-                weight,  # type:ignore
-            )
-            # Linear interpolation
-            set_attr(
-                f"{node}.value[{i}].value_Interp",
-                1,  # type:ignore
-            )
-
+            set_attribute(attr=f"{node}.value[{i}].value_Position", value=normalized)
+            set_attribute(attr=f"{node}.value[{i}].value_FloatValue", value=weight)
+            set_attribute(attr=f"{node}.value[{i}].value_Interp", value=1)
         return f"{node}.outValue"
 
     def build_blink_blendshapes(
@@ -1378,19 +1182,19 @@ class Eyelid:
 
         guide_keys = [
             "eyelid_upblink",
-            "eyelid_upper_rest",
+            "eyelid_upper",
             "eyelid_blink",
-            "eyelid_lower_rest",
-            "eyelid_downblink",
+            "eyelid_lower",
+            "eyelid_lowblink",
         ]
 
-        heights = {key: self.get_curve_mid_y(self.blink_guides[key]) for key in guide_keys}
+        heights = {key: self.get_curve_mid_y(self.blink_guides[key].name) for key in guide_keys}
 
         up_y = heights["eyelid_upblink"]
-        upper_y = heights["eyelid_upper_rest"]
+        upper_y = heights["eyelid_upper"]
         blink_y = heights["eyelid_blink"]
-        lower_y = heights["eyelid_lower_rest"]
-        down_y = heights["eyelid_downblink"]
+        lower_y = heights["eyelid_lower"]
+        down_y = heights["eyelid_lowblink"]
 
         if not (up_y > upper_y > blink_y > lower_y > down_y):
             raise ValueError(
@@ -1444,27 +1248,25 @@ class Eyelid:
             # -----------------------------------------------------
             # Create blendShape
             # -----------------------------------------------------
-            blendshape_node = create_blendshape(
+            blendshape = cmds.blendShape(
                 curve,
                 name=f"{vertical}_blink_{self.side}_BS",
-                parent_directory=f"/rig/logic/face/eyes/eye_{self.side}",
-                front_of_chain=True,
-            )
-            for target in targets:
-                add_blendshape_target_from_geometry(blendshape_node, target)
-            blendshape = str(blendshape_node)
+                frontOfChain=True,
+            )[0] #type:ignore
+
+            for index, target in enumerate(targets):
+                cmds.blendShape(
+                    blendshape,    #type:ignore
+                    edit=True,
+                    target=(curve, index, target, 1.0),
+                )
             # Allow weights greater than 1 for extrapolation.
-            set_attr(
-                f"{blendshape}.weight",
-                size=len(targets),
-            )
+            set_attribute(attr=f"{blendshape}.weight", value=len(targets))
 
             expression_index = len(targets) - 1
 
-            set_attr(
-                f"{blendshape}.weight[{expression_index}]",
-                1.0,  # type:ignore
-            )
+            set_attribute(attr=f"{blendshape}.weight[{expression_index}]", value=1)
+
 
             # -----------------------------------------------------
             # Calculate relative Y distances
@@ -1562,26 +1364,10 @@ class Eyelid:
                     positions=normalized_points,
                 )
 
-                multiplier = cmds.createNode(
-                    "multiplyDivide",
-                    name=f"{vertical}_{target_name}_{self.side}_MD",
-                )
-
-                set_attr(
-                    f"{multiplier}.input2X",
-                    maximum_weight,  # type:ignore
-                )
-
-                connect_attr(
-                    output,
-                    f"{multiplier}.input1X",
-                )
-
-                connect_attr(
-                    f"{multiplier}.outputX",
-                    f"{blendshape}.weight[{index}]",
-                    force=True,
-                )
+                multiplier = MultiplyDivideNode(name=f"{vertical}_{target_name}_{self.side}_MD")
+                multiplier.input2.x.set(maximum_weight)
+                multiplier.input1.x.connect_from(output)
+                multiplier.output.x.connect_to(f"{blendshape}.weight[{index}]")
 
             # -----------------------------------------------------
             # Store results
@@ -1637,14 +1423,14 @@ class Eyelid:
 
         guide_keys = [
             "eyelid_upblink",
-            "eyelid_upper_rest",
+            "eyelid_upper",
             "eyelid_blink",
-            "eyelid_lower_rest",
-            "eyelid_downblink",
+            "eyelid_lower",
+            "eyelid_lowblink",
         ]
 
         for key in guide_keys:
-            source_curve = self.guides[key]
+            source_curve = self.guides[key].name
 
             if not cmds.objExists(source_curve):
                 raise ValueError(f"Missing eyelid guide: {source_curve}")
@@ -1703,10 +1489,7 @@ class Eyelid:
 
             self.expression_rest_curves[vertical] = curve
 
-        set_attr(
-            f"{self.eyes_setup_grp}.visibility",
-            False,  # type:ignore
-        )
+        set_attribute(attr=f"{self.eyes_setup_grp}.visibility", value=False)
 
     def get_curve_point_matrix(
         self,
@@ -1927,20 +1710,16 @@ class Eyelid:
         expression_follow_offset = create_transform(
             name=f"eyelid_follow_{self.side}_fake_grp_offset",
             parent=self.eyes_setup_grp,
-            transform=self.guides["center_piv"],
+            transform=self.guides["center"].name,
         )
 
         self.expression_follow_grp = create_transform(
             name=f"eyelid_follow_{self.side}_fake_grp",
             parent=expression_follow_offset,
-            transform=self.guides["center_piv"],
+            transform=self.guides["center"].name,
         )
 
-        connect_attr(
-            f"{self.look_offset}.rotate",
-            f"{self.expression_follow_grp}.rotate",
-            force=True,
-        )
+        connect_attributes(source=f"{self.look_offset}.rotate", destination=[f"{self.expression_follow_grp}.rotate"])
 
     def build(
         self,
@@ -1964,13 +1743,13 @@ class Eyelid:
         self.look_offset = create_transform(
             name=f"look_offset_{self.side}",
             parent=self.main_ctrl.ctrl,
-            transform=self.guides["center_piv"],
+            transform=self.guides["center"].name,
         )
 
         self.sub_grp = create_transform(
             name=f"sub_eyelid_controls_{self.side}",
             parent=self.main_ctrl.ctrl,
-            transform=self.guides["center_piv"],
+            transform=self.guides["center"].name,
         )
 
         ##########
@@ -1981,7 +1760,7 @@ class Eyelid:
         for vertical in ["upper", "lower"]:
             side_mod = -1 if self.side == "R" else 1
             blink_matrix = self.get_curve_point_matrix(
-                curve=self.guides[f"eyelid_{vertical}_rest"],
+                curve=self.guides[f"eyelid_{vertical}"].name,
                 parameter=0.5,
                 tangent_orient=False,
                 mirror=self.side == "R",
@@ -2019,7 +1798,7 @@ class Eyelid:
             for i in range(sub_divisions):
                 percent = i / (sub_divisions - 1)
                 matrix = self.get_curve_point_matrix(
-                    curve=self.guides[f"eyelid_{vertical}_rest"],
+                    curve=self.guides[f"eyelid_{vertical}"].name,
                     parameter=percent,
                     tangent_orient=True,
                 )
@@ -2043,19 +1822,9 @@ class Eyelid:
                 self.sub_joints.append(sub_jnt)
                 joints.append(sub_jnt)
 
-            lead_name = f"inner_corner_{vertical}_eyelid_{self.side}_jnt"
-
-            lead_joint = cmds.rename(
-                joints[0],
-                lead_name,
-            )
-
-            # Update stored reference after renaming.
-            joints[0] = lead_joint
-
             # Tag the lead influence and its split targets.
             tag_for_weight_split(
-                influence=lead_joint,
+                influence=joints[0],
                 split_influences=joints,
             )
 
