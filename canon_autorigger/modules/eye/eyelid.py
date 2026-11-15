@@ -33,13 +33,13 @@ class Eyelid:
         joint_parent: str,
         component_grp: str,
         control_grp: str,
-        control_size: float = 1.0,
+        rig_size: float = 1.0,
         guts: str = "logic",
         orient_sub_expression_controls: bool = False,
         collison_gap_default:float = 0.07,
         soft_distance = .1,
         expression_control_shape:str = "hexagon",
-        expresison_control_size:list = [.2, .25, 12]
+        expresison_rig_size:list = [.2, .25, 12]
     ) -> None:
         
         if guides is None:
@@ -47,7 +47,7 @@ class Eyelid:
         self.side = side
         self.guides = guides
         self.main_ctrl = main_ctrl
-        self.control_size = control_size
+        self.rig_size = rig_size
         self.parent = parent
         self.joint_parent = joint_parent
         self.component_grp = component_grp
@@ -61,7 +61,7 @@ class Eyelid:
         self.collison_gap_default = collison_gap_default
         self.soft_distance = soft_distance
         self.expression_control_shape = expression_control_shape
-        self.expresison_control_size = expresison_control_size
+        self.expresison_rig_size = expresison_rig_size
 
     # -------------------
     # Helper Functions
@@ -178,7 +178,7 @@ class Eyelid:
         # Smooth collision activation
         # ---------------------------------------------------------
         collision_remap = RemapValueNode(name=f"{name}_collision_RMV")
-        collision_remap.input_min.set(-self.soft_distance * self.control_size)
+        collision_remap.input_min.set(-self.soft_distance * self.rig_size)
         collision_remap.input_max.set(0)
         collision_remap.output_min.set(0)
         collision_remap.output_max.set(1)
@@ -602,7 +602,7 @@ class Eyelid:
                 matrix=matrix,
                 control_parent=self.main_ctrl.ctrl,
                 fake_parent=self.expression_driver_grp,
-                size=self.control_size * self.expresison_control_size[0],
+                size=self.rig_size * self.expresison_rig_size[0],
                 mirror_offset=macro_mirror["upper"][index],
                 control_shape=self.expression_control_shape
             )
@@ -622,7 +622,7 @@ class Eyelid:
                 matrix=matrix,
                 control_parent=self.expression_control_grps[vertical],
                 fake_parent=self.expression_follow_grp,
-                size=self.control_size * self.expresison_control_size[1],
+                size=self.rig_size * self.expresison_rig_size[1],
                 mirror_offset=macro_mirror[vertical][2],
                 control_shape= self.expression_control_shape
             )
@@ -653,7 +653,7 @@ class Eyelid:
                     matrix=matrix,
                     control_parent=major_control.ctrl,
                     fake_parent=major_driver,
-                    size=self.control_size * self.expresison_control_size[2],
+                    size=self.rig_size * self.expresison_rig_size[2],
                     mirror_offset=macro_mirror[vertical][index],
                     control_shape= self.expression_control_shape
                 )
@@ -1770,7 +1770,7 @@ class Eyelid:
                 name=f"{vertical}_blink_{self.side}",
                 parent=self.main_ctrl.ctrl,
                 transform=blink_matrix,
-                size=self.control_size,
+                size=self.rig_size,
                 control_shape="semi_circle",
                 direction="z",
                 dimensions=(1, 1, 1 if vertical == "upper" else -1),
@@ -1807,7 +1807,7 @@ class Eyelid:
                     name=f"{vertical}_{i}_{self.side}",
                     parent=self.sub_grp,
                     transform=matrix,
-                    size=self.control_size / 10,
+                    size=self.rig_size / 10,
                     control_shape="circle",
                     direction="z",
                     sdk_offset=True,

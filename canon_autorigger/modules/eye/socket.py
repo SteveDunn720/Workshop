@@ -24,7 +24,7 @@ class Socket:
         joint_parent: str,
         component_grp: str,
         control_grp: str,
-        control_size: float = 1.0,
+        rig_size: float = 1.0,
         divisions: int = 11,
         follow_default: float = 0.1,
     ) -> None:
@@ -38,7 +38,7 @@ class Socket:
         self.joint_parent = joint_parent
         self.component_grp = component_grp
         self.control_grp = control_grp
-        self.control_size = control_size
+        self.rig_size = rig_size
         self.divisions = divisions
         self.follow_default = follow_default
 
@@ -337,7 +337,7 @@ class Socket:
                 name=f"socket_{corner}_corner_{self.side}",
                 parent=self.socket_follow_grp,
                 transform=guide.name,
-                size=self.control_size / 4,
+                size=self.rig_size / 4,
                 control_shape="circle",
                 direction="z",
             )
@@ -349,7 +349,7 @@ class Socket:
                 name=f"socket_{vertical}_{self.side}",
                 parent=self.socket_follow_grp,
                 transform=self.guides[f"socket_mid_{vertical}"],
-                size=self.control_size / 2,
+                size=self.rig_size / 2,
                 control_shape="round_square",
                 direction="z",
                 dimensions=(1, 0.2, 0.2),
@@ -380,7 +380,7 @@ class Socket:
                     name=name,
                     parent=self.sub_socket_controls_grp,
                     transform=matrix,
-                    size=self.control_size / 8,
+                    size=self.rig_size / 8,
                     control_shape="circle",
                     direction="z",
                 )

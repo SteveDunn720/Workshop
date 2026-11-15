@@ -1,25 +1,17 @@
 from dataclasses import dataclass
-
 import maya.cmds as cmds
-
 from Workshop.control.core import Control
-from Workshop.transform.constraint import Constraint, constraint
-from Workshop.control import create_control, Control
+from Workshop.control import create_control
 from Workshop.joint import create_joint
-from Workshop.guide.core import GuideInfo, align_guides, create_guide_from_position, mirror_guide
-from Workshop.maya_api.node import BlendColorsNode, DecomposeMatrixNode, MultMatrixNode, MultiplyDivideNode, NearestPointOnCurveNode, PointOnCurveNode, RemapValueNode, SumNode
-from Workshop.tag.core import lock_tag
-from Workshop.transform.utils import create_transform
-from Workshop.spline.matrix_spline.build import matrix_spline_from_transforms
-from Workshop.skin.split.tag import tag_for_weight_split
+from Workshop.guide.core import GuideInfo
+from Workshop.maya_api.node import BlendColorsNode, MultiplyDivideNode, SumNode
 from Workshop.nurbs.curve import get_nurbs_curve_radius
-from canon_autorigger.modules.eye.eyelid import Eyelid
-from canon_autorigger.modules.eye.eyeball import Eyeball
-from canon_autorigger.modules.eye.sas import Socket
 from transform.matrix import matrix_constraint
 
-from ..module_shared import create_driver_offset,module_prep, module_space
-
+from ..module_shared import module_prep
+from .eyelid import Eyelid
+from .eyeball import Eyeball
+from .socket import Socket
 
 @dataclass
 class module_info:
@@ -29,7 +21,7 @@ class module_info:
     corner_controls:dict
     macro:dict
 
-class Mouth:
+class Eye:
     def __init__(
         self,
         muppet,
@@ -54,7 +46,7 @@ class Mouth:
         blink_extension: float = 2.0,
         collision_push: float = 0.5,
         socket_follow_default: float = 0.1,
-        root_control_size:float = 1/10,
+        root_rig_size:float = 1/10,
 
     ):
         self.part: str = part
@@ -79,7 +71,7 @@ class Mouth:
         self.blink_extension = blink_extension
         self.collision_push = collision_push
         self.socket_follow_default = socket_follow_default
-        self.root_control_size = root_control_size
+        self.root_rig_size = root_rig_size
         if self.side == 'L':
             self.main_color = 'Left'
             self.sub_color = 'SubLeft'
@@ -112,7 +104,7 @@ class Mouth:
             name=f'{self.part}_root_{self.side}',
             parent=self.control_grp,
             transform=self.guides["center"].name,
-            size=self.rig_size * self.root_control_size,
+            size=self.rig_size * self.root_rig_size,
             control_shape=self.main_control_shape,
             direction=self.main_control_direction, #type:ignore
             shape_position_offset=offset_pos,
@@ -128,7 +120,7 @@ class Mouth:
         self.eyelid = Eyelid(
             side=self.side,
             guides=self.guides,
-            control_size=self.control_size,
+            rig_size=self.rig_size,
             main_ctrl=self.main_ctrl.ctrl,
             parent=self.main_grp,
             joint_parent=self.main_jnt,
@@ -141,10 +133,10 @@ class Mouth:
             collision_push=self.collision_push,
         )
 
-        """self.socket = Socket(
+        self.socket = Socket(
             side=self.side,
             guides=self.guides,
-            control_size=self.control_size,
+            rig_size=self.rig_size,
             main_ctrl=self.main_ctrl.ctrl,
             parent=self.main_grp,
             joint_parent=self.main_jnt,
@@ -159,7 +151,7 @@ class Mouth:
         self.eyeball = Eyeball(
             side=self.side,
             guides=self.guides,
-            control_size=self.control_size,
+            rig_size=self.rig_size,
             main_ctrl=self.main_ctrl.ctrl,
             parent=self.main_grp,
             joint_parent=self.main_jnt,
@@ -200,4 +192,4 @@ class Mouth:
             source_transform=self.look_parent,
             constrain_transform=self.eyeball.look_ctrl.offset,
             keep_offset=True,
-        )"""
+        )
