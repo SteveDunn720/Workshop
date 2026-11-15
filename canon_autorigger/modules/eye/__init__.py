@@ -1,3 +1,4 @@
-from . import aim, eye, eyeball, eyelid, guide_curve, sas, socket
+from . import eye, eyeball, eyelid, guide_curve, sas, socket
+from .. import look
 
-__all__ = ["aim", "eye", "eyeball", "eyelid", "guide_curve", "sas", "socket"]
+__all__ = ["look", "eye", "eyeball", "eyelid", "guide_curve", "sas", "socket"]
