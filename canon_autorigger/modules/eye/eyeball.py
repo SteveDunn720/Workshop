@@ -1,4 +1,3 @@
-from .workshop_bridge import add_attribute, connect_attr, set_attr
 import math
 
 from maya import cmds
@@ -11,23 +10,28 @@ from Workshop.maya_api.node import (
     MultiplyDivideNode,
     SumNode,
 )
-from .workshop_bridge import tag_for_weight_split
 from Workshop.transform.utils import create_transform, match_location
-from .workshop_bridge import matrix_constraint, dev_parameter
 from Workshop.transform.utils import get_position
+from Workshop.nurbs.curve import get_nurbs_curve_radius
+from canon_autorigger.build_management.dev import create_dev_attribute
+from control.core import Control
+from maya_api.attribute_utils import add_proxy, connect_attributes, create_attribute, add_attribute_header, set_attribute
+from skin.split.tag import tag_for_weight_split
+from transform.matrix import matrix_constraint
 
 
 class Eyeball:
     def __init__(
         self,
+        main_ctrl:Control,
         guides: dict,
         side: str = "L",
         rig_size: float = 1.0,
-        main_ctrl: str = "",
         parent: str = "",
         joint_parent: str = "",
         component_grp: str = "",
         control_grp: str = "",
+        divisions:int = 10
     ) -> None:
         if guides is None:
             guides = {}
@@ -39,29 +43,11 @@ class Eyeball:
         self.joint_parent = joint_parent
         self.component_grp = component_grp
         self.control_grp = control_grp
+        self.divisions = divisions
 
     # -------------------
     # Helper Functions
     # -------------------
-
-    def get_nurbs_surface_radius(self, obj: str) -> float:
-        """
-        Returns the radius of a NURBS circle.
-
-        Args:
-            obj (str): Transform of the NURBS circle
-
-        Returns:
-            float: radius
-        """
-
-        bbox: list[int | float] = cmds.exactWorldBoundingBox(obj)
-
-        x: int | float = bbox[3] - bbox[0]
-        y: int | float = bbox[4] - bbox[1]
-        z: int | float = bbox[5] - bbox[2]
-
-        return max(x, y, z) * 0.5
 
     def compare_radius_and_angle(self, obj_a: str, obj_b: str) -> float:
         """
@@ -77,8 +63,8 @@ class Eyeball:
             (percent, angle_degrees)
         """
 
-        r1: float = self.get_nurbs_surface_radius(obj_a)
-        r2: float = self.get_nurbs_surface_radius(obj_b)
+        r1: float =  get_nurbs_curve_radius(obj_a)
+        r2: float =  get_nurbs_curve_radius(obj_b)
 
         if r1 == 0:
             raise RuntimeError(f"{obj_a} has zero radius")
@@ -110,7 +96,7 @@ class Eyeball:
         return offsets
 
     def create_eye_preview_circle(self, name_suffix: str, parent: str) -> str:
-        eye_radius: float = self.get_nurbs_surface_radius(self.guides["eye_diam"])
+        eye_radius: float =  get_nurbs_curve_radius(self.guides["eye_diam"])
 
         eye_center_pos = get_position(self.guides["center_piv"])
 
@@ -143,78 +129,68 @@ class Eyeball:
     ) -> None:
 
         if new_attr:
-            add_attribute(new_attr_tgt, longName=f"{circle_type}_{obj}_dilation", keyable=True)  # type:ignore
-            dilation_attr = f"{new_attr_tgt}.{circle_type}_{obj}_dilation"
+            dilation_attr = create_attribute(
+                primary_object=new_attr_tgt, #type:ignore
+                attr_name=f"{circle_type}_{obj}_dilation",
+            )  # type:ignore
 
-        dilation_mult = MultiplyDivideNode.create(
+        dilation_mult = MultiplyDivideNode(
             name=f"{circle_type}_dilation_mult_{self.side}_MD"
         )
-        dev_parameter(
-            control=self.main_ctrl,
-            part="eye",
-            side=self.side,
-            name=f"{circle_type}_dilation_angle",
-            value=18.0,
-            destinations=[str(dilation_mult.input2.x)],
-        )
-        dilation_mult.input1.x.connect_from(source_attr=dilation_attr)
-        etq_node = EulerToQuatNode.create(
+
+        # Fixed dilation angle instead of DEV attribute
+        dilation_mult.input2.x.set(18)
+
+        dilation_mult.input1.x.connect_from(dilation_attr)
+
+        etq_node = EulerToQuatNode(
             name=f"{circle_type}_dilation_mult_{self.side}_ETQ",
         )
-        etq_node.input_rotate.x.connect_from(f"{dilation_mult.output.x}")
-        radius_adjust = MultiplyDivideNode.create(
+        etq_node.input_rotate.x.connect_from(dilation_mult.output.x)
+
+        radius_adjust = MultiplyDivideNode(
             name=f"{circle_type}_radius_adjust_{self.side}_MD"
         )
         radius_adjust.input1.x.connect_from(etq_node.output_quat.x)
 
-        z_trans_adl = SumNode.create(name=f"{circle_type}_translateZ_{self.side}_ADL")
-
-        radius_adjust.output.x.connect_to(z_trans_adl.input[0])
-
-        z_trans_adl.output.connect_to(f"{obj}.translateZ")
-
-        # radius_adjust.output.x.connect_to(f"{obj}.translateZ")
-        etq_node.output_quat.w.connect_to(f"{obj}.scaleZ")
-        dev_parameter(
-            control=self.main_ctrl,
-            part="eye",
-            side=self.side,
-            name=f"{circle_type}_radius",
-            value=eye_radius,
-            destinations=[str(radius_adjust.input2.x)],
+        z_trans_adl = SumNode(
+            name=f"{circle_type}_translateZ_{self.side}_ADL"
         )
 
-        # offsets
+        radius_adjust.output.x.connect_to(z_trans_adl.input[0])
+        z_trans_adl.output.connect_to(f"{obj}.translateZ")
 
+        etq_node.output_quat.w.connect_to(f"{obj}.scaleZ")
+
+        # Fixed eye radius instead of DEV parameter
+        radius_adjust.input2.x.set(eye_radius)
+
+        # Scale adjustments
         radius_adjust.input1.y.connect_from(etq_node.output_quat.w)
         radius_adjust.input1.z.connect_from(etq_node.output_quat.w)
+
         radius_adjust.input2.z.connect_from(scale_x_attr)
         radius_adjust.input2.y.connect_from(scale_y_attr)
+
         radius_adjust.output.y.connect_to(f"{obj}.scaleY")
         radius_adjust.output.z.connect_to(f"{obj}.scaleX")
 
         z_trans_adl.input[1].connect_from(offset_z_attr)
-        connect_attr(offset_y_attr, f"{obj}.translateY")
-        connect_attr(offset_x_attr, f"{obj}.translateX")
+        connect_attributes(offset_y_attr, [f"{obj}.translateY"])
+        connect_attributes(offset_x_attr, [f"{obj}.translateX"])
 
     def build_eyeball(self) -> None:
-        eye_radius: float = self.get_nurbs_surface_radius(self.guides["eye_diam"])
-        add_attribute(
-            self.main_ctrl,
-            longName="dilation_controls",
-            attributeType="enum",
-            enumName="-------------",
-            keyable=True,
-        )
+        eye_radius: float =  get_nurbs_curve_radius(self.guides["eye_diam"])
+        add_attribute_header(target=self.main_ctrl.ctrl, name="dilation_controls")
 
         self.eye_ctrl = create_control(
             name=f"eye_{self.side}",
             parent=self.main_ctrl,
-            transform=self.guides["center_piv"],
+            transform=self.guides["center"].name,
             control_shape="circle",
             direction="z",
             size=eye_radius / 4,
-            position_offset=(0, 0, eye_radius),
+            shape_position_offset=(0, 0, eye_radius),
         )
         self.eye_jnt = create_joint(
             transform=self.eye_ctrl.ctrl, name=f"eye_{self.side}", parent=self.joint_parent
@@ -223,7 +199,7 @@ class Eyeball:
         self.look_ctrl = create_control(
             name=f"look_{self.side}",
             parent=self.control_grp,
-            transform=self.guides["aim"],
+            transform=self.guides["aim"].name,
             control_shape="circle",
             direction="z",
             size=eye_radius / 2,
@@ -253,8 +229,8 @@ class Eyeball:
         cmds.parent(self.ik_handle, self.component_grp)
 
         matrix_constraint(self.look_ctrl.ctrl, self.ik_handle)
-        cmds.pointConstraint(self.main_ctrl, self.look_root, maintainOffset=True)
-        cmds.orientConstraint(self.look_root, self.eye_ctrl.offset, maintainOffset=True)
+        cmds.pointConstraint(self.main_ctrl.ctrl, self.look_root, maintainOffset=True)
+        cmds.orientConstraint(self.look_root, self.eye_ctrl.top, maintainOffset=True)
 
         pupil_degree: float = round(
             self.compare_radius_and_angle(self.guides["eye_diam"], self.guides["pupil_diam"])
@@ -267,51 +243,19 @@ class Eyeball:
         pupil_percent = pupil_degree / 90
         iris_percent = iris_degree / 90
 
-        eye_center_pos = get_position(self.guides["center_piv"])
+        eye_center_pos = self.guides["center"].pos
 
         percents = [0, iris_percent, pupil_percent, 1]
 
-        add_attribute(
-            self.main_ctrl,
-            longName="pupil_dilation",
-            attributeType="double",
-            minValue=0 - (pupil_percent * 10),
-            maxValue=10 - (pupil_percent * 10),
-            keyable=True,
-        )
-        add_attribute(
-            self.main_ctrl,
-            longName="iris_dilation",
-            attributeType="double",
-            minValue=0 - (iris_percent * 10),
-            maxValue=10 - (iris_percent * 10),
-            keyable=True,
-        )
-
-        add_attribute(
-            self.main_ctrl,
-            longName="end_dilation",
-            attributeType="double",
-            minValue=0,
-            maxValue=10,
-            defaultValue=10,
-            keyable=False,
-        )
-
-        add_attribute(
-            self.main_ctrl,
-            longName="center_dilation",
-            attributeType="double",
-            minValue=0,
-            maxValue=10,
-            defaultValue=0,
-            keyable=False,
-        )
+        create_attribute(primary_object=self.main_ctrl.ctrl, attr_name="pupil_dilation", min=0 - (pupil_percent * 10), max=10 - (pupil_percent * 10), proxy_objects=[self.eye_ctrl.ctrl, self.look_ctrl.ctrl], default=0)
+        create_attribute(primary_object=self.main_ctrl.ctrl, attr_name="iris_dilation", min=0 - (iris_percent * 10), max=10 - (iris_percent * 10), proxy_objects=[self.eye_ctrl.ctrl, self.look_ctrl.ctrl], default=0)
+        create_attribute(primary_object=self.main_ctrl.ctrl, attr_name="end_dilation", min=0 , max=10, keyable=False, hidden=True, default=10)
+        create_attribute(primary_object=self.main_ctrl.ctrl, attr_name="center_dilation", min=0, max=10, keyable=False, hidden=True, default=0)
 
         dilation_offset = create_transform(
             name=f"dilation_{self.side}_Offset",
             parent=self.eye_ctrl.ctrl,
-            transform=self.guides["center_piv"],
+            transform=self.guides["center"].name,
         )
 
         cmds.hide(dilation_offset)
@@ -323,72 +267,30 @@ class Eyeball:
                 name_suffix=f"{circle_type}_{self.side}", parent=f"{dilation_offset}"
             )
             self.preview_circles[f"{circle_type}"] = circle
-
-            add_attribute(circle, longName="dilation_amount", attributeType="double", keyable=True)
-
+            create_attribute(primary_object=circle, attr_name="dilation_amount",)
             key = circle_type in ["iris", "pupil"]
 
-            add_attribute(
-                self.main_ctrl,
-                longName=f"{circle_type}_adjustments",
-                attributeType="enum",
-                enumName="----",
-                keyable=key,
-            )
+            if key:
+                add_attribute_header(target=self.main_ctrl.ctrl, name=f"{circle_type}_adjustments", proxy=[self.eye_ctrl.ctrl, self.look_ctrl.ctrl], sub=True)
+            create_attribute(primary_object=self.main_ctrl.ctrl, attr_name=f"{circle_type}_scaleX", proxy_objects=[self.eye_ctrl.ctrl, self.look_ctrl.ctrl], keyable=key,)
+            create_attribute(primary_object=self.main_ctrl.ctrl, attr_name=f"{circle_type}_scaleY", proxy_objects=[self.eye_ctrl.ctrl, self.look_ctrl.ctrl], keyable=key,)
+            create_attribute(primary_object=self.main_ctrl.ctrl, attr_name=f"{circle_type}_offsetY", proxy_objects=[self.eye_ctrl.ctrl, self.look_ctrl.ctrl], keyable=key,)
+            create_attribute(primary_object=self.main_ctrl.ctrl, attr_name=f"{circle_type}_offsetX", proxy_objects=[self.eye_ctrl.ctrl, self.look_ctrl.ctrl], keyable=key,)
+            create_attribute(primary_object=self.main_ctrl.ctrl, attr_name=f"{circle_type}_offsetZ", proxy_objects=[self.eye_ctrl.ctrl, self.look_ctrl.ctrl], keyable=key,)
 
-            add_attribute(
-                self.main_ctrl,
-                longName=f"{circle_type}_scaleX",
-                attributeType="double",
-                defaultValue=1,
-                keyable=key,
-            )
 
-            add_attribute(
-                self.main_ctrl,
-                longName=f"{circle_type}_scaleY",
-                attributeType="double",
-                defaultValue=1,
-                keyable=key,
-            )
-
-            add_attribute(
-                self.main_ctrl,
-                longName=f"{circle_type}_offsetY",
-                attributeType="double",
-                defaultValue=0,
-                keyable=key,
-            )
-
-            add_attribute(
-                self.main_ctrl,
-                longName=f"{circle_type}_offsetX",
-                attributeType="double",
-                defaultValue=0,
-                keyable=key,
-            )
-
-            add_attribute(
-                self.main_ctrl,
-                longName=f"{circle_type}_offsetZ",
-                attributeType="double",
-                defaultValue=0,
-                keyable=key,
-            )
 
             if circle_type == "center":
                 pass
             else:
                 # percents[i]
-                dilation_offset_node = SumNode.create(
+                dilation_offset_node = SumNode(
                     name=f"{circle_type}_dilation_mult_{self.side}_ADL"
                 )
-                connect_attr(
-                    f"{self.main_ctrl}.{circle_type}_dilation", f"{dilation_offset_node.input[1]}"
-                )
-                connect_attr(f"{dilation_offset_node.output}", f"{circle}.dilation_amount")
-                set_attr(f"{dilation_offset_node.input[0]}", percents[i] * 10)  # type:ignore
-
+                dilation_offset_node.input[1].connect_from(f"{self.main_ctrl}.{circle_type}_dilation")
+                dilation_offset_node.input[0].set(percents[i] * 10)
+                dilation_offset_node.output.connect_to(f"{circle}.dilation_amount")
+                
                 self.dilation_nodes(
                     circle_type=circle_type,
                     obj=circle,
@@ -404,8 +306,7 @@ class Eyeball:
                 )
 
         # joints
-        loop_num = 10
-        loops_list = self.sphere_edge_loop_offsets(radius=eye_radius, num_loops=loop_num)
+        loops_list = self.sphere_edge_loop_offsets(radius=eye_radius, num_loops=self.divisions)
 
         self.dilation_joints = []
 
@@ -415,12 +316,11 @@ class Eyeball:
             jnt = create_joint(
                 name=f"eye_dilation_{i:02d}_{self.side}",
                 parent=parent,
-                transform=self.guides["center_piv"],
+                transform=self.guides["center_piv"].name,
                 connect=False,
             )
             self.dilation_joints.append(jnt)
-            set_attr(f"{jnt}.translateZ", loop)
-
+            set_attribute(attr=f"{jnt}.translateZ", value=loop)
             x = i / 10.0
             if x < iris_percent:
                 blend = ["iris", "center"]
@@ -434,8 +334,8 @@ class Eyeball:
                 blend = ["pupil", "pupil"]
                 blend_num = (x - pupil_percent) / (1.0 - pupil_percent)
 
-            blendnode = BlendColorsNode.create(name=f"blend_dilation_{i:02d}_{self.side}_BC")
-            blendnode2 = BlendColorsNode.create(name=f"blend_offset_{i:02d}_{self.side}_BC")
+            blendnode = BlendColorsNode(name=f"blend_dilation_{i:02d}_{self.side}_BC")
+            blendnode2 = BlendColorsNode(name=f"blend_offset_{i:02d}_{self.side}_BC")
             blendnode.color1.r.connect_from(
                 source_attr=f"{self.preview_circles[blend[0]]}.dilation_amount"
             )
@@ -476,24 +376,3 @@ class Eyeball:
             split_influences=self.dilation_joints,
         )
 
-        # proxy attrs
-
-        for attr in [
-            "dilation_controls",
-            "iris_dilation",
-            "pupil_dilation",
-            "iris_adjustments",
-            "iris_offsetX",
-            "iris_offsetY",
-            "iris_offsetZ",
-            "iris_scaleX",
-            "iris_scaleY",
-            "pupil_adjustments",
-            "pupil_offsetX",
-            "pupil_offsetY",
-            "pupil_offsetZ",
-            "pupil_scaleX",
-            "pupil_scaleY",
-        ]:
-            for ctrl in [self.eye_ctrl.ctrl, self.look_ctrl.ctrl]:
-                add_attribute(ctrl, longName=attr, proxy=f"{self.main_ctrl}.{attr}")

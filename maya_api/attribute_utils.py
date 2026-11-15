@@ -238,14 +238,17 @@ def connect_attributes(
 
 
 
-def add_attribute_header(target:str, name:str):
+def add_attribute_header(target:str, name:str, proxy:list=[], sub=False):
+
+    len = "-----" if sub else "-------------"
 
     create_attribute(
         primary_object=target,
         attr_name=name,
         attr_type="enum",
-        enum_index=["-------------"],
+        enum_index=[len],
         locked=True,
+        proxy_objects=proxy
     )
 
 
