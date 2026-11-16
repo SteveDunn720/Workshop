@@ -13,11 +13,10 @@ from Workshop.maya_api.node import (
 from Workshop.transform.utils import create_transform, match_location
 from Workshop.transform.utils import get_position
 from Workshop.nurbs.curve import get_nurbs_curve_radius
-from canon_autorigger.build_management.dev import create_dev_attribute
-from control.core import Control
-from maya_api.attribute_utils import add_proxy, connect_attributes, create_attribute, add_attribute_header, set_attribute
-from skin.split.tag import tag_for_weight_split
-from transform.matrix import matrix_constraint
+from Workshop.control.core import Control
+from Workshop.maya_api.attribute_utils import connect_attributes, create_attribute, add_attribute_header, set_attribute
+from Workshop.skin.split.tag import tag_for_weight_split
+from Workshop.transform.matrix import matrix_constraint
 
 
 class Eyeball:

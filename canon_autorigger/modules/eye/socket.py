@@ -1,4 +1,3 @@
-from .workshop_bridge import add_attribute, connect_attr, set_attr
 from maya import cmds
 from maya.api.OpenMaya import MFnNurbsCurve, MMatrix, MSelectionList, MSpace, MVector
 
@@ -6,20 +5,21 @@ from Workshop.control import create_control
 from Workshop.control.core import Control
 from Workshop.joint import create_joint
 from Workshop.maya_api.node import BlendMatrixNode, MultMatrixNode
-from .workshop_bridge import tag_for_weight_split
-from .workshop_bridge import matrix_spline_from_transforms
-from .workshop_bridge import MatrixSpline
 from Workshop.transform.utils import create_transform
 
-from .guide_curve import GuideCurve
+from Workshop.guide.curve import GuideCurve
+from maya_api.attribute_utils import add_proxy, connect_attributes, create_attribute, disconnect_attribute, set_attribute
+from skin.split.tag import tag_for_weight_split
+from spline.matrix_spline.build import matrix_spline_from_transforms
+from spline.matrix_spline.core import MatrixSpline
 
 
 class Socket:
     def __init__(
         self,
+        main_ctrl:Control,
         guides: dict,
         side: str,
-        main_ctrl: str,
         parent: str,
         joint_parent: str,
         component_grp: str,
@@ -57,31 +57,13 @@ class Socket:
                     "shearXZ",
                     "shearYZ",
                 ):
-                    destination = f"{joint}.{attr}"
 
-                    source = cmds.connectionInfo(
-                        destination,
-                        sourceFromDestination=True,
-                    )
+                    disconnect_attribute(attr=f"{joint}.{attr}")
 
-                    if source:
-                        cmds.disconnectAttr(source, destination)  # type:ignore
+                for axis in ['X', 'Y', 'Z']:
+                    set_attribute(f"{joint}.scale", 1)
+                    set_attribute(f"{joint}.shear", 0)
 
-                set_attr(
-                    f"{joint}.scale",
-                    1,  # type:ignore
-                    1,  # type:ignore
-                    1,  # type:ignore
-                    type="double3",
-                )
-
-                set_attr(
-                    f"{joint}.shear",
-                    0,  # type:ignore
-                    0,  # type:ignore
-                    0,  # type:ignore
-                    type="double3",
-                )
 
     def create_eyelid_driver_spline(
         self,
@@ -238,18 +220,9 @@ class Socket:
 
     def create_socket_follow(self, default_mult: float = 0.1) -> str:
         """Inherit control_grp once, and blend extra main-eye motion."""
-        driver = self.main_ctrl
+        driver = self.main_ctrl.ctrl
 
-        if not cmds.attributeQuery("socket_follow", node=driver, exists=True):
-            add_attribute(
-                driver,
-                longName="socket_follow",
-                attributeType="double",
-                minValue=0.0,
-                maxValue=1.0,
-                defaultValue=default_mult,
-                keyable=True,
-            )
+        create_attribute(primary_object=driver, attr_name="socket_follow", min=0,max=1, default=default_mult)
 
         follow_pos = create_transform(
             name=f"socket_{self.side}_follow_pos",
@@ -261,25 +234,23 @@ class Socket:
             parent=follow_pos,
             transform=driver,
         )
-        set_attr(f"{follow_offset}.translate", 0, 0, 0, type="double3")  # type:ignore
-        set_attr(f"{follow_offset}.rotate", 0, 0, 0, type="double3")  # type:ignore
 
         controls_grp = create_transform(
             name=f"socket_{self.side}_controls_grp",
             parent=follow_offset,
         )
 
-        relative_mm = MultMatrixNode.create(name=f"socket_{self.side}_follow_relative_mm")
+        relative_mm = MultMatrixNode(name=f"socket_{self.side}_follow_relative_mm")
         relative_mm.matrix_in[0].connect_from(f"{driver}.worldMatrix[0]")
         relative_mm.matrix_in[1].connect_from(f"{self.control_grp}.worldInverseMatrix[0]")
         rest_relative = MMatrix(relative_mm.matrix_sum.get())
-        delta_mm = MultMatrixNode.create(name=f"socket_{self.side}_follow_delta_mm")
+        delta_mm = MultMatrixNode(name=f"socket_{self.side}_follow_delta_mm")
         delta_mm.matrix_in[0].set(rest_relative.inverse())
         delta_mm.matrix_in[1].connect_from(relative_mm.matrix_sum)
-        blend = BlendMatrixNode.create(name=f"socket_{self.side}_follow_bm")
+        blend = BlendMatrixNode(name=f"socket_{self.side}_follow_bm")
         blend.target[0].target_matrix.connect_from(delta_mm.matrix_sum)
         blend.target[0].weight.connect_from(f"{driver}.socket_follow")
-        local_mm = MultMatrixNode.create(name=f"socket_{self.side}_follow_local_mm")
+        local_mm = MultMatrixNode(name=f"socket_{self.side}_follow_local_mm")
         local_mm.matrix_in[0].connect_from(f"{follow_pos}.matrix")
         local_mm.matrix_in[1].connect_from(f"{blend}.outputMatrix")
         local_mm.matrix_in[2].connect_from(f"{follow_pos}.inverseMatrix")
@@ -291,7 +262,7 @@ class Socket:
         self.socket_controls_grp = controls_grp
         return controls_grp
 
-    def build_socket(self) -> None:
+    def build(self) -> None:
         """Build socket drivers and evenly spaced sub-controls, without a spline."""
         self.major_controls: dict[str, Control] = {}
         self.parent_controls: dict[str, Control] = {}
@@ -356,11 +327,7 @@ class Socket:
             )
             self.parent_controls[f"{vertical}_ctrl"] = control
             self.socket_driver_controls.append(control)
-            add_attribute(
-                control.ctrl,
-                longName="sub_socket",
-                proxy=f"{self.main_ctrl}.sub_socket",
-            )
+            add_proxy(source=f"{self.main_ctrl}.sub_socket", proxy_list=[control.ctrl])
 
         # Build evenly spaced sub-controls and their separate skeleton joints.
         for vertical in ("upper", "lower"):
@@ -413,16 +380,8 @@ class Socket:
             cmds.delete(guide_curve.group)
 
         for control in self.sub_socket_control:
-            connect_attr(
-                f"{self.main_ctrl}.sub_socket",
-                f"{control.ctrl}.visibility",
-                force=True,
-            )
-            add_attribute(
-                control.ctrl,
-                longName="sub_socket",
-                proxy=f"{self.main_ctrl}.sub_socket",
-            )
+            connect_attributes(f"{self.main_ctrl}.sub_socket", destination=[f"{control.ctrl}.visibility"])
+            add_proxy(source=f"{self.main_ctrl}.sub_socket", proxy_list=[control.ctrl])
 
         # ---------------------------------------------------------
         # Build upper and lower eyelid matrix splines

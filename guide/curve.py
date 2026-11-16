@@ -1,12 +1,23 @@
 from __future__ import annotations
 
+from dataclasses import dataclass
 
-from typing import Optional
-
-import maya.cmds as cmds
 import maya.api.OpenMaya as om
+from maya import cmds
 
-from .core import GuideInfo, create_guide_from_position
+from .core import create_guide_from_position
+
+
+@dataclass
+class GuideLocator:
+    """
+    Stores information about a generated guide locator.
+    """
+
+    name: str
+    pos: tuple[float, float, float]
+    rot: tuple[float, float, float]
+    matrix: list[float]
 
 
 class GuideCurve:
@@ -36,10 +47,12 @@ class GuideCurve:
         self,
         curve: str,
         resample_amount: int = -1,
-        output_names: Optional[list[str]] = None,
+        output_names: list[str] | None = None,
         ignore_handles: bool = True,
         align_normals: bool = False,
+        mirror: bool = False,
         primary_axis: str | None = None,
+        use_guide_objects: bool = False,
     ):
 
         self.input_curve = curve
@@ -47,9 +60,11 @@ class GuideCurve:
         self.output_names = output_names or []
         self.ignore_handles = ignore_handles
         self.align_normals = align_normals
+        self.mirror = mirror
         self.primary_axis = primary_axis
+        self.use_guide_objects = use_guide_objects
 
-        self.locator_list: list[GuideInfo] = []
+        self.locator_list: list[GuideLocator] = []
 
         self.curve: str = ""
         self.group: str = ""
@@ -61,41 +76,94 @@ class GuideCurve:
     # BUILD
     # =========================================================
 
-    def build(self) -> None:
+    def refresh_locator_data(self) -> None:
+        """
+        Update stored locator positions, rotations,
+        and world matrices after mirroring.
+        """
 
-        self.duplicate_and_resample_curve()
-        self.ensure_primary_axis()
-        self.create_group()
-        self.create_locators()
-
-        self.count = len(self.locator_list)
-
-    # =========================================================
-    # CURVE SETUP
-    # =========================================================
-
-    def ensure_primary_axis(self) -> None:
-        if self.primary_axis is None:
-            return
-
-        axis = self.primary_axis.upper().strip()
-
-        valid_axes = {
-            "+X": ("x", 1),
-            "-X": ("x", -1),
-            "+Y": ("y", 1),
-            "-Y": ("y", -1),
-            "+Z": ("z", 1),
-            "-Z": ("z", -1),
-        }
-
-        if axis not in valid_axes:
-            raise ValueError(
-                f"Invalid primary_axis: {self.primary_axis}. "
-                "Expected +X, -X, +Y, -Y, +Z, or -Z."
+        for locator in self.locator_list:
+            locator.pos = tuple(
+                cmds.xform(
+                    locator.name,
+                    query=True,
+                    worldSpace=True,
+                    translation=True,
+                )  # type:ignore
             )
 
-        axis_name, desired_sign = valid_axes[axis]
+            locator.rot = tuple(
+                cmds.xform(
+                    locator.name,
+                    query=True,
+                    worldSpace=True,
+                    rotation=True,
+                )  # type:ignore
+            )
+
+            matrix = cmds.xform(
+                locator.name,
+                query=True,
+                worldSpace=True,
+                matrix=True,
+            )
+
+            if not isinstance(matrix, (list, tuple)):
+                raise TypeError(f"Expected matrix, got {type(matrix).__name__}")
+
+            locator.matrix = [float(value) for value in matrix]
+
+    def mirror_curve_for_build(self) -> None:
+        """
+        Reflect the duplicated curve across world X = 0
+        before creating guides.
+        """
+
+        mirror_grp = cmds.group(
+            empty=True,
+            name=f"{self.input_curve}_tempMirror_grp",
+        )
+
+        cmds.parent(
+            self.curve,
+            mirror_grp,
+        )
+
+        cmds.setAttr(
+            f"{mirror_grp}.scaleX",
+            -1,  # type:ignore
+        )
+
+        cmds.parent(
+            self.curve,
+            world=True,
+        )
+
+        cmds.delete(mirror_grp)
+
+    def mirror_guide_group(self) -> None:
+        """
+        Mirror the completed guide group back across X.
+
+        The negative scale is retained on the group so
+        its children inherit the reflected transform.
+        """
+
+        cmds.setAttr(
+            f"{self.group}.scaleX",
+            -1,  # type:ignore
+        )
+
+    def enforce_curve_direction(self) -> bool:
+        """
+        Ensure the curve starts closest to the world X center
+        and progresses outward.
+
+        Works for both positive and negative X.
+
+        Returns:
+            bool: True if the curve was reversed.
+        """
 
         cvs = cmds.ls(
             f"{self.curve}.cv[*]",
@@ -103,31 +171,94 @@ class GuideCurve:
         )
 
         if len(cvs) < 2:
-            return
+            return False
 
-        start = cmds.pointPosition(cvs[0], world=True)
-        end = cmds.pointPosition(cvs[-1], world=True)
+        start_pos = cmds.pointPosition(
+            cvs[0],
+            world=True,
+        )
 
-        axis_index = {
-            "x": 0,
-            "y": 1,
-            "z": 2,
-        }[axis_name]
+        end_pos = cmds.pointPosition(
+            cvs[-1],
+            world=True,
+        )
 
-        delta = end[axis_index] - start[axis_index]
+        start_distance = abs(start_pos[0])
+        end_distance = abs(end_pos[0])
 
-        # Curve is effectively flat on this axis.
-        if abs(delta) < 1e-6:
-            return
-
-        current_sign = 1 if delta > 0 else -1
-
-        if current_sign != desired_sign:
+        if start_distance > end_distance:
             cmds.reverseCurve(
                 self.curve,
                 constructionHistory=False,
                 replaceOriginal=True,
             )
+
+            return True
+
+        return False
+
+    def ensure_primary_axis(self) -> None:
+        """Optionally orient the duplicated curve along a signed world axis."""
+        if self.primary_axis is None:
+            return
+
+        axis = self.primary_axis.upper().strip()
+        axis_indices = {
+            "+X": (0, 1),
+            "-X": (0, -1),
+            "+Y": (1, 1),
+            "-Y": (1, -1),
+            "+Z": (2, 1),
+            "-Z": (2, -1),
+        }
+        if axis not in axis_indices:
+            raise ValueError(
+                f"Invalid primary_axis: {self.primary_axis}. "
+                "Expected +X, -X, +Y, -Y, +Z, or -Z."
+            )
+
+        cvs = cmds.ls(f"{self.curve}.cv[*]", flatten=True) or []
+        if len(cvs) < 2:
+            return
+
+        axis_index, desired_sign = axis_indices[axis]
+        start = cmds.pointPosition(cvs[0], world=True)
+        end = cmds.pointPosition(cvs[-1], world=True)
+        delta = end[axis_index] - start[axis_index]
+        if abs(delta) < 1e-6:
+            return
+
+        if (1 if delta > 0 else -1) != desired_sign:
+            cmds.reverseCurve(
+                self.curve,
+                constructionHistory=False,
+                replaceOriginal=True,
+            )
+
+    def build(self) -> None:
+
+        self.duplicate_and_resample_curve()
+
+        if self.mirror:
+            self.mirror_curve_for_build()
+
+        if self.primary_axis is None:
+            self.enforce_curve_direction()
+        else:
+            self.ensure_primary_axis()
+
+        self.create_group()
+        self.create_locators()
+
+        if self.mirror:
+            self.mirror_guide_group()
+            self.refresh_locator_data()
+
+        self.count = len(self.locator_list)
+
+    # =========================================================
+    # CURVE SETUP
+    # =========================================================
 
     def duplicate_and_resample_curve(self) -> None:
 
@@ -186,7 +317,22 @@ class GuideCurve:
             else:
                 loc_name = f"{self.input_curve}_cv_{str(i + 1).zfill(padding)}"
 
-            loc = create_guide_from_position(pos=pos, guide_name=loc_name, parent=self.group)
+            if self.use_guide_objects:
+                # Opt-in: use Workshop's custom guide creation helper.
+                guide = create_guide_from_position(
+                    pos=pos,
+                    guide_name=loc_name,
+                    parent=self.group,
+                )
+                loc = guide.name
+            else:
+                # Original behavior: native Maya locator and parenting.
+                loc: str = cmds.spaceLocator(name=loc_name)[0]  # type:ignore
+                cmds.xform(
+                    loc,
+                    worldSpace=True,
+                    translation=pos,  # type:ignore
+                )
 
             # -------------------------------------------------
             # Rotation
@@ -198,16 +344,33 @@ class GuideCurve:
                 rot = self._calculate_rotation_from_cvs(cvs, i)
 
                 cmds.xform(
-                    loc.name,
+                    loc,
                     worldSpace=True,
                     rotation=rot,
                 )
+
+            if not self.use_guide_objects:
+                cmds.parent(loc, self.group)
 
             # -------------------------------------------------
             # Store Data
             # -------------------------------------------------
 
-            self.locator_list.append(loc)
+            matrix = cmds.xform(
+                loc,
+                query=True,
+                worldSpace=True,
+                matrix=True,
+            )
+
+            locator_data = GuideLocator(
+                name=loc,
+                pos=tuple(pos),  # type:ignore
+                rot=tuple(rot),
+                matrix=matrix,  # type:ignore
+            )
+
+            self.locator_list.append(locator_data)
 
     # =========================================================
     # NORMAL / ROTATION

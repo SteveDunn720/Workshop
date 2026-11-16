@@ -121,10 +121,10 @@ class Eye:
             side=self.side,
             guides=self.guides,
             rig_size=self.rig_size,
-            main_ctrl=self.main_ctrl.ctrl,
+            main_ctrl=self.main_ctrl,
             parent=self.main_grp,
             joint_parent=self.main_jnt,
-            component_grp=self.component_grp,
+            component_grp=self.guts,
             control_grp=self.control_grp,
         )
         self.eyelid.build(
@@ -137,25 +137,25 @@ class Eye:
             side=self.side,
             guides=self.guides,
             rig_size=self.rig_size,
-            main_ctrl=self.main_ctrl.ctrl,
+            main_ctrl=self.main_ctrl,
             parent=self.main_grp,
             joint_parent=self.main_jnt,
-            component_grp=self.component_grp,
+            component_grp=self.guts,
             control_grp=self.control_grp,
             divisions=self.socket_divisions,
             follow_default=self.socket_follow_default,
         )
 
-        self.socket.build_socket()
+        self.socket.build()
 
         self.eyeball = Eyeball(
             side=self.side,
             guides=self.guides,
             rig_size=self.rig_size,
-            main_ctrl=self.main_ctrl.ctrl,
+            main_ctrl=self.main_ctrl,
             parent=self.main_grp,
             joint_parent=self.main_jnt,
-            component_grp=self.component_grp,
+            component_grp=self.guts,
             control_grp=self.control_grp,
         )
 
@@ -190,6 +190,6 @@ class Eye:
 
         matrix_constraint(
             source_transform=self.look_parent,
-            constrain_transform=self.eyeball.look_ctrl.offset,
+            constrain_transform=self.eyeball.look_ctrl.top,
             keep_offset=True,
         )
