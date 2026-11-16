@@ -7,6 +7,7 @@ from Workshop.guide.core import GuideInfo
 from Workshop.maya_api.node import BlendColorsNode, MultiplyDivideNode, SumNode
 from Workshop.nurbs.curve import get_nurbs_curve_radius
 from Workshop.transform.matrix import matrix_constraint
+from Workshop.maya_api.attribute_utils import create_attribute
 
 from ..module_shared import module_prep
 from .eyelid import Eyelid
@@ -185,10 +186,21 @@ class Eye:
                 color = "B"
             add_node.output.connect_to(f"{self.eye_look_offset_node.color1}{color}")
 
-        self.eye_look_offset_node.blender.set(0.1)
+        eyelid_follow_attr = create_attribute(
+            primary_object=self.main_ctrl.ctrl,
+            attr_name="eyelidFollow",
+            attr_type="double",
+            default=self.eyelid_follow_default,
+            min=0.0,
+            max=1.0,
+            keyable=True,
+        )
+
         self.eye_look_offset_node.color2.set((0, 0, 0))
-        self.eye_look_offset_node.output.connect_to(f"{self.eyelid.look_offset}.rotate")
-        self.eye_look_offset_node.blender.connect_from(f"{self.main_ctrl.ctrl}.eyelidFollow")
+        self.eye_look_offset_node.output.connect_to(
+            f"{self.eyelid.look_offset}.rotate"
+        )
+        self.eye_look_offset_node.blender.connect_from(eyelid_follow_attr)
 
         matrix_constraint(
             source_transform=self.look_parent,

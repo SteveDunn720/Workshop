@@ -95,9 +95,9 @@ class Eyeball:
         return offsets
 
     def create_eye_preview_circle(self, name_suffix: str, parent: str) -> str:
-        eye_radius: float =  get_nurbs_curve_radius(self.guides["eye_diam"])
+        eye_radius: float =  get_nurbs_curve_radius(self.guides["eye_diam"].name)
 
-        eye_center_pos = get_position(self.guides["center_piv"])
+        eye_center_pos = get_position(self.guides["center"].name)
 
         crv: str = cmds.circle(  # type:ignore
             name=f"preview_{name_suffix}_crv",
@@ -108,7 +108,7 @@ class Eyeball:
         )[0]
 
         cmds.parent(crv, parent)
-        match_location(transform=crv, target_transform=self.guides["center_piv"])
+        match_location(transform=crv, target_transform=self.guides["center"].name)
 
         return crv
 
@@ -179,12 +179,12 @@ class Eyeball:
         connect_attributes(offset_x_attr, [f"{obj}.translateX"])
 
     def build_eyeball(self) -> None:
-        eye_radius: float =  get_nurbs_curve_radius(self.guides["eye_diam"])
+        eye_radius: float =  get_nurbs_curve_radius(self.guides["eye_diam"].name)
         add_attribute_header(target=self.main_ctrl.ctrl, name="dilation_controls")
 
         self.eye_ctrl = create_control(
             name=f"eye_{self.side}",
-            parent=self.main_ctrl,
+            parent=self.main_ctrl.ctrl,
             transform=self.guides["center"].name,
             control_shape="circle",
             direction="z",
@@ -232,11 +232,11 @@ class Eyeball:
         cmds.orientConstraint(self.look_root, self.eye_ctrl.top, maintainOffset=True)
 
         pupil_degree: float = round(
-            self.compare_radius_and_angle(self.guides["eye_diam"], self.guides["pupil_diam"])
+            self.compare_radius_and_angle(self.guides["eye_diam"].name, self.guides["pupil_diam"].name)
         )
 
         iris_degree: float = round(
-            self.compare_radius_and_angle(self.guides["eye_diam"], self.guides["iris_diam"])
+            self.compare_radius_and_angle(self.guides["eye_diam"].name, self.guides["iris_diam"].name)
         )
 
         pupil_percent = pupil_degree / 90
@@ -286,7 +286,7 @@ class Eyeball:
                 dilation_offset_node = SumNode(
                     name=f"{circle_type}_dilation_mult_{self.side}_ADL"
                 )
-                dilation_offset_node.input[1].connect_from(f"{self.main_ctrl}.{circle_type}_dilation")
+                dilation_offset_node.input[1].connect_from(f"{self.main_ctrl.ctrl}.{circle_type}_dilation")
                 dilation_offset_node.input[0].set(percents[i] * 10)
                 dilation_offset_node.output.connect_to(f"{circle}.dilation_amount")
                 
@@ -297,11 +297,11 @@ class Eyeball:
                     dilation_attr=f"{dilation_offset_node.output}",
                     new_attr=False,
                     new_attr_tgt=None,
-                    scale_x_attr=f"{self.main_ctrl}.{circle_type}_scaleX",
-                    scale_y_attr=f"{self.main_ctrl}.{circle_type}_scaleY",
-                    offset_x_attr=f"{self.main_ctrl}.{circle_type}_offsetX",
-                    offset_y_attr=f"{self.main_ctrl}.{circle_type}_offsetY",
-                    offset_z_attr=f"{self.main_ctrl}.{circle_type}_offsetZ",
+                    scale_x_attr=f"{self.main_ctrl.ctrl}.{circle_type}_scaleX",
+                    scale_y_attr=f"{self.main_ctrl.ctrl}.{circle_type}_scaleY",
+                    offset_x_attr=f"{self.main_ctrl.ctrl}.{circle_type}_offsetX",
+                    offset_y_attr=f"{self.main_ctrl.ctrl}.{circle_type}_offsetY",
+                    offset_z_attr=f"{self.main_ctrl.ctrl}.{circle_type}_offsetZ",
                 )
 
         # joints
@@ -315,7 +315,7 @@ class Eyeball:
             jnt = create_joint(
                 name=f"eye_dilation_{i:02d}_{self.side}",
                 parent=parent,
-                transform=self.guides["center_piv"].name,
+                transform=self.guides["center"].name,
                 connect=False,
             )
             self.dilation_joints.append(jnt)
@@ -343,19 +343,19 @@ class Eyeball:
             )
             blendnode.blender.set(blend_num)
 
-            blendnode.color1.g.connect_from(source_attr=f"{self.main_ctrl}.{blend[0]}_scaleY")
-            blendnode.color1.b.connect_from(source_attr=f"{self.main_ctrl}.{blend[0]}_scaleX")
-            blendnode.color2.g.connect_from(source_attr=f"{self.main_ctrl}.{blend[1]}_scaleY")
-            blendnode.color2.b.connect_from(source_attr=f"{self.main_ctrl}.{blend[1]}_scaleX")
+            blendnode.color1.g.connect_from(source_attr=f"{self.main_ctrl.ctrl}.{blend[0]}_scaleY")
+            blendnode.color1.b.connect_from(source_attr=f"{self.main_ctrl.ctrl}.{blend[0]}_scaleX")
+            blendnode.color2.g.connect_from(source_attr=f"{self.main_ctrl.ctrl}.{blend[1]}_scaleY")
+            blendnode.color2.b.connect_from(source_attr=f"{self.main_ctrl.ctrl}.{blend[1]}_scaleX")
 
             blendnode2.blender.set(blend_num)
 
-            blendnode2.color1.g.connect_from(source_attr=f"{self.main_ctrl}.{blend[0]}_offsetY")
-            blendnode2.color1.b.connect_from(source_attr=f"{self.main_ctrl}.{blend[0]}_offsetX")
-            blendnode2.color2.g.connect_from(source_attr=f"{self.main_ctrl}.{blend[1]}_offsetY")
-            blendnode2.color2.b.connect_from(source_attr=f"{self.main_ctrl}.{blend[1]}_offsetX")
-            blendnode2.color1.r.connect_from(source_attr=f"{self.main_ctrl}.{blend[0]}_offsetZ")
-            blendnode2.color2.r.connect_from(source_attr=f"{self.main_ctrl}.{blend[1]}_offsetZ")
+            blendnode2.color1.g.connect_from(source_attr=f"{self.main_ctrl.ctrl}.{blend[0]}_offsetY")
+            blendnode2.color1.b.connect_from(source_attr=f"{self.main_ctrl.ctrl}.{blend[0]}_offsetX")
+            blendnode2.color2.g.connect_from(source_attr=f"{self.main_ctrl.ctrl}.{blend[1]}_offsetY")
+            blendnode2.color2.b.connect_from(source_attr=f"{self.main_ctrl.ctrl}.{blend[1]}_offsetX")
+            blendnode2.color1.r.connect_from(source_attr=f"{self.main_ctrl.ctrl}.{blend[0]}_offsetZ")
+            blendnode2.color2.r.connect_from(source_attr=f"{self.main_ctrl.ctrl}.{blend[1]}_offsetZ")
 
             self.dilation_nodes(
                 circle_type=f"loop{i:02d}",
