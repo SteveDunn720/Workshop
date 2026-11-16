@@ -109,6 +109,7 @@ class Eye:
             control_shape=self.main_control_shape,
             direction=self.main_control_direction, #type:ignore
             shape_position_offset=offset_pos,
+            color_type=self.main_color
         )
 
         self.main_jnt = create_joint(
@@ -127,7 +128,10 @@ class Eye:
             joint_parent=self.main_jnt,
             component_grp=self.guts,
             control_grp=self.control_grp,
-            guts=self.guts
+            guts=self.guts,
+            main_color = self.main_color,
+            sub_color = self.sub_color,
+
         )
         self.eyelid.build(
             sub_divisions=self.eyelid_sub_divisions,
@@ -147,6 +151,8 @@ class Eye:
             control_grp=self.control_grp,
             divisions=self.socket_divisions,
             follow_default=self.socket_follow_default,
+            main_color = self.main_color,
+            sub_color = self.sub_color,
         )
 
         self.socket.build()
@@ -160,6 +166,7 @@ class Eye:
             joint_parent=self.main_jnt,
             component_grp=self.guts,
             control_grp=self.control_grp,
+            main_color = self.main_color,
         )
 
         self.eyeball.build_eyeball()

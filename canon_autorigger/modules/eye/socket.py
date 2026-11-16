@@ -22,6 +22,8 @@ class Socket:
         guides: dict,
         side: str,
         parent: str,
+        main_color:str,
+        sub_color:str,
         joint_parent: str,
         component_grp: str,
         control_grp: str,
@@ -43,6 +45,8 @@ class Socket:
         self.divisions = divisions
         self.follow_default = follow_default
         self.guts = guts
+        self.main_color = main_color
+        self.sub_color = sub_color
 
     def disconnect_socket_joint_scale_shear(self) -> None:
         """Remove scale/shear drivers from socket joints."""
@@ -319,6 +323,7 @@ class Socket:
                 size=self.rig_size * 1/180,
                 control_shape="circle",
                 direction="z",
+                color_type=self.main_color
             )
             self.corner_controls[corner] = control
             self.socket_driver_controls.append(control)
@@ -334,6 +339,7 @@ class Socket:
                 control_shape="round_square",
                 direction="z",
                 dimensions=(1, 0.2, 0.2),
+                color_type=self.main_color
             )
 
             self.parent_controls[f"{vertical}_ctrl"] = control
@@ -365,6 +371,7 @@ class Socket:
                     size=self.rig_size * 1/180,
                     control_shape="circle",
                     direction="z",
+                    color_type=self.sub_color
                 )
                 joint = create_joint(
                     name=name,

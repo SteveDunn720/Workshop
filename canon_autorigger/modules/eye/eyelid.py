@@ -33,13 +33,15 @@ class Eyelid:
         joint_parent: str,
         component_grp: str,
         control_grp: str,
+        main_color:str,
+        sub_color:str,
         rig_size: float = 1.0,
         guts: str = "logic",
         orient_sub_expression_controls: bool = False,
         collison_gap_default:float = 0.07,
         soft_distance = .1,
         expression_control_shape:str = "hexagon",
-        expresison_rig_size:list = [1/180, 1/200, 1/220]
+        expresison_rig_size:list = [1/180, 1/200, 1/220],
     ) -> None:
         
         if guides is None:
@@ -62,6 +64,8 @@ class Eyelid:
         self.soft_distance = soft_distance
         self.expression_control_shape = expression_control_shape
         self.expresison_rig_size = expresison_rig_size
+        self.main_color = main_color
+        self.sub_color = sub_color
 
     # -------------------
     # Helper Functions
@@ -178,7 +182,7 @@ class Eyelid:
         # Smooth collision activation
         # ---------------------------------------------------------
         collision_remap = RemapValueNode(name=f"{name}_collision_RMV")
-        collision_remap.input_min.set(-self.soft_distance * self.rig_size)
+        collision_remap.input_min.set(-self.soft_distance * self.rig_size/45)
         collision_remap.input_max.set(0)
         collision_remap.output_min.set(0)
         collision_remap.output_max.set(1)
@@ -414,6 +418,7 @@ class Eyelid:
             size=size,
             control_shape=control_shape,
             direction="z",
+            color_type=self.main_color
         )
 
         # ---------------------------------------------------------
@@ -1128,8 +1133,8 @@ class Eyelid:
         positions = sorted(positions, key=lambda item: item[0])
         node = RemapValueNode(name=name)
         node.input_value.connect_from(input_attr)
-        create_dev_attribute(control=self.main_ctrl.ctrl, attribute_name=f"{name}_input_min", default=positions[0][0], rig_part=f'{self.side}_eyelid' )
-        create_dev_attribute(control=self.main_ctrl.ctrl, attribute_name=f"{name}_input_max", default=positions[-1][0], rig_part=f'{self.side}_eyelid' )
+        node.input_min.set(positions[0][0])
+        node.input_max.set(positions[-1][0])
         node.output_max.set(1)
         node.output_min.set(0)
 
@@ -1770,6 +1775,7 @@ class Eyelid:
                 control_shape="semi_circle",
                 direction="z",
                 dimensions=(1, 1, 1 if vertical == "upper" else -1),
+                color_type=self.main_color
                 #shaposition_offset=(0, 0, 1),
             )
 
@@ -1807,6 +1813,7 @@ class Eyelid:
                     control_shape="circle",
                     direction="z",
                     sdk_offset=True,
+                    color_type=self.sub_color
                 )
                 sub_jnt = create_joint(
                     name=f"{vertical}_{i}_{self.side}",

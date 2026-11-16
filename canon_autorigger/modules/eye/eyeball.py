@@ -24,13 +24,14 @@ class Eyeball:
         self,
         main_ctrl:Control,
         guides: dict,
+        main_color:str,
         side: str = "L",
         rig_size: float = 1.0,
         parent: str = "",
         joint_parent: str = "",
         component_grp: str = "",
         control_grp: str = "",
-        divisions:int = 10
+        divisions:int = 10,
     ) -> None:
         if guides is None:
             guides = {}
@@ -43,6 +44,7 @@ class Eyeball:
         self.component_grp = component_grp
         self.control_grp = control_grp
         self.divisions = divisions
+        self.main_color = main_color
 
     # -------------------
     # Helper Functions
@@ -190,6 +192,7 @@ class Eyeball:
             direction="z",
             size=eye_radius / 4,
             shape_position_offset=(0, 0, eye_radius),
+            color_type=self.main_color
         )
         self.eye_jnt = create_joint(
             transform=self.eye_ctrl.ctrl, name=f"eye_{self.side}", parent=self.joint_parent
@@ -202,6 +205,7 @@ class Eyeball:
             control_shape="circle",
             direction="z",
             size=eye_radius / 2,
+            color_type=self.main_color
         )
 
         self.look_root = create_joint(
