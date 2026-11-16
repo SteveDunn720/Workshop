@@ -39,7 +39,7 @@ class Eyelid:
         collison_gap_default:float = 0.07,
         soft_distance = .1,
         expression_control_shape:str = "hexagon",
-        expresison_rig_size:list = [.2, .25, 12]
+        expresison_rig_size:list = [1/180, 1/200, 1/220]
     ) -> None:
         
         if guides is None:
@@ -232,7 +232,7 @@ class Eyelid:
             gap_active.input2.x.connect_from(collision_weight)
             gap_sum = PlusMinusAverageNode(name=f"{name}_{suffix}_gap_PMA")
             gap_sum.input_3d[0].connect_from(dcm.output_translate)
-            gap_sum.input_3d[1].y.connect_from(gap_active.output.x)
+            connect_attributes(source=str(gap_active.output.x), destination=[f"{gap_sum}.input3D[1].input3Dy"])
             gap_sum.output_3d.connect_to(f"{collision}.translate")
             dcm.output_rotate.connect_to(f"{collision}.rotate")
 
@@ -492,8 +492,8 @@ class Eyelid:
             "lower": [],
         }
 
-        upper_curve = self.guides["eyelid_upper "].name
-        lower_curve = self.guides["eyelid_lower "].name
+        upper_curve = self.guides["upper"].name
+        lower_curve = self.guides["lower"].name
 
         curves = {
             "upper": upper_curve,
@@ -911,7 +911,7 @@ class Eyelid:
         # -----------------------------------------------------
         # Eye center position
         # -----------------------------------------------------
-        center = self.guides["center_piv"].pos
+        center = self.guides["center"].pos
         # -----------------------------------------------------
         # Build upper/lower chains
         # -----------------------------------------------------
@@ -921,7 +921,7 @@ class Eyelid:
                 parent=self.eye_ik_grp,
             )
 
-            rest_curve = self.blink_guides[f"eyelid_{vertical}"].name
+            rest_curve = self.blink_guides[vertical]
 
             animated_curve = self.blink_curves[vertical]
 
@@ -947,7 +947,7 @@ class Eyelid:
 
                 # Use the same matrix as the sub-control.
                 control_matrix = self.get_curve_point_matrix(
-                    curve=self.guides[f"eyelid_{vertical}"].name,
+                    curve=self.guides[vertical].name,
                     parameter=percent,
                     tangent_orient=self.orient_sub_expression_controls,
                 )
@@ -1181,25 +1181,25 @@ class Eyelid:
         # ---------------------------------------------------------
 
         guide_keys = [
-            "eyelid_upblink",
-            "eyelid_upper",
-            "eyelid_blink",
-            "eyelid_lower",
-            "eyelid_lowblink",
+            "upblink",
+            "upper",
+            "blink",
+            "lower",
+            "lowblink",
         ]
 
-        heights = {key: self.get_curve_mid_y(self.blink_guides[key].name) for key in guide_keys}
+        heights = {key: self.get_curve_mid_y(self.blink_guides[key]) for key in guide_keys}
 
-        up_y = heights["eyelid_upblink"]
-        upper_y = heights["eyelid_upper"]
-        blink_y = heights["eyelid_blink"]
-        lower_y = heights["eyelid_lower"]
-        down_y = heights["eyelid_lowblink"]
+        up_y = heights["upblink"]
+        upper_y = heights["upper"]
+        blink_y = heights["blink"]
+        lower_y = heights["lower"]
+        down_y = heights["lowblink"]
 
         if not (up_y > upper_y > blink_y > lower_y > down_y):
             raise ValueError(
                 "Eyelid guide midpoint Y positions must follow:\n"
-                "upblink > upper_rest > blink > lower_rest > downblink\n"
+                "upblink > upper > blink > lower > lowblink\n"
                 f"Received: {heights}"
             )
 
@@ -1211,19 +1211,19 @@ class Eyelid:
 
         configurations = {
             "upper": {
-                "rest": "eyelid_upper ",
+                "rest": "upper",
                 "targets": [
-                    "eyelid_upblink",
-                    "eyelid_blink",
-                    "eyelid_downblink",
+                    "upblink",
+                    "blink",
+                    "lowblink",
                 ],
             },
             "lower": {
-                "rest": "eyelid_lower ",
+                "rest": "lower",
                 "targets": [
-                    "eyelid_upblink",
-                    "eyelid_blink",
-                    "eyelid_downblink",
+                    "upblink",
+                    "blink",
+                    "lowblink",
                 ],
             },
         }
@@ -1261,7 +1261,7 @@ class Eyelid:
                     target=(curve, index, target, 1.0),
                 )
             # Allow weights greater than 1 for extrapolation.
-            set_attribute(attr=f"{blendshape}.weight", value=len(targets))
+            # Individual target weights are driven below; no compound weight assignment.
 
             expression_index = len(targets) - 1
 
@@ -1394,10 +1394,6 @@ class Eyelid:
         # Shared setup group
         # ----------------------------------------
 
-        if not cmds.objExists(self.guts):
-            raise ValueError(f"Eye setup parent does not exist: {self.guts}")
-
-
         self.eyes_setup_grp = create_transform(
             name=f'eyelid_logic_{self.side}',
             parent=self.guts,
@@ -1422,11 +1418,11 @@ class Eyelid:
         # ----------------------------------------
 
         guide_keys = [
-            "eyelid_upblink",
-            "eyelid_upper",
-            "eyelid_blink",
-            "eyelid_lower",
-            "eyelid_lowblink",
+            "upblink",
+            "upper",
+            "blink",
+            "lower",
+            "lowblink",
         ]
 
         for key in guide_keys:
@@ -1435,7 +1431,7 @@ class Eyelid:
             if not cmds.objExists(source_curve):
                 raise ValueError(f"Missing eyelid guide: {source_curve}")
 
-            duplicate_name = f"{key}_{self.side}_target"
+            duplicate_name = f"eyelid_{key}_{self.side}_target"
 
             duplicate = cmds.duplicate(
                 source_curve,
@@ -1455,7 +1451,7 @@ class Eyelid:
         # ----------------------------------------
 
         for vertical in ("upper", "lower"):
-            rest_key = f"eyelid_{vertical} "
+            rest_key = vertical
 
             curve = cmds.duplicate(
                 self.blink_guides[rest_key],
@@ -1477,7 +1473,7 @@ class Eyelid:
         self.expression_rest_curves = {}
 
         for vertical in ("upper", "lower"):
-            rest_key = f"eyelid_{vertical} "
+            rest_key = vertical
 
             curve = cmds.duplicate(
                 self.blink_guides[rest_key],
@@ -1760,7 +1756,7 @@ class Eyelid:
         for vertical in ["upper", "lower"]:
             side_mod = -1 if self.side == "R" else 1
             blink_matrix = self.get_curve_point_matrix(
-                curve=self.guides[f"eyelid_{vertical}"].name,
+                curve=self.guides[vertical].name,
                 parameter=0.5,
                 tangent_orient=False,
                 mirror=self.side == "R",
@@ -1770,7 +1766,7 @@ class Eyelid:
                 name=f"{vertical}_blink_{self.side}",
                 parent=self.main_ctrl.ctrl,
                 transform=blink_matrix,
-                size=self.rig_size,
+                size=self.rig_size * 1/80,
                 control_shape="semi_circle",
                 direction="z",
                 dimensions=(1, 1, 1 if vertical == "upper" else -1),
@@ -1798,7 +1794,7 @@ class Eyelid:
             for i in range(sub_divisions):
                 percent = i / (sub_divisions - 1)
                 matrix = self.get_curve_point_matrix(
-                    curve=self.guides[f"eyelid_{vertical}"].name,
+                    curve=self.guides[vertical].name,
                     parameter=percent,
                     tangent_orient=True,
                 )
@@ -1807,7 +1803,7 @@ class Eyelid:
                     name=f"{vertical}_{i}_{self.side}",
                     parent=self.sub_grp,
                     transform=matrix,
-                    size=self.rig_size / 10,
+                    size=self.rig_size * 1/180,
                     control_shape="circle",
                     direction="z",
                     sdk_offset=True,

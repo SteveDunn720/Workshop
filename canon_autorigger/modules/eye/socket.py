@@ -8,7 +8,7 @@ from Workshop.maya_api.node import BlendMatrixNode, MultMatrixNode
 from Workshop.transform.utils import create_transform
 
 from Workshop.guide.curve import GuideCurve
-from Workshop.maya_api.attribute_utils import add_proxy, connect_attributes, create_attribute, disconnect_attribute, set_attribute
+from Workshop.maya_api.attribute_utils import add_attribute_header, add_proxy, connect_attributes, create_attribute, disconnect_attribute, set_attribute
 from Workshop.skin.split.tag import tag_for_weight_split
 from Workshop.spline.matrix_spline.build import matrix_spline_from_transforms
 from Workshop.spline.matrix_spline.core import MatrixSpline
@@ -17,6 +17,7 @@ from Workshop.spline.matrix_spline.core import MatrixSpline
 class Socket:
     def __init__(
         self,
+        guts:str,
         main_ctrl:Control,
         guides: dict,
         side: str,
@@ -41,6 +42,7 @@ class Socket:
         self.rig_size = rig_size
         self.divisions = divisions
         self.follow_default = follow_default
+        self.guts = guts
 
     def disconnect_socket_joint_scale_shear(self) -> None:
         """Remove scale/shear drivers from socket joints."""
@@ -264,6 +266,12 @@ class Socket:
 
     def build(self) -> None:
         """Build socket drivers and evenly spaced sub-controls, without a spline."""
+        add_attribute_header(target=self.main_ctrl.ctrl, name='socket_controls')  #sub_socket
+        self.collision_attr = create_attribute(
+                primary_object=self.main_ctrl.ctrl,
+                attr_name="sub_socket",
+                attr_type="bool",
+            )
         self.major_controls: dict[str, Control] = {}
         self.parent_controls: dict[str, Control] = {}
         self.corner_controls: dict[str, Control] = {}
@@ -285,7 +293,7 @@ class Socket:
         curve_guides = {}
         for vertical in ("upper", "lower"):
             curve_guides[vertical] = GuideCurve(
-                curve=self.guides[f"socket_{vertical}_curve"],
+                curve=self.guides[f"socket_{vertical}"].name,
                 resample_amount=7,
                 output_names=[
                     f"{vertical}_inner_corner",
@@ -308,7 +316,7 @@ class Socket:
                 name=f"socket_{corner}_corner_{self.side}",
                 parent=self.socket_follow_grp,
                 transform=guide.name,
-                size=self.rig_size / 4,
+                size=self.rig_size * 1/180,
                 control_shape="circle",
                 direction="z",
             )
@@ -316,22 +324,29 @@ class Socket:
             self.socket_driver_controls.append(control)
 
         for vertical in ("upper", "lower"):
+            mid_guide = curve_guides[vertical].locator_list[3]
+
             control = create_control(
                 name=f"socket_{vertical}_{self.side}",
                 parent=self.socket_follow_grp,
-                transform=self.guides[f"socket_mid_{vertical}"],
-                size=self.rig_size / 2,
+                transform=mid_guide.name,
+                size=self.rig_size * 1/180,
                 control_shape="round_square",
                 direction="z",
                 dimensions=(1, 0.2, 0.2),
             )
+
             self.parent_controls[f"{vertical}_ctrl"] = control
             self.socket_driver_controls.append(control)
-            add_proxy(source=f"{self.main_ctrl}.sub_socket", proxy_list=[control.ctrl])
+
+            add_proxy(
+                source=f"{self.main_ctrl.ctrl}.sub_socket",
+                proxy_list=[control.ctrl],
+            )
 
         # Build evenly spaced sub-controls and their separate skeleton joints.
         for vertical in ("upper", "lower"):
-            curve = self.guides[f"socket_{vertical}_curve"]
+            curve = self.guides[f"socket_{vertical}"].name
             joints: list[str] = []
 
             for index in range(self.divisions):
@@ -347,7 +362,7 @@ class Socket:
                     name=name,
                     parent=self.sub_socket_controls_grp,
                     transform=matrix,
-                    size=self.rig_size / 8,
+                    size=self.rig_size * 1/180,
                     control_shape="circle",
                     direction="z",
                 )
@@ -392,12 +407,12 @@ class Socket:
         for vertical in ("upper", "lower"):
             self.socket_splines[vertical] = self.create_eyelid_driver_spline(
                 name=f"socket_{vertical}_{self.side}",
-                curve=self.guides[f"socket_{vertical}_curve"],
+                curve=self.guides[f"socket_{vertical}"].name,
                 inner_corner=self.corner_controls["inner"].ctrl,
                 middle_control=self.parent_controls[f"{vertical}_ctrl"].ctrl,
                 outer_corner=self.corner_controls["outer"].ctrl,
                 sub_controls=[control.ctrl for control in self.sub_socket_controls[vertical]],
-                parent="setup",
+                parent=self.guts,
             )
         # Prevent inverse global-scale compensation on socket joints.
-        self.disconnect_socket_joint_scale_shear()
+        #self.disconnect_socket_joint_scale_shear()

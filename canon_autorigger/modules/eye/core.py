@@ -46,7 +46,7 @@ class Eye:
         blink_extension: float = 2.0,
         collision_push: float = 0.5,
         socket_follow_default: float = 0.1,
-        root_rig_size:float = 1/10,
+        root_rig_size:float = 1/40,
 
     ):
         self.part: str = part
@@ -126,6 +126,7 @@ class Eye:
             joint_parent=self.main_jnt,
             component_grp=self.guts,
             control_grp=self.control_grp,
+            guts=self.guts
         )
         self.eyelid.build(
             sub_divisions=self.eyelid_sub_divisions,
@@ -135,6 +136,7 @@ class Eye:
 
         self.socket = Socket(
             side=self.side,
+            guts=self.guts,
             guides=self.guides,
             rig_size=self.rig_size,
             main_ctrl=self.main_ctrl,
