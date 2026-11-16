@@ -36,13 +36,8 @@ def build(rig_name:str, config:rig_config):
 
     #root controls
 
-
     root = modules.Root(rig_size=canon.scene_size, joint_parent=canon.joints, parent=canon.rig, guides=[guides.root])
     root_info = root.build()
-    
-
-
-
     #middle modules
 
     hip = modules.Hip(rig_size=canon.scene_size, parent=canon.rig, joint_parent=root_info.joint, control_space=[root_info.offset_control.ctrl], guides=[guides.hip])
@@ -81,7 +76,6 @@ def build(rig_name:str, config:rig_config):
         hand = modules.Hand(part='hand', rig_size=canon.scene_size, joint_parent=arm_info.bind_joints[-1],  parent=canon.rig, side=side, guides=guides.arm[side][-1], fk_control_space=[arm_info.fk_controls[-1].ctrl], ik_control_space=[root_info.root_control.ctrl, hipinfo.hip_control.ctrl, spineinfo.switch_joints[-1], clav_info.control.ctrl,], ik_hook=arm_info.end_ik_hook, fk_hook=arm_info.fk_hook , fkik_switch_attr=arm_info.fk_ik_switch, arm_info=arm_info)
         hand_info = hand.build()
 
-        
         metacarpal = modules.Metacarpal(part='metacarpal', joint_parent=hand_info.joint , rig_size=canon.scene_size, parent=canon.rig, side=side, guides=guides.metacarpal[side], control_space=[hand_info.switch],)
         metacarpal_info = metacarpal.build()
 
@@ -147,6 +141,9 @@ def build(rig_name:str, config:rig_config):
     nose = modules.Nose(rig_size=canon.scene_size, parent=canon.rig, joint_parent=faceinfo.mid_joint, guides=guides.nose,  control_space=[faceinfo.muppet_control], mouth=mouthinfo.master, jaw=jawinfo.jaw, head=headinfo.control, bridge_space=[faceinfo.upper_control])
     noseinfo = nose.build()
 
+    look = modules.Look(rig_size=canon.scene_size, parent=canon.rig, parent_jnt=faceinfo.mid_joint, guides=[guides.eye['L']["aim"], guides.eye['R']["aim"]], control_parent=canon.rig, parent_spaces=[headinfo.control.ctrl])
+    look.build()
+
     for side in ["L", "R"]:
         nl_fold = modules.NL_Fold(rig_size=canon.scene_size, side=side, parent=canon.rig, joint_parent=faceinfo.lower_joint, guides=[guides.nl[0]], control_space=[faceinfo.lower_control], upper_driver=noseinfo.control, lower_driver=mouthinfo.macro[f'upper_corner_{side}'], corner=mouthinfo.corner_controls[side] )
         nl_foldinfo = nl_fold.build()
@@ -159,6 +156,9 @@ def build(rig_name:str, config:rig_config):
 
         ear = modules.Ear(rig_size=canon.scene_size, side=side, parent=canon.rig, joint_parent=faceinfo.mid_joint, guides=guides.ear, main_space=[faceinfo.muppet_control], driver=jawinfo.jaw, head_space=headinfo.control)
         earinfo = ear.build()
+
+        eye = modules.Eye(rig_size=canon.scene_size, part="eye", side=side, parent=canon.rig, joint_parent=faceinfo.upper_joint, guides=guides.eye[side], muppet=faceinfo.muppet_control, jaw=jawinfo.jaw, control_parent=canon.rig, control_space=[faceinfo.upper_control.ctrl], look_parent=look.main_ctrl.ctrl)
+        eye.build()
             
     
       

@@ -16,7 +16,7 @@ class Look:
         rig_size: float = 1.0,
         parent_jnt: str = "face_jnt",
         parent_spaces:list = [],
-        control_size = 2.5,
+        control_size = 1/40,
         control_shape = "round_square",
         dimensions = (3, 1, 1),
     ):

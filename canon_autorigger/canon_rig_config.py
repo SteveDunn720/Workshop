@@ -136,7 +136,7 @@ def read_guides(rig_name:str='Canon')->cannon_guide_config:
                     "lowblink": read_guide(f"eyelid_lowblink_{side}_guide"),
                     "socket_upper": read_guide(f"socket_upper_{side}_guide"),
                     "socket_lower": read_guide(f"socket_lower_{side}_guide"),
-                    "eye_diam": read_guide(f"eye_{side}_guide"),
+                    "eye_diam": read_guide(f"eyeball_{side}_guide"),
                     "iris_diam": read_guide(f"iris_{side}_guide"),
                     "pupil_diam": read_guide(f"pupil_{side}_guide"),
                 }

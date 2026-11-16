@@ -18,7 +18,7 @@ from Workshop.skin.split.tag import tag_for_weight_split
 from Workshop.nurbs.curve import smooth_curve_weights
 from Workshop.transform.constraint import Constraint, constraint
 from Workshop.guide.core import GuideInfo
-from canon_autorigger.build_management.dev import create_dev_attribute
+from Workshop.canon_autorigger.build_management.dev import create_dev_attribute
 
 from ..ik import create_IK_single_chain
 
@@ -492,8 +492,8 @@ class Eyelid:
             "lower": [],
         }
 
-        upper_curve = self.guides["eyelid_upper_rest"].name
-        lower_curve = self.guides["eyelid_lower_rest"].name
+        upper_curve = self.guides["eyelid_upper "].name
+        lower_curve = self.guides["eyelid_lower "].name
 
         curves = {
             "upper": upper_curve,
@@ -1211,7 +1211,7 @@ class Eyelid:
 
         configurations = {
             "upper": {
-                "rest": "eyelid_upper_rest",
+                "rest": "eyelid_upper ",
                 "targets": [
                     "eyelid_upblink",
                     "eyelid_blink",
@@ -1219,7 +1219,7 @@ class Eyelid:
                 ],
             },
             "lower": {
-                "rest": "eyelid_lower_rest",
+                "rest": "eyelid_lower ",
                 "targets": [
                     "eyelid_upblink",
                     "eyelid_blink",
@@ -1455,7 +1455,7 @@ class Eyelid:
         # ----------------------------------------
 
         for vertical in ("upper", "lower"):
-            rest_key = f"eyelid_{vertical}_rest"
+            rest_key = f"eyelid_{vertical} "
 
             curve = cmds.duplicate(
                 self.blink_guides[rest_key],
@@ -1477,7 +1477,7 @@ class Eyelid:
         self.expression_rest_curves = {}
 
         for vertical in ("upper", "lower"):
-            rest_key = f"eyelid_{vertical}_rest"
+            rest_key = f"eyelid_{vertical} "
 
             curve = cmds.duplicate(
                 self.blink_guides[rest_key],

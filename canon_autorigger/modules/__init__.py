@@ -28,6 +28,8 @@ from . import elbow_cor
 from . import wrist_cor
 from . import chest_cor
 from . import matrix_spline
+from . import eye
+from . import look
 
 from .root import Root
 from .biped_limb import Biped_Limb
@@ -58,6 +60,8 @@ from .elbow_cor import Elbow_Cor
 from .wrist_cor import Wrist_Cor
 from .chest_cor import Chest_Cor
 from .matrix_spline import MatrixSpline
+from .eye import Eye
+from .look import Look
 
 
 
@@ -121,6 +125,10 @@ __all__ = [
 "Chest_Cor",
 "matrix_spline",
 "MatrixSpline",
+"eye",
+"Eye"
+"look",
+"Look",
 ]
 
 MODULE_CLASSES = [
@@ -145,8 +153,10 @@ MODULE_CLASSES = [
     Brow,
     Cheek,
     Ear,
+    Eye,
     Arbit,
     MatrixSpline,
+    Look,
 ]
 
 

@@ -1,23 +1,9 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
-
 import maya.api.OpenMaya as om
 from maya import cmds
 
-from .core import create_guide_from_position
-
-
-@dataclass
-class GuideLocator:
-    """
-    Stores information about a generated guide locator.
-    """
-
-    name: str
-    pos: tuple[float, float, float]
-    rot: tuple[float, float, float]
-    matrix: list[float]
+from .core import GuideInfo, create_guide_from_position
 
 
 class GuideCurve:
@@ -52,7 +38,6 @@ class GuideCurve:
         align_normals: bool = False,
         mirror: bool = False,
         primary_axis: str | None = None,
-        use_guide_objects: bool = False,
     ):
 
         self.input_curve = curve
@@ -62,9 +47,8 @@ class GuideCurve:
         self.align_normals = align_normals
         self.mirror = mirror
         self.primary_axis = primary_axis
-        self.use_guide_objects = use_guide_objects
 
-        self.locator_list: list[GuideLocator] = []
+        self.locator_list: list[GuideInfo] = []
 
         self.curve: str = ""
         self.group: str = ""
@@ -317,60 +301,22 @@ class GuideCurve:
             else:
                 loc_name = f"{self.input_curve}_cv_{str(i + 1).zfill(padding)}"
 
-            if self.use_guide_objects:
-                # Opt-in: use Workshop's custom guide creation helper.
-                guide = create_guide_from_position(
-                    pos=pos,
-                    guide_name=loc_name,
-                    parent=self.group,
-                )
-                loc = guide.name
-            else:
-                # Original behavior: native Maya locator and parenting.
-                loc: str = cmds.spaceLocator(name=loc_name)[0]  # type:ignore
-                cmds.xform(
-                    loc,
-                    worldSpace=True,
-                    translation=pos,  # type:ignore
-                )
+            guide = create_guide_from_position(
+                pos=pos,
+                guide_name=loc_name,
+                parent=self.group,
+            )
 
-            # -------------------------------------------------
-            # Rotation
-            # -------------------------------------------------
-
-            rot = (0.0, 0.0, 0.0)
-
+            # Align the actual Workshop guide before caching its data.
             if self.align_normals:
                 rot = self._calculate_rotation_from_cvs(cvs, i)
-
                 cmds.xform(
-                    loc,
+                    guide.name,
                     worldSpace=True,
                     rotation=rot,
                 )
 
-            if not self.use_guide_objects:
-                cmds.parent(loc, self.group)
-
-            # -------------------------------------------------
-            # Store Data
-            # -------------------------------------------------
-
-            matrix = cmds.xform(
-                loc,
-                query=True,
-                worldSpace=True,
-                matrix=True,
-            )
-
-            locator_data = GuideLocator(
-                name=loc,
-                pos=tuple(pos),  # type:ignore
-                rot=tuple(rot),
-                matrix=matrix,  # type:ignore
-            )
-
-            self.locator_list.append(locator_data)
+            self.locator_list.append(guide)
 
     # =========================================================
     # NORMAL / ROTATION
