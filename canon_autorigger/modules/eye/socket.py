@@ -12,7 +12,7 @@ from Workshop.maya_api.attribute_utils import add_attribute_header, add_proxy, c
 from Workshop.skin.split.tag import tag_for_weight_split
 from Workshop.spline.matrix_spline.build import matrix_spline_from_transforms
 from Workshop.spline.matrix_spline.core import MatrixSpline
-from transform.constraint import constraint
+from Workshop.transform.constraint import constraint
 
 
 class Socket:
