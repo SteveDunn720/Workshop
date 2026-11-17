@@ -250,14 +250,14 @@ class Ik_correctives:
             # ----------------------------------------------
 
             start_joint = create_joint(
-                name=descriptor,
+                name=f"def_{descriptor}",
                 transform=root_ik,
                 connect=False,
                 parent=self.joint_parent,
             )
 
             end_joint = create_joint(
-                name=f"{descriptor}_end",
+                name=f"def_{descriptor}_end",
                 transform=end_ik,
                 connect=False,
                 parent=start_joint,

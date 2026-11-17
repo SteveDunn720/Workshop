@@ -368,9 +368,9 @@ class Socket:
                     name=name,
                     parent=self.sub_socket_controls_grp,
                     transform=matrix,
-                    size=self.rig_size * 1/180,
+                    size=self.rig_size * 1/260,
                     control_shape="circle",
-                    direction="z",
+                    direction="x",
                     color_type=self.sub_color
                 )
                 joint = create_joint(

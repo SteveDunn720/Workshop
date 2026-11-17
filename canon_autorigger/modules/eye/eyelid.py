@@ -1777,8 +1777,8 @@ class Eyelid:
                 control_shape="semi_circle",
                 direction="z",
                 dimensions=(1, 1, 1 if vertical == "upper" else -1),
-                color_type=self.main_color
-                #shaposition_offset=(0, 0, 1),
+                color_type=self.main_color,
+                shape_position_offset=(0, 0, self.rig_size/30),
             )
 
         # Build hidden setup hierarchy and duplicate guides
@@ -1818,7 +1818,7 @@ class Eyelid:
                     color_type=self.sub_color
                 )
                 sub_jnt = create_joint(
-                    name=f"{vertical}_{i}_{self.side}",
+                    name=f"def_eyelid_{vertical}_{i}_{self.side}",
                     parent=self.joint_parent,
                     transform=sub_ctrl.ctrl,
                 )

@@ -115,7 +115,7 @@ class Eye:
         module_space(space_list=self.control_space, control=self.main_ctrl)
 
         self.main_jnt = create_joint(
-            name=self.main_ctrl.name,
+            name=f"def_{self.main_ctrl.name}",
             parent=self.joint_parent,
             transform=self.main_ctrl.ctrl,
         )

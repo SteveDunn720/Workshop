@@ -207,7 +207,7 @@ class Nose:
                 dimensions=self.detail_dimensions,
             )
             joint = create_joint(
-                name=guide.descriptor,
+                name=f'def_{guide.descriptor}',
                 transform=ctrl.ctrl,
                 connect=True,
                 parent=self.nose_joint,

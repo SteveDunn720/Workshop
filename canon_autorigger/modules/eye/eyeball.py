@@ -32,6 +32,7 @@ class Eyeball:
         component_grp: str = "",
         control_grp: str = "",
         divisions:int = 10,
+        part:str = "eye"
     ) -> None:
         if guides is None:
             guides = {}
@@ -45,6 +46,7 @@ class Eyeball:
         self.control_grp = control_grp
         self.divisions = divisions
         self.main_color = main_color
+        self.part = part
 
     # -------------------
     # Helper Functions
@@ -195,7 +197,7 @@ class Eyeball:
             color_type=self.main_color
         )
         self.eye_jnt = create_joint(
-            transform=self.eye_ctrl.ctrl, name=f"eye_{self.side}", parent=self.joint_parent
+            transform=self.eye_ctrl.ctrl, name=f"def_{self.part}ball_{self.side}", parent=self.joint_parent
         )
 
         self.look_ctrl = create_control(
@@ -317,7 +319,7 @@ class Eyeball:
             parent = self.eye_jnt
 
             jnt = create_joint(
-                name=f"eye_dilation_{i:02d}_{self.side}",
+                name=f"def_{self.part}_dilation_{i:02d}_{self.side}",
                 parent=parent,
                 transform=self.guides["center"].name,
                 connect=False,

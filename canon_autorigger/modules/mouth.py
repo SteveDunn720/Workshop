@@ -1344,7 +1344,7 @@ class Mouth:
                 )
 
                 jnt = create_joint(
-                    name=f"{vertical}_{guide.descriptor}",
+                    name=f"def_{vertical}_{guide.descriptor}",
                     transform=control.ctrl,
                     parent=root_jnt,
                     connect=False
