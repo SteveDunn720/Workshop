@@ -3,8 +3,11 @@ from dataclasses import dataclass
 from Workshop.transform.utils import create_transform
 from Workshop.joint import create_joint
 from Workshop.spline.matrix_spline.build import matrix_spline_from_transforms
+from Workshop.nurbs.curve import get_curve_point_matrix
+from Workshop.maya_api.attribute_utils import set_attribute
 from .utils import curve_midpoint
 from Workshop.control.core import Control, create_control
+from Workshop.guide.curve import GuideCurve
 
 @dataclass
 class hybrid_info:
@@ -15,7 +18,7 @@ class hybrid_info:
 
 
 
-def build_hybrid(part:str, guts:str, side:str, control_grp:str, guide_curve, guide_list:list, cv_transforms:list,  rig_size:float, hip, hip_des, hybrid_mid_shape:str, main_color:str, mid_control_size:float=1/3, sub_spine_control_size = 1/30, sub_offset =(0,0,1/4)):
+def build_hybrid(part:str, guts:str, side:str, control_grp:str, guide_curve:GuideCurve, guide_list:list, cv_transforms:list,  rig_size:float, hip, hip_des, hybrid_mid_shape:str, main_color:str, mid_control_size:float=1/3, sub_spine_control_size = 1/30, sub_offset =(0,0,1/4)):
     hybrid_grp = create_transform(name=f'{part}_{side}_hybrid_grp', parent=control_grp)
 
     mid_guide = curve_midpoint(curve=guide_curve.curve)
@@ -31,7 +34,27 @@ def build_hybrid(part:str, guts:str, side:str, control_grp:str, guide_curve, gui
         color_type=main_color
     )
 
-    cv_transforms.insert(1, mid.ctrl)
+    lower_matrix = get_curve_point_matrix(
+        curve= guide_curve.curve,
+        parameter=.15,
+        tangent_orient=True,
+    )
+
+    upper_matrix = get_curve_point_matrix(
+            curve= guide_curve.curve,
+            parameter=.85,
+            tangent_orient=True,
+        )
+
+    lower_driver = create_transform(name=f'{part}_lower_driver', parent=cv_transforms[0], transform=lower_matrix)
+    upper_driver = create_transform(name=f'{part}_upper_driver', parent=cv_transforms[-1], transform=upper_matrix)
+    for attrs in ['rotateX', 'rotateY', 'rotateZ']:
+        set_attribute(attr=f'{lower_driver}.{attrs}', value=0)
+        set_attribute(attr=f'{upper_driver}.{attrs}', value=0)
+
+    cv_transforms.insert(1, lower_driver)
+    cv_transforms.insert(2, mid.ctrl)
+    cv_transforms.insert(3, upper_driver)
 
     spine_off_ctrls = []
     spine_driven = []

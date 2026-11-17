@@ -3,6 +3,7 @@ import maya.cmds as cmds
 
 from Workshop.transform.utils import create_transform
 from Workshop.tag.core import lock_tag, obj_vis_tag
+from Workshop.color.outliner_overwrite import set_outliner_color
 
 @dataclass
 class scene_config:
@@ -27,8 +28,26 @@ def configure_canon_scene(rig_name:str, correctives:bool=True)->scene_config:
 
     root = create_transform(name='root')
     skel_container = create_transform(name='skel', parent=root)
+    set_outliner_color(
+        object=skel_container,
+        hue=5,
+        saturation=.8,
+        value=.9,
+    )
     rig_container = create_transform(name='rig', parent=root)
+    set_outliner_color(
+        object=rig_container,
+        hue=270,
+        saturation=.6,
+        value=.95,
+    )
     hide_container = create_transform(name='hide', parent=root)
+    set_outliner_color(
+        object=hide_container,
+        hue=270,
+        saturation=0,
+        value=.95,
+    )
     size = get_model_size(model='geo')
     if correctives:
         corrective_modules = create_transform(name='corrective_modules', parent=rig_container)

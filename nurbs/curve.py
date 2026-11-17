@@ -1,6 +1,23 @@
 """Workshop.nurbs.curve — curve utilities and consistent direction."""
+from typing import Literal
+
 import maya.api.OpenMaya as om
 import maya.cmds as cmds
+
+from maya.api.OpenMaya import (
+    MFnNurbsCurve,
+    MMatrix,
+    MPoint,
+    MSelectionList,
+    MSpace,
+    MVector,
+)
+
+
+Axis = Literal["x", "y", "z"]
+ParameterMode = Literal["normalized", "parameter"]
+CurveSpace = Literal["world", "object"]
+
 
 
 def are_curves_mirrored(curve_a: str, curve_b: str, axis: str = 'x', tolerance: float = 1e-4, allow_reversed: bool = True) -> bool:
@@ -209,3 +226,207 @@ def smooth_curve_weights(
                     transformValue=list(zip(influences, new_weights, strict=True)),  # type:ignore
                     normalize=True,
                 )
+
+def get_curve_point_matrix(
+    curve: str,
+    parameter: float,
+    tangent_orient: bool = True,
+    up_vector: tuple[float, float, float] = (0, 1, 0),
+    aim_axis: Axis = "x",
+    mirror: bool = False,
+    mirror_axis: Axis = "x",
+    parameter_mode: ParameterMode = "normalized",
+    space: CurveSpace = "world",
+) -> MMatrix:
+    """
+    Get a matrix at a point along a NURBS curve.
+
+    Args:
+        curve: Curve transform or shape.
+        parameter: Position along the curve.
+        tangent_orient: Align orientation to the curve tangent.
+        up_vector: Reference up direction in the requested space.
+        aim_axis: Local axis aligned with the tangent.
+        mirror: Construct a mirrored orientation.
+        mirror_axis: Axis used for reflection.
+        parameter_mode:
+            'normalized': Arc-length fraction (0-1).
+            'parameter': Native NURBS curve parameter.
+        space:
+            'world': Return a world-space matrix.
+            'object': Return a curve-local matrix.
+
+    Returns:
+        MMatrix containing translation and orientation.
+    """
+
+    # --------------------------------------------------
+    # Resolve curve
+    # --------------------------------------------------
+
+    if cmds.nodeType(curve) == "nurbsCurve":
+        shape = curve
+    else:
+        shapes = cmds.listRelatives(
+            curve,
+            shapes=True,
+            noIntermediate=True,
+            type="nurbsCurve",
+            fullPath=True,
+        ) or []
+
+        if not shapes:
+            raise ValueError(f"No NURBS curve found: {curve}")
+
+        shape = shapes[0]
+
+    selection = MSelectionList()
+    selection.add(shape)
+
+    dag_path = selection.getDagPath(0)
+    fn_curve = MFnNurbsCurve(dag_path)
+
+    # --------------------------------------------------
+    # Resolve sampling space and parameter
+    # --------------------------------------------------
+
+    sample_space = (
+        MSpace.kWorld
+        if space == "world"
+        else MSpace.kObject
+    )
+
+    if parameter_mode == "normalized":
+        parameter = max(0.0, min(1.0, parameter))
+
+        curve_param = fn_curve.findParamFromLength(
+            fn_curve.length() * parameter
+        )
+
+    elif parameter_mode == "parameter":
+        curve_param = parameter
+
+    else:
+        raise ValueError(
+            f"Unsupported parameter mode: {parameter_mode}"
+        )
+
+    position = fn_curve.getPointAtParam(
+        curve_param,
+        sample_space,
+    )
+
+    # --------------------------------------------------
+    # Reflection helper
+    # --------------------------------------------------
+
+    if mirror_axis not in ("x", "y", "z"):
+        raise ValueError(f"Invalid mirror axis: {mirror_axis}")
+
+    axis_index = {"x": 0, "y": 1, "z": 2}[mirror_axis]
+
+    def reflect(vector: MVector) -> MVector:
+        values = [vector.x, vector.y, vector.z]
+        values[axis_index] *= -1.0
+        return MVector(*values)
+
+    if mirror:
+        mirrored_position = reflect(
+            MVector(position.x, position.y, position.z)
+        )
+        position = MPoint(
+            mirrored_position.x,
+            mirrored_position.y,
+            mirrored_position.z,
+        )
+
+    # --------------------------------------------------
+    # Construct orientation
+    # --------------------------------------------------
+
+    if tangent_orient:
+        tangent = fn_curve.tangent(
+            curve_param,
+            sample_space,
+        ).normal()
+
+        if mirror:
+            tangent = reflect(tangent)
+
+        aim = tangent.normal()
+        up = MVector(*up_vector).normal()
+
+        if aim.length() < 1e-8:
+            raise ValueError("Curve tangent has zero length")
+
+        if up.length() < 1e-8:
+            raise ValueError("Up vector cannot be zero")
+
+        # Avoid parallel vectors.
+        if abs(aim * up) > 0.999:
+            candidates = (
+                MVector(1, 0, 0),
+                MVector(0, 1, 0),
+                MVector(0, 0, 1),
+            )
+
+            up = min(
+                candidates,
+                key=lambda axis: abs(aim * axis),
+            )
+
+        side = (aim ^ up).normal()
+        up = (side ^ aim).normal()
+
+        if aim_axis == "x":
+            x_axis = aim
+            y_axis = up
+            z_axis = side
+
+        elif aim_axis == "y":
+            x_axis = -side
+            y_axis = aim
+            z_axis = up
+
+        elif aim_axis == "z":
+            x_axis = up
+            y_axis = -side
+            z_axis = aim
+
+        else:
+            raise ValueError(f"Invalid aim axis: {aim_axis}")
+
+    else:
+        x_axis = MVector(1, 0, 0)
+        y_axis = MVector(0, 1, 0)
+        z_axis = MVector(0, 0, 1)
+
+    # --------------------------------------------------
+    # Build matrix
+    # --------------------------------------------------
+
+    matrix = MMatrix([
+        x_axis.x, x_axis.y, x_axis.z, 0.0,
+        y_axis.x, y_axis.y, y_axis.z, 0.0,
+        z_axis.x, z_axis.y, z_axis.z, 0.0,
+        position.x, position.y, position.z, 1.0,
+    ])
+
+    # --------------------------------------------------
+    # Apply reflection
+    # --------------------------------------------------
+
+    if mirror:
+        scale = [1.0, 1.0, 1.0]
+        scale[axis_index] = -1.0
+
+        reflection = MMatrix([
+            scale[0], 0.0, 0.0, 0.0,
+            0.0, scale[1], 0.0, 0.0,
+            0.0, 0.0, scale[2], 0.0,
+            0.0, 0.0, 0.0, 1.0,
+        ])
+
+        matrix = matrix * reflection
+
+    return matrix
