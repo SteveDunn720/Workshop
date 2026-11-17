@@ -155,6 +155,7 @@ class Eye:
             follow_default=self.socket_follow_default,
             main_color = self.main_color,
             sub_color = self.sub_color,
+            control_space=self.control_space
         )
 
         self.socket.build()

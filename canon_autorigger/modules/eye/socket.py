@@ -12,6 +12,7 @@ from Workshop.maya_api.attribute_utils import add_attribute_header, add_proxy, c
 from Workshop.skin.split.tag import tag_for_weight_split
 from Workshop.spline.matrix_spline.build import matrix_spline_from_transforms
 from Workshop.spline.matrix_spline.core import MatrixSpline
+from transform.constraint import constraint
 
 
 class Socket:
@@ -29,7 +30,8 @@ class Socket:
         control_grp: str,
         rig_size: float = 1.0,
         divisions: int = 11,
-        follow_default: float = 0.1,
+        follow_default: float = 0,
+        control_space:list = [],
     ) -> None:
         if divisions < 2:
             raise ValueError("Socket divisions must be at least 2")
@@ -47,6 +49,7 @@ class Socket:
         self.guts = guts
         self.main_color = main_color
         self.sub_color = sub_color
+        self.control_space = control_space
 
     def disconnect_socket_joint_scale_shear(self) -> None:
         """Remove scale/shear drivers from socket joints."""
@@ -245,6 +248,8 @@ class Socket:
             name=f"socket_{self.side}_controls_grp",
             parent=follow_offset,
         )
+
+        constraint(drivers=self.control_space, driven=follow_pos)
 
         relative_mm = MultMatrixNode(name=f"socket_{self.side}_follow_relative_mm")
         relative_mm.matrix_in[0].connect_from(f"{driver}.worldMatrix[0]")
