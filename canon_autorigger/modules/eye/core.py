@@ -9,7 +9,7 @@ from Workshop.nurbs.curve import get_nurbs_curve_radius
 from Workshop.transform.matrix import matrix_constraint
 from Workshop.maya_api.attribute_utils import create_attribute
 
-from ..module_shared import module_prep
+from ..module_shared import module_prep, module_space
 from .eyelid import Eyelid
 from .eyeball import Eyeball
 from .socket import Socket
@@ -111,6 +111,8 @@ class Eye:
             shape_position_offset=offset_pos,
             color_type=self.main_color
         )
+
+        module_space(space_list=self.control_space, control=self.main_ctrl)
 
         self.main_jnt = create_joint(
             name=self.main_ctrl.name,

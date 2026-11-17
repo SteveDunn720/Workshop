@@ -1057,58 +1057,60 @@ class Eyelid:
         curve: str,
         transform: str,
         parameter: float,
-    ) -> PointOnCurveNode:
+    ) -> str:
         """
-        Pin a transform to a normalized arc-length position
+        Pin a transform to a normalized ARC-LENGTH position
         on a deforming NURBS curve.
-
-        Uses pointOnCurveInfo and parent-space conversion.
-
-        Args:
-            curve: Deforming NURBS curve.
-            transform: Transform to drive.
-            parameter: Normalized position from 0 to 1.
-
-        Returns:
-            Created pointOnCurveInfo node.
         """
 
-        shapes = (
-            cmds.listRelatives(
-                curve,
-                shapes=True,
-                noIntermediate=True,
-                type="nurbsCurve",
-                fullPath=True,
-            )
-            or []
-        )
+        shapes = cmds.listRelatives(
+            curve,
+            shapes=True,
+            noIntermediate=True,
+            type="nurbsCurve",
+            fullPath=True,
+        ) or []
 
         if not shapes:
             raise ValueError(f"No NURBS curve found: {curve}")
 
         shape = shapes[0]
 
-        # -----------------------------------------------------
-        # Evaluate curve position
-        # -----------------------------------------------------
-        poc = PointOnCurveNode(name=f"{transform}_POC")
-        poc.input_curve.connect_from(f"{shape}.worldSpace[0]")
-        poc.turn_on_percentage.set(True)
-        poc.parameter.set(parameter)
-        # -----------------------------------------------------
-        # Convert world position to parent-local position
-        # -----------------------------------------------------
-        compose = ComposeMatrixNode( name=f"{transform}_CM")
-        compose.input_translate.connect_from(poc.position)
+        # Motion path evaluates normalized arc length.
+        motion_path = cmds.createNode(
+            "motionPath",
+            name=f"{transform}_MP",
+        )
+
+        cmds.connectAttr(
+            f"{shape}.worldSpace[0]",
+            f"{motion_path}.geometryPath",
+            force=True,
+        )
+
+        cmds.setAttr(f"{motion_path}.fractionMode", True)
+        cmds.setAttr(f"{motion_path}.follow", False)
+        cmds.setAttr(f"{motion_path}.uValue", parameter)
+
+        # World position -> parent-local position.
+        compose = ComposeMatrixNode(name=f"{transform}_CM")
+        compose.input_translate.connect_from(
+            f"{motion_path}.allCoordinates"
+        )
+
         mult = MultMatrixNode(name=f"{transform}_MM")
         mult.matrix_in[0].connect_from(compose.output_matrix)
-        mult.matrix_in[1].connect_from(f"{transform}.parentInverseMatrix[0]")
+        mult.matrix_in[1].connect_from(
+            f"{transform}.parentInverseMatrix[0]"
+        )
+
         decompose = DecomposeMatrixNode(name=f"{transform}_DCM")
         decompose.input_matrix.connect_from(mult.matrix_sum)
-        decompose.output_translate.connect_to(f"{transform}.translate")
+        decompose.output_translate.connect_to(
+            f"{transform}.translate"
+        )
 
-        return poc
+        return motion_path
 
     def get_curve_mid_y(self, curve: str) -> float:
         """Get the world-space Y of a curve's arc-length midpoint."""
@@ -1809,9 +1811,9 @@ class Eyelid:
                     name=f"{vertical}_{i}_{self.side}",
                     parent=self.sub_grp,
                     transform=matrix,
-                    size=self.rig_size * 1/180,
+                    size=self.rig_size * 1/240,
                     control_shape="circle",
-                    direction="z",
+                    direction="x",
                     sdk_offset=True,
                     color_type=self.sub_color
                 )
