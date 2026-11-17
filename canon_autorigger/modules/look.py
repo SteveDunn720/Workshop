@@ -16,9 +16,10 @@ class Look:
         rig_size: float = 1.0,
         parent_jnt: str = "face_jnt",
         parent_spaces:list = [],
-        control_size = 1/40,
+        control_size = 1/30,
         control_shape = "round_square",
         dimensions = (3, 1, 1),
+        control_color:str | None = None
     ):
         self.part: str = part
         self.side: str = side
@@ -31,6 +32,9 @@ class Look:
         self.control_size = control_size
         self.control_shape = control_shape
         self.dimensions = dimensions
+        self.main_control_color = control_color or {
+            "M": "Middle", "L": "Left", "R": "Right"
+        }.get(side, "Right")
 
     def build(self) -> None:
         prep = module_prep(part=self.part, parent=self.parent, side=self.side, fkik=False, gut=True)
@@ -48,6 +52,7 @@ class Look:
             control_shape=self.control_shape,
             direction="z",
             dimensions=self.dimensions,
+            color_type=self.main_control_color
         )
         if self.parent_list:
             create_space_switch(

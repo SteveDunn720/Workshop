@@ -251,7 +251,7 @@ class Socket:
 
         constraint(drivers=self.control_space, driven=follow_pos)
 
-        relative_mm = MultMatrixNode(name=f"socket_{self.side}_follow_relative_mm")
+        """relative_mm = MultMatrixNode(name=f"socket_{self.side}_follow_relative_mm")
         relative_mm.matrix_in[0].connect_from(f"{driver}.worldMatrix[0]")
         relative_mm.matrix_in[1].connect_from(f"{self.control_grp}.worldInverseMatrix[0]")
         rest_relative = MMatrix(relative_mm.matrix_sum.get())
@@ -265,11 +265,11 @@ class Socket:
         local_mm.matrix_in[0].connect_from(f"{follow_pos}.matrix")
         local_mm.matrix_in[1].connect_from(f"{blend}.outputMatrix")
         local_mm.matrix_in[2].connect_from(f"{follow_pos}.inverseMatrix")
-        local_mm.matrix_sum.connect_to(f"{follow_offset}.offsetParentMatrix")
+        local_mm.matrix_sum.connect_to(f"{follow_offset}.offsetParentMatrix")"""
 
         self.socket_follow_pos = follow_pos
         self.socket_follow_offset = follow_offset
-        self.socket_follow_blend = blend
+        #self.socket_follow_blend = blend
         self.socket_controls_grp = controls_grp
         return controls_grp
 

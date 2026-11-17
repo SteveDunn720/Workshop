@@ -277,8 +277,8 @@ class Eyeball:
 
             if key:
                 add_attribute_header(target=self.main_ctrl.ctrl, name=f"{circle_type}_adjustments", proxy=[self.eye_ctrl.ctrl, self.look_ctrl.ctrl], sub=True)
-            create_attribute(primary_object=self.main_ctrl.ctrl, attr_name=f"{circle_type}_scaleX", proxy_objects=[self.eye_ctrl.ctrl, self.look_ctrl.ctrl], keyable=key,)
-            create_attribute(primary_object=self.main_ctrl.ctrl, attr_name=f"{circle_type}_scaleY", proxy_objects=[self.eye_ctrl.ctrl, self.look_ctrl.ctrl], keyable=key,)
+            create_attribute(primary_object=self.main_ctrl.ctrl, attr_name=f"{circle_type}_scaleX", proxy_objects=[self.eye_ctrl.ctrl, self.look_ctrl.ctrl], keyable=key, default=1)
+            create_attribute(primary_object=self.main_ctrl.ctrl, attr_name=f"{circle_type}_scaleY", proxy_objects=[self.eye_ctrl.ctrl, self.look_ctrl.ctrl], keyable=key, default=1)
             create_attribute(primary_object=self.main_ctrl.ctrl, attr_name=f"{circle_type}_offsetY", proxy_objects=[self.eye_ctrl.ctrl, self.look_ctrl.ctrl], keyable=key,)
             create_attribute(primary_object=self.main_ctrl.ctrl, attr_name=f"{circle_type}_offsetX", proxy_objects=[self.eye_ctrl.ctrl, self.look_ctrl.ctrl], keyable=key,)
             create_attribute(primary_object=self.main_ctrl.ctrl, attr_name=f"{circle_type}_offsetZ", proxy_objects=[self.eye_ctrl.ctrl, self.look_ctrl.ctrl], keyable=key,)
