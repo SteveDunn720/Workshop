@@ -101,6 +101,7 @@ def read_guides(rig_name:str='Canon')->cannon_guide_config:
         leg[side] = [read_guide(f'upperleg_{side}_guide'), read_guide(f'knee_{side}_guide'), read_guide(f'foot_{side}_guide')]
         arm[side] = [read_guide(f'shoulder_{side}_guide'), read_guide(f'elbow_{side}_guide'), read_guide(f'hand_{side}_guide')]
         foot[side] = [read_guide(f'foot_{side}_guide'), read_guide(f'toe_ball_{side}_guide'), read_guide(f'toe_ee_{side}_guide')]
+        foot[f'{side}_piv'] = [read_guide(f'heel_{side}_guide'), read_guide(f'toetip_ground_{side}_guide') ]
         clav[side] = read_guide(f'clav_{side}_guide')
         metacarpal[side] = [read_guide(f'finger_index_{side}_00_guide'), read_guide(f'finger_middle_{side}_00_guide'), read_guide(f'finger_ring_{side}_00_guide'), read_guide(f'finger_pinky_{side}_00_guide'),]
 

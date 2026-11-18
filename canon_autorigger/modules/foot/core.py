@@ -51,6 +51,7 @@ class Foot:
         control_parent: str | None = None,
         rig_size: float = 1.0,
         guides: list = [],
+        piv_guides: list = [],
         fk_control_space:list = [],
         ik_control_space:list = [],
         ik_hook:list=[],
@@ -63,7 +64,8 @@ class Foot:
         ik_foot_shape:str = "foot",
         ik_toe_shape:str = "ik_toes",
         ik_toe_size:float = 1/8,
-        ik_foot_twist:tuple = (0,180,0),
+        ik_foot_twist:tuple = (0,0,0),
+        piv_shape:str = 'sphere',
 
         
 
@@ -90,6 +92,8 @@ class Foot:
         self.ik_toe_shape = ik_toe_shape
         self.ik_toe_size = ik_toe_size
         self.ik_foot_twist = ik_foot_twist
+        self.piv_guides = piv_guides
+        self.piv_shape = piv_shape
 
     # -------------------
     # Build steps
@@ -167,26 +171,39 @@ class Foot:
         
         ctrl_par = self.ik_control_grp
 
-        temp_guide = cmds.duplicate(self.guides[0].name)[0]
-
-        for axis in ['X', 'Y', 'Z']:
-            num = 180 if axis == 'X' else 0
-
-            set_attribute(f'{temp_guide}.jointOrient{axis}', num)
-
         self.ik_foot = create_control(
                 name=f'IK_{self.guides[0].descriptor}_main',
                 parent=ctrl_par,
-                transform=temp_guide,
+                transform=self.guides[0].name,
                 size=self.rig_size * self.ik_foot_size,
                 control_shape=self.ik_foot_shape,
                 direction="y",
                 color_type=self.main_control_color,
-                shape_position_offset=(0, -ground_offset, -self.rig_size/10),
+                shape_position_offset=(0, -ground_offset, self.rig_size/10),
                 shape_rotation_offset=self.ik_foot_twist
             )
-
-        cmds.delete(temp_guide)
+        for axis in ['X', 'Y', 'Z']:
+            set_attribute(f'{self.ik_foot.top}.rotate{axis}', 0)
+        if self.side == 'R':
+            set_attribute(f'{self.ik_foot.top}.rotateY', 180)
+        self.front_piv = create_control(
+                name=f'IK_{self.piv_guides[0].descriptor}_piv',
+                parent=self.ik_foot.ctrl,
+                transform=self.piv_guides[0].name,
+                size=self.rig_size * self.ik_foot_size / 20,
+                control_shape=self.piv_shape,
+                direction="y",
+                color_type=self.main_control_color, 
+            )
+        self.back_piv = create_control(
+                name=f'IK_{self.piv_guides[1].descriptor}_piv',
+                parent=self.front_piv.ctrl,
+                transform=self.piv_guides[1].name,
+                size=self.rig_size * self.ik_foot_size / 20,
+                control_shape=self.piv_shape,
+                direction="y",
+                color_type=self.main_control_color, 
+            )
 
         module_space(space_list=self.ik_control_space, control=self.ik_foot)
         self.ik_controls.append(self.ik_foot)
@@ -219,11 +236,11 @@ class Foot:
         roll_ik = create_IK_single_chain(name=f'{self.part}_{self.side}_roll', start_joint=self.ik_roll_joints[0], end_joint=self.ik_roll_joints[1])
         cmds.parent(roll_ik.handle, self.guts)
 
-        roll = Roll(part='roll', rig_size=self.rig_size, side=self.side, joints= [f'foot_{self.side}', f'ball_{self.side}'], guides=self.feet_guides, control_parent=self.ik_foot.ctrl)
+        roll = Roll(part='roll', rig_size=self.rig_size, side=self.side, joints= [f'foot_{self.side}', f'ball_{self.side}'], guides=self.feet_guides, control_parent=self.back_piv.ctrl)
         roll_info = roll.build()
 
         match_transform(transform=roll_info.roll_grp, target_transform=self.feet_guides.og_foot_pos[-2]) #type:ignore
-        cmds.parent(roll_info.roll_grp, self.ik_foot.ctrl)
+        cmds.parent(roll_info.roll_grp, self.back_piv.ctrl)
         add_proxy(source=self.leg_info.ik_stretch_attr, proxy_list=[self.ik_foot.ctrl], proxy_name='stretch')
 
         # connecting the rool to the foot and leg
@@ -234,10 +251,10 @@ class Foot:
         constraint(drivers=[self.ik_hook[1]], driven=self.ik_roll_joints[0], constraint_type='parent', parent=self.guts)
         constraint(drivers=[self.ik_roll_joints[0]], driven=self.ik_joints[0], constraint_type='parent', parent=self.guts)
         constraint(drivers=[roll_info.down_driver], driven=self.ik_toes.top, constraint_type='parent', parent=self.guts)
-        constraint(drivers=[self.ik_foot.ctrl], driven=self.leg_info.ik_len[0].handle, constraint_type='parent', parent=self.guts)
-        constraint(drivers=[self.ik_foot.ctrl], driven=self.leg_info.ik_len[2], constraint_type='orient', parent=self.guts)
+        constraint(drivers=[self.back_piv.ctrl], driven=self.leg_info.ik_len[0].handle, constraint_type='parent', parent=self.guts)
+        constraint(drivers=[self.back_piv.ctrl], driven=self.leg_info.ik_len[2], constraint_type='orient', parent=self.guts)
         constraint(drivers=[self.leg_info.ik_len[2]], driven=roll_info.roll_grp, constraint_type='parent', parent=self.guts)
-        constraint(drivers=[self.ik_foot.ctrl], driven=self.leg_info.end_ik_hook[2], constraint_type='parent', parent=self.guts)
+        constraint(drivers=[self.back_piv.ctrl], driven=self.leg_info.end_ik_hook[2], constraint_type='parent', parent=self.guts)
 
         self.bind_joints = []
 
