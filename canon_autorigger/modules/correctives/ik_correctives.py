@@ -1,4 +1,5 @@
-from dataclasses import dataclass, field
+
+from dataclasses import dataclass
 
 import maya.cmds as cmds
 
@@ -9,8 +10,10 @@ from Workshop.maya_api.node import DistanceBetweenNode
 from Workshop.transform.constraint import constraint
 from Workshop.transform.utils import create_transform
 
-from Workshop.canon_autorigger.module_schema import ModuleRelationship, ModuleSetting
-from Workshop.maya_api.attribute_utils import set_attribute
+from Workshop.canon_autorigger.module_schema import (
+    ModuleRelationship,
+    ModuleSetting,
+)
 
 from ..module_shared import module_prep
 from ..ik import create_IK_single_chain
@@ -26,25 +29,61 @@ class module_info:
 
 
 class Ik_correctives:
+
     MODULE_NAME = "ik_correctives"
     DISPLAY_NAME = "IK Correctives"
+
     GUIDES = ()
+
     SETTINGS = (
-        ModuleSetting(name="rig_size", setting_type="float", default=1.0),
-        ModuleSetting(name="control_color", setting_type="string", default="MISC"),
-        ModuleSetting(name="control_shape", setting_type="control_shape", default="circle"),
-        ModuleSetting(name="divisions", setting_type="int", default=1),
-        ModuleSetting(name="mid_control", setting_type="bool", default=False),
-        ModuleSetting(name="primary_axis", setting_type="string", default="Y"),
+        ModuleSetting(
+            name="rig_size",
+            setting_type="float",
+            default=1.0,
+        ),
+        ModuleSetting(
+            name="control_color",
+            setting_type="string",
+            default="MISC",
+        ),
+        ModuleSetting(
+            name="control_shape",
+            setting_type="control_shape",
+            default="circle",
+        ),
+        ModuleSetting(
+            name="divisions",
+            setting_type="int",
+            default=1,
+        ),
+        ModuleSetting(
+            name="mid_control",
+            setting_type="bool",
+            default=False,
+        ),
+        ModuleSetting(
+            name="primary_axis",
+            setting_type="string",
+            default="Y",
+        ),
     )
+
     RELATIONSHIPS = (
-        ModuleRelationship(name="joint_parent", relationship_type="joint", default="auto"),
-        ModuleRelationship(name="control_parent", relationship_type="control_space", default="auto"),
+        ModuleRelationship(
+            name="joint_parent",
+            relationship_type="joint",
+            default="auto",
+        ),
+        ModuleRelationship(
+            name="control_parent",
+            relationship_type="control_space",
+            default="auto",
+        ),
     )
 
     def __init__(
         self,
-        parent_part:str | None = None, 
+        parent_part: str | None = None,
         part: str = "pec",
         side: str = "M",
         parent: str = "components",
@@ -60,6 +99,7 @@ class Ik_correctives:
         mid_control: bool = False,
         primary_axis: str = "Y",
     ):
+
         self.part = part
         self.side = side
         self.parent = parent
@@ -76,8 +116,11 @@ class Ik_correctives:
         self.control_shape = control_shape
 
         self.primary_axis = primary_axis.upper()
+
         if self.primary_axis not in {"X", "Y", "Z"}:
-            raise ValueError("primary_axis must be X, Y, or Z")
+            raise ValueError(
+                "primary_axis must be X, Y, or Z"
+            )
 
         self.divisions = divisions
         self.mid_control = mid_control
@@ -141,6 +184,26 @@ class Ik_correctives:
             )
 
         # --------------------------------------------------
+        # Primary and secondary aim axes
+        # --------------------------------------------------
+
+        axis_vectors = {
+            "X": (1, 0, 0),
+            "Y": (0, 1, 0),
+            "Z": (0, 0, 1),
+        }
+
+        aim_vector = axis_vectors[self.primary_axis]
+
+        up_vectors = {
+            "X": (0, 1, 0),
+            "Y": (0, 0, 1),
+            "Z": (0, 1, 0),
+        }
+
+        up_vector = up_vectors[self.primary_axis]
+
+        # --------------------------------------------------
         # Build IK corrective segments
         # --------------------------------------------------
 
@@ -149,7 +212,7 @@ class Ik_correctives:
             descriptor = guide.descriptor
 
             # ----------------------------------------------
-            # IK driver joints
+            # Root driver
             # ----------------------------------------------
 
             root_driver = create_transform(
@@ -166,25 +229,117 @@ class Ik_correctives:
                     parent=self.guts,
                 )
 
+            # ----------------------------------------------
+            # Root offset
+            # ----------------------------------------------
+
+            root_offset = create_transform(
+                name=f"{descriptor}_ik_root_offset",
+                parent=self.guts,
+                transform=guide.name,
+            )
+
+            # ----------------------------------------------
+            # Root IK joint
+            # ----------------------------------------------
+
             root_ik = create_joint(
                 name=f"ik_{descriptor}",
                 transform=guide.name,
+                parent=root_offset,
                 connect=False,
                 bind_set=False,
                 ue_set=False,
-                parent=self.guts,
             )
 
-            end_ik = create_joint(
-                name=f"ik_{descriptor}_end",
-                transform=end_guide.name,
-                connect=False,
-                bind_set=False,
-                ue_set=False,
+            # ----------------------------------------------
+            # Initial root orientation
+            #
+            # Aim toward the end guide and bake
+            # the result into jointOrient.
+            # ----------------------------------------------
+
+            swing_axes = "".join(
+                axis.lower()
+                for axis in "XYZ"
+                if axis != self.primary_axis
+            )
+
+            cmds.joint(
+                root_ik,
+                edit=True,
+                degreeOfFreedom=swing_axes,
+            )
+            # ----------------------------------------------
+            # End NULL joint
+            #
+            # The IK solver ends here.
+            # This joint receives the stretch length.
+            # ----------------------------------------------
+
+            root_pos = cmds.xform(
+                guide.name,
+                query=True,
+                worldSpace=True,
+                translation=True,
+            )
+
+            end_pos = cmds.xform(
+                end_guide.name,
+                query=True,
+                worldSpace=True,
+                translation=True,
+            )
+
+            initial_length = (
+                (end_pos[0] - root_pos[0]) ** 2
+                + (end_pos[1] - root_pos[1]) ** 2
+                + (end_pos[2] - root_pos[2]) ** 2
+            ) ** 0.5
+
+            if initial_length < 1e-6:
+                raise ValueError(
+                    f"{descriptor}: corrective guides "
+                    "cannot occupy the same position."
+                )
+
+            end_null = cmds.createNode(
+                "joint",
+                name=f"ik_{descriptor}_end_null",
                 parent=root_ik,
             )
 
-            set_attribute(f"{end_ik}.jointOrient", (0, 0, 0))
+            cmds.setAttr(
+                f"{end_null}.segmentScaleCompensate",
+                0,
+            )
+
+            # Positive length along the primary axis.
+            cmds.setAttr(
+                f"{end_null}.translate{self.primary_axis}",
+                initial_length,
+            )
+
+            # ----------------------------------------------
+            # End IK driver joint
+            #
+            # This joint is separate from the IK endpoint,
+            # allowing additional corrective rotations.
+            # ----------------------------------------------
+
+            end_ik = cmds.createNode(
+                "joint",
+                name=f"ik_{descriptor}_end",
+                parent=end_null,
+            )
+
+            cmds.setAttr(
+                f"{end_ik}.segmentScaleCompensate",
+                0,
+            )
+
+            # Both end joints inherit the root's orientation.
+            # Their local rotations remain zero.
 
             # ----------------------------------------------
             # Single chain IK
@@ -193,7 +348,7 @@ class Ik_correctives:
             ik = create_IK_single_chain(
                 name=descriptor,
                 start_joint=root_ik,
-                end_joint=end_ik,
+                end_joint=end_null,
             )
 
             cmds.parent(
@@ -202,11 +357,25 @@ class Ik_correctives:
             )
 
             # ----------------------------------------------
+            # Root constraint
+            #
+            # Drive the offset rather than the IK joint.
+            # The IK solver owns root_ik.rotate.
+            # ----------------------------------------------
+
+            constraint(
+                drivers=[root_driver],
+                driven=root_offset,
+                constraint_type="parent",
+                parent=self.guts,
+            )
+
+            # ----------------------------------------------
             # Stretch
             # ----------------------------------------------
 
             ik_dist = DistanceBetweenNode(
-                name=descriptor,
+                name=f"{descriptor}_distance",
             )
 
             ik_dist.input_matrix1.connect_from(
@@ -218,11 +387,11 @@ class Ik_correctives:
             )
 
             ik_dist.distance.connect_to(
-                f"{end_ik}.translate{self.primary_axis}"
+                f"{end_null}.translate{self.primary_axis}"
             )
 
             # ----------------------------------------------
-            # IK constraints
+            # IK handle constraint
             # ----------------------------------------------
 
             constraint(
@@ -231,14 +400,6 @@ class Ik_correctives:
                 constraint_type="parent",
                 parent=self.guts,
             )
-
-            if self.root_ik_space:
-                constraint(
-                    drivers=self.root_ik_space,
-                    driven=root_ik,
-                    constraint_type="parent",
-                    parent=self.guts,
-                )
 
             self.ik_joints.extend([
                 root_ik,

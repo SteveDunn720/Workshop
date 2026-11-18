@@ -47,6 +47,7 @@ class moudle_info:
     upper_sub_joints:list
     lower_sub_joints:list
     auto_pv_driven:str | None
+    swing:str
 
 
 
@@ -396,6 +397,8 @@ class Biped_Limb:
             "ik_root": ik_controls[0],
             "ik_pv": ik_controls[1],
             "ik_end": ik_end,
+
+            "swing": f'{part}_swing_{side}'
         }
 
     def build(self):
@@ -731,6 +734,55 @@ class Biped_Limb:
             for joint in twist.twist_joints
         ]
 
+        # --------------------------------------------------
+        # Root swing joint
+        # --------------------------------------------------
+
+        self.swing_joint = create_joint(
+            name=f'{self.part}_swing_{self.side}',
+            transform=self.guides[0].name,
+            parent=self.guts,
+            connect=False,
+            bind_set=False,
+            ue_set=False,
+        )
+
+        # Static orientation reference.
+        # Prevents the swing joint from inheriting root twist.
+        swing_up = create_transform(
+            name=f'{self.part}_swing_up_{self.side}',
+            transform=self.guides[0].name,
+            parent=self.guts,
+        )
+
+        # Match root translation.
+        constraint(
+            drivers=[self.switch_joints[0]],
+            driven=self.swing_joint,
+            constraint_type="point",
+            parent=self.guts,
+        )
+
+        # Determine the joint's primary direction.
+        primary_sign = (
+            -1 if cmds.getAttr(
+                f"{self.switch_joints[1]}.translateY"
+            ) < 0 else 1
+        )
+
+        # Aim toward the next joint, removing axial twist.
+        cmds.aimConstraint(
+            self.switch_joints[1],
+            self.swing_joint,
+            aimVector=(0, primary_sign, 0),
+            upVector=(1, 0, 0),
+            worldUpType="objectrotation",
+            worldUpObject=swing_up,
+            worldUpVector=(1, 0, 0),
+            maintainOffset=False,
+        )
+
+
 
 
 
@@ -755,6 +807,7 @@ class Biped_Limb:
                 upper_sub_joints=self.upper_twists,
                 lower_sub_joints=self.lower_twists,
                 auto_pv_driven = pv_driven,
+                swing = self.swing_joint 
                 )
         
         return self.info
