@@ -22,6 +22,7 @@ class TwistData:
     end_joint: str
 
     twist_joints: list[str]
+    switch_twist_joints: list[str]
 
     control: object | None = None
 
@@ -90,6 +91,8 @@ def _get_other_axes(primary_axis: str) -> tuple[str, str]:
 def _get_twist_weight(
     index: int,
     count: int,
+    start_at_root: bool = False,
+    root_offset: float = 0.1,
 ) -> float:
     """
     Return the normalized position of a twist joint along the segment.
@@ -100,7 +103,24 @@ def _get_twist_weight(
          0.0       0.333       0.666       1.0
     """
 
-    return (index + 1) / (count + 1)
+    default_weight = (index + 1) / (count + 1)
+
+    if not start_at_root:
+        return default_weight
+
+    # Move the first joint close to the root, keeping the final joint
+    # at its original position and spreading the remaining joints evenly.
+    if not 0.0 <= root_offset < 1.0:
+        raise ValueError("root_offset must be between 0 (inclusive) and 1 (exclusive).")
+
+    if count == 1:
+        return root_offset
+
+    last_weight = count / (count + 1)
+    if root_offset >= last_weight:
+        raise ValueError("root_offset must be smaller than the last twist position.")
+
+    return root_offset + (last_weight - root_offset) * index / (count - 1)
 
 
 def _get_control_weight(
@@ -150,6 +170,8 @@ def create_twist_joints(
     twist_count: int = 2,
     primary_axis: str = "Y",
     invert: bool = False,
+    start_at_root: bool = False,
+    root_offset: float = 0.1,
 ) -> list[str]:
     """
     Create twist joints between two existing deformation joints.
@@ -184,6 +206,8 @@ def create_twist_joints(
         position = _get_twist_weight(
             index=i,
             count=twist_count,
+            start_at_root=start_at_root,
+            root_offset=root_offset,
         )
 
         twist_joint = create_joint(
@@ -208,6 +232,38 @@ def create_twist_joints(
     return twist_joints
 
 
+def create_twist_switch_joints(
+    start_driver: str,
+    twist_joints: list[str],
+) -> list[str]:
+    """Create an unskinned driver counterpart for each bind twist joint.
+
+    Parenting them under the switch root means their inherited rotation
+    comes directly from the switch skeleton, not from the constrained
+    deformation skeleton.  The twist/bend network drives these joints;
+    parent constraints make the deformation joints follow.
+    """
+    switch_twists = []
+
+    for i, bind_twist in enumerate(twist_joints, start=1):
+        name = bind_twist.removesuffix("_jnt")
+        if name.startswith("def_"):
+            name = name[4:]
+
+        switch_twist = create_joint(
+            name=f"switch_{name}",
+            transform=bind_twist,
+            parent=start_driver,
+            connect=False,
+            bind_set=False,
+            ue_set=False,
+            dont_mirror=True,
+        )
+        switch_twists.append(switch_twist)
+
+    return switch_twists
+
+
 # ----------------------------------------------------------------------
 # Weight Split
 # ----------------------------------------------------------------------
@@ -216,27 +272,13 @@ def setup_twist_tag(
     start_joint: str,
     twist_joints: list[str],
 ):
-    """
-    Set up weight splitting for a twist segment.
-    """
-
     if not twist_joints:
         return
 
-    if len(twist_joints) == 1:
+    split_influences = list(twist_joints)
 
-        split_influences = [
-            start_joint,
-            twist_joints[0],
-            twist_joints[0],
-        ]
-
-    else:
-
-        split_influences = [
-            start_joint,
-            *twist_joints,
-        ]
+    while len(split_influences) < 3:
+        split_influences.append(split_influences[-1])
 
     tag_for_weight_split(
         influence=start_joint,
@@ -328,6 +370,17 @@ def create_twist_control(
     )
 
     cmds.delete(midpoint.name)
+
+    # 0 = existing inherited root rotation; 1 = distributed root twist.
+    cmds.addAttr(
+        control.ctrl,
+        longName="twist_distribution",
+        attributeType="double",
+        minValue=0.0,
+        maxValue=1.0,
+        defaultValue=1,
+        keyable=True,
+    )
 
     # ---------------------------------------------------------
     # POSITION
@@ -487,110 +540,105 @@ def _drive_twist_rotation(
     weight: float,
     control=None,
     twist_source: str | None = None,
+    root_twist_source: str | None = None,
+    root_rest_twist: float = 0.0,
+    distribution_weight: float = 1.0,
 ):
+    """Drive the existing automatic/control twist, optionally redistributing
+    the axial rotation inherited from the start deformation joint.
+
+    twist_distribution = 0: exact previous rotation behavior.
+    twist_distribution = 1: cancel root twist on the first twist joint,
+                            restore it progressively toward the last.
+
+    Only the primary rotation axis is modified. All translation/stretch
+    networks remain unchanged.
     """
-    Drive one twist joint's primary-axis rotation.
-
-    Automatic:
-        end driver twist * twist percentage
-
-    Optional control:
-        control twist * midpoint falloff
-
-    Final:
-        automatic + control
-    """
-
     if twist_source is None:
         twist_source = f"{end_driver}.rotate{primary_axis}"
 
-    # ---------------------------------------------------------
-    # Automatic twist
-    # ---------------------------------------------------------
-
     twist_mult = cmds.createNode(
-        "multDoubleLinear",
-        name=f"{twist_joint}_twist_mult",
+        "multDoubleLinear", name=f"{twist_joint}_twist_mult",
     )
+    cmds.connectAttr(twist_source, f"{twist_mult}.input1", force=True)
+    cmds.setAttr(f"{twist_mult}.input2", weight)
+    result = f"{twist_mult}.output"
 
-    cmds.connectAttr(
-        twist_source,
-        f"{twist_mult}.input1",
-        force=True,
-    )
-
-    cmds.setAttr(
-        f"{twist_mult}.input2",
-        weight,
-    )
-
-    # ---------------------------------------------------------
-    # No control
-    # ---------------------------------------------------------
-
-    control_transform = _get_control_transform(
-        control
-    )
-
-    if not control_transform:
-
+    control_transform = _get_control_transform(control)
+    if control_transform:
+        control_weight = _get_control_weight(weight)
+        control_mult = cmds.createNode(
+            "multDoubleLinear", name=f"{twist_joint}_control_twist_mult",
+        )
         cmds.connectAttr(
-            f"{twist_mult}.output",
-            f"{twist_joint}.rotate{primary_axis}",
-            force=True,
+            f"{control_transform}.rotate{primary_axis}",
+            f"{control_mult}.input1", force=True,
+        )
+        cmds.setAttr(f"{control_mult}.input2", control_weight)
+
+        twist_add = cmds.createNode(
+            "addDoubleLinear", name=f"{twist_joint}_twist_add",
+        )
+        cmds.connectAttr(result, f"{twist_add}.input1", force=True)
+        cmds.connectAttr(
+            f"{control_mult}.output", f"{twist_add}.input2", force=True,
+        )
+        result = f"{twist_add}.output"
+
+    distribution_attr = (
+        f"{control_transform}.twist_distribution"
+        if control_transform and cmds.attributeQuery(
+            "twist_distribution", node=control_transform, exists=True,
+        )
+        else None
+    )
+    if distribution_attr and root_twist_source is not None:
+        # Remove only the root rotation added since the bind pose.
+        # This prevents an offset when the distribution attribute is enabled.
+        root_delta = cmds.createNode(
+            "plusMinusAverage", name=f"{twist_joint}_root_twist_delta",
+        )
+        cmds.setAttr(f"{root_delta}.operation", 2)  # subtract
+        cmds.connectAttr(
+            root_twist_source, f"{root_delta}.input1D[0]", force=True,
+        )
+        cmds.setAttr(f"{root_delta}.input1D[1]", root_rest_twist)
+
+        # Negative fraction of inherited root twist to subtract:
+        # first twist = -1.0, last twist = 0.0.
+        root_cancel = cmds.createNode(
+            "multiplyDivide", name=f"{twist_joint}_root_twist_cancel",
+        )
+        cmds.connectAttr(
+            f"{root_delta}.output1D", f"{root_cancel}.input1X", force=True,
+        )
+        cmds.setAttr(
+            f"{root_cancel}.input2X", -(1.0 - distribution_weight),
         )
 
-        return
+        distribution_mult = cmds.createNode(
+            "multiplyDivide", name=f"{twist_joint}_distribution_mult",
+        )
+        cmds.connectAttr(
+            f"{root_cancel}.outputX", f"{distribution_mult}.input1X",
+            force=True,
+        )
+        cmds.connectAttr(
+            distribution_attr, f"{distribution_mult}.input2X", force=True,
+        )
 
-    # ---------------------------------------------------------
-    # Mid-control twist
-    # ---------------------------------------------------------
-
-    control_weight = _get_control_weight(
-        weight
-    )
-
-    control_mult = cmds.createNode(
-        "multDoubleLinear",
-        name=f"{twist_joint}_control_twist_mult",
-    )
-
-    cmds.connectAttr(
-        f"{control_transform}.rotate{primary_axis}",
-        f"{control_mult}.input1",
-        force=True,
-    )
-
-    cmds.setAttr(
-        f"{control_mult}.input2",
-        control_weight,
-    )
-
-    # ---------------------------------------------------------
-    # Add automatic + control
-    # ---------------------------------------------------------
-
-    twist_add = cmds.createNode(
-        "addDoubleLinear",
-        name=f"{twist_joint}_twist_add",
-    )
+        distribution_add = cmds.createNode(
+            "plusMinusAverage", name=f"{twist_joint}_distribution_add",
+        )
+        cmds.connectAttr(result, f"{distribution_add}.input1D[0]", force=True)
+        cmds.connectAttr(
+            f"{distribution_mult}.outputX",
+            f"{distribution_add}.input1D[1]", force=True,
+        )
+        result = f"{distribution_add}.output1D"
 
     cmds.connectAttr(
-        f"{twist_mult}.output",
-        f"{twist_add}.input1",
-        force=True,
-    )
-
-    cmds.connectAttr(
-        f"{control_mult}.output",
-        f"{twist_add}.input2",
-        force=True,
-    )
-
-    cmds.connectAttr(
-        f"{twist_add}.output",
-        f"{twist_joint}.rotate{primary_axis}",
-        force=True,
+        result, f"{twist_joint}.rotate{primary_axis}", force=True,
     )
 
 
@@ -1369,8 +1417,11 @@ def drive_twist_joints(
     end_joint: str,
     cst_parent: str,
     twist_joints: list[str],
+    switch_twist_joints: list[str],
     primary_axis: str = "Y",
     control=None,
+    start_at_root: bool = False,
+    root_offset: float = 0.1,
 ):
     """
     Drive a deformation twist segment from a switch-joint segment.
@@ -1391,6 +1442,9 @@ def drive_twist_joints(
 
     if not twist_joints:
         return
+
+    if len(twist_joints) != len(switch_twist_joints):
+        raise ValueError("Twist bind and switch chain counts must match.")
 
     primary_axis = _validate_axis(
         primary_axis
@@ -1439,13 +1493,20 @@ def drive_twist_joints(
         primary_axis=primary_axis,
     )
 
-    for i, twist_joint in enumerate(
-        twist_joints
+    # Switch twists are children of start_driver. Their inherited
+    # twist comes from the switch skeleton, NOT the constrained bind chain.
+    root_twist_source = f"{start_driver}.rotate{primary_axis}"
+    root_rest_twist = cmds.getAttr(root_twist_source)
+
+    for i, (twist_joint, switch_twist) in enumerate(
+        zip(twist_joints, switch_twist_joints, strict=True)
     ):
 
         weight = _get_twist_weight(
             index=i,
             count=count,
+            start_at_root=start_at_root,
+            root_offset=root_offset,
         )
 
         # -----------------------------------------------------
@@ -1454,11 +1515,16 @@ def drive_twist_joints(
 
         _drive_twist_rotation(
             end_driver=end_driver,
-            twist_joint=twist_joint,
+            twist_joint=switch_twist,
             primary_axis=primary_axis,
             weight=weight,
             control=control,
             twist_source=twist_source,
+            root_twist_source=root_twist_source,
+            root_rest_twist=root_rest_twist,
+            # The actual first and last twist joints are the endpoints
+            # of the distribution, rather than the bind joints.
+            distribution_weight=(i / (count - 1)) if count > 1 else 0.0,
         )
 
         # -----------------------------------------------------
@@ -1468,10 +1534,20 @@ def drive_twist_joints(
         _drive_twist_translation(
             start_driver=start_driver,
             end_driver=end_driver,
-            twist_joint=twist_joint,
+            twist_joint=switch_twist,
             primary_axis=primary_axis,
             weight=weight,
             control=control,
+        )
+
+        # Only switch joints receive procedural connections. The skinned
+        # bind joints are followers, avoiding direct rotation/translation
+        # networks on the deformation layer.
+        cmds.parentConstraint(
+            switch_twist,
+            twist_joint,
+            maintainOffset=False,
+            name=f"{twist_joint}_switch_parentConstraint",
         )
 
 
@@ -1493,7 +1569,9 @@ def create_twist(
     mid_control: bool = False,
     control_parent: str | None = None,
     rig_size: float = 1.0,
-    control_shape:str = "round_square"
+    control_shape:str = "round_square",
+    start_at_root: bool = False,
+    root_offset: float = 0.1,
 
 ) -> TwistData:
     """
@@ -1533,6 +1611,13 @@ def create_twist(
         rig_size:
             Size of the optional midpoint control.
 
+        start_at_root:
+            If True, position the first twist joint near the segment root.
+
+        root_offset:
+            Normalized distance of the first twist joint from the root
+            when start_at_root is True (0.1 = 10% of segment length).
+
     Returns:
         TwistData
     """
@@ -1551,6 +1636,8 @@ def create_twist(
         twist_count=twist_count,
         primary_axis=primary_axis,
         invert=invert,
+        start_at_root=start_at_root,
+        root_offset=root_offset,
     )
 
     # ---------------------------------------------------------
@@ -1559,6 +1646,15 @@ def create_twist(
 
     setup_twist_tag(
         start_joint=start_joint,
+        twist_joints=twist_joints,
+    )
+
+    # ---------------------------------------------------------
+    # Unskinned switch twist chain
+    # ---------------------------------------------------------
+
+    switch_twist_joints = create_twist_switch_joints(
+        start_driver=start_driver,
         twist_joints=twist_joints,
     )
 
@@ -1589,9 +1685,12 @@ def create_twist(
         start_joint=start_joint,
         end_joint=end_joint,
         twist_joints=twist_joints,
+        switch_twist_joints=switch_twist_joints,
         primary_axis=primary_axis,
         cst_parent=cst_parent,
         control=control,
+        start_at_root=start_at_root,
+        root_offset=root_offset,
     )
 
     # ---------------------------------------------------------
@@ -1604,6 +1703,7 @@ def create_twist(
         start_joint=start_joint,
         end_joint=end_joint,
         twist_joints=twist_joints,
+        switch_twist_joints=switch_twist_joints,
         control=control,
     )
 

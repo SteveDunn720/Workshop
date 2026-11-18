@@ -695,6 +695,8 @@ class Biped_Limb:
                     control_color=self.main_control_color,
 
                     stretch_default=1.0,
+                    start_at_root=True,
+                    root_offset=0.1,
                 )
 
                 bone_info = bone.build()
@@ -726,6 +728,7 @@ class Biped_Limb:
             joint
             for twist in upper_twist_data
             for joint in twist.twist_joints
+            
         ]
 
         self.lower_twists = [
