@@ -12,6 +12,7 @@ from Workshop.canon_autorigger.modules.foot.roll_guides import generate_foot_gui
 @dataclass
 class rig_config:
     cor_joints:bool = True
+    face:bool = False
 
 
 
@@ -121,44 +122,44 @@ def build(rig_name:str, config:rig_config):
             necktrap.build()"""
 
     #face modules
+    if config.face:
+        face = modules.Face(rig_size=canon.scene_size, parent=canon.rig, joint_parent=headinfo.joint, guides=guides.face, control_space=[headinfo.control.ctrl])
+        faceinfo = face.build()
 
-    face = modules.Face(rig_size=canon.scene_size, parent=canon.rig, joint_parent=headinfo.joint, guides=guides.face, control_space=[headinfo.control.ctrl])
-    faceinfo = face.build()
+        jaw = modules.Jaw(rig_size=canon.scene_size, parent=canon.rig, joint_parent=faceinfo.lower_joint, guides=guides.jaw, control_space=[faceinfo.lower_control], larynx_follow_space=headinfo.control.ctrl, mid_face=faceinfo.submid_control)
+        jawinfo = jaw.build()
 
-    jaw = modules.Jaw(rig_size=canon.scene_size, parent=canon.rig, joint_parent=faceinfo.lower_joint, guides=guides.jaw, control_space=[faceinfo.lower_control], larynx_follow_space=headinfo.control.ctrl, mid_face=faceinfo.submid_control)
-    jawinfo = jaw.build()
+        mouth = modules.Mouth(rig_size=canon.scene_size, parent=canon.rig, joint_parent=faceinfo.lower_joint, guides=guides.mouth, jaw=jawinfo.jaw,  control_space=[faceinfo.lower_control], muppet=faceinfo.muppet_control, )
+        mouthinfo = mouth.build()
 
-    mouth = modules.Mouth(rig_size=canon.scene_size, parent=canon.rig, joint_parent=faceinfo.lower_joint, guides=guides.mouth, jaw=jawinfo.jaw,  control_space=[faceinfo.lower_control], muppet=faceinfo.muppet_control, )
-    mouthinfo = mouth.build()
+        arch = modules.Arch(part='maxillary', rig_size=canon.scene_size, parent=canon.rig, joint_parent=faceinfo.lower_joint, guides=[guides.teeth[0], guides.teeth[1]], control_space=[faceinfo.muppet_control], driver=faceinfo.muppet_control, divisions = 2)
+        maxillaryinfo = arch.build()
+        arch = modules.Arch(part='mandibular', rig_size=canon.scene_size, parent=canon.rig, joint_parent=faceinfo.lower_joint, guides=[guides.teeth[2], guides.teeth[3]], control_space=[jawinfo.jaw], driver=jawinfo.jaw, divisions = 2)
+        mandibularinfo = arch.build()
+        tongue = modules.Tongue(rig_size=canon.scene_size, parent=canon.rig, joint_parent=faceinfo.lower_joint, guides=[guides.tongue], control_space=[jawinfo.jaw])
+        tongueinfo = tongue.build()
 
-    arch = modules.Arch(part='maxillary', rig_size=canon.scene_size, parent=canon.rig, joint_parent=faceinfo.lower_joint, guides=[guides.teeth[0], guides.teeth[1]], control_space=[faceinfo.muppet_control], driver=faceinfo.muppet_control, divisions = 2)
-    maxillaryinfo = arch.build()
-    arch = modules.Arch(part='mandibular', rig_size=canon.scene_size, parent=canon.rig, joint_parent=faceinfo.lower_joint, guides=[guides.teeth[2], guides.teeth[3]], control_space=[jawinfo.jaw], driver=jawinfo.jaw, divisions = 2)
-    mandibularinfo = arch.build()
-    tongue = modules.Tongue(rig_size=canon.scene_size, parent=canon.rig, joint_parent=faceinfo.lower_joint, guides=[guides.tongue], control_space=[jawinfo.jaw])
-    tongueinfo = tongue.build()
+        nose = modules.Nose(rig_size=canon.scene_size, parent=canon.rig, joint_parent=faceinfo.mid_joint, guides=guides.nose,  control_space=[faceinfo.muppet_control], mouth=mouthinfo.master, jaw=jawinfo.jaw, head=headinfo.control, bridge_space=[faceinfo.upper_control])
+        noseinfo = nose.build()
 
-    nose = modules.Nose(rig_size=canon.scene_size, parent=canon.rig, joint_parent=faceinfo.mid_joint, guides=guides.nose,  control_space=[faceinfo.muppet_control], mouth=mouthinfo.master, jaw=jawinfo.jaw, head=headinfo.control, bridge_space=[faceinfo.upper_control])
-    noseinfo = nose.build()
+        look = modules.Look(rig_size=canon.scene_size, parent=canon.rig, parent_jnt=faceinfo.mid_joint, guides=[guides.eye['L']["aim"], guides.eye['R']["aim"]], control_parent=canon.rig, parent_spaces=[headinfo.control.ctrl])
+        look.build()
 
-    look = modules.Look(rig_size=canon.scene_size, parent=canon.rig, parent_jnt=faceinfo.mid_joint, guides=[guides.eye['L']["aim"], guides.eye['R']["aim"]], control_parent=canon.rig, parent_spaces=[headinfo.control.ctrl])
-    look.build()
+        for side in ["L", "R"]:
+            nl_fold = modules.NL_Fold(rig_size=canon.scene_size, side=side, parent=canon.rig, joint_parent=faceinfo.lower_joint, guides=[guides.nl[0]], control_space=[faceinfo.lower_control], upper_driver=noseinfo.control, lower_driver=mouthinfo.macro[f'upper_corner_{side}'], corner=mouthinfo.corner_controls[side] )
+            nl_foldinfo = nl_fold.build()
 
-    for side in ["L", "R"]:
-        nl_fold = modules.NL_Fold(rig_size=canon.scene_size, side=side, parent=canon.rig, joint_parent=faceinfo.lower_joint, guides=[guides.nl[0]], control_space=[faceinfo.lower_control], upper_driver=noseinfo.control, lower_driver=mouthinfo.macro[f'upper_corner_{side}'], corner=mouthinfo.corner_controls[side] )
-        nl_foldinfo = nl_fold.build()
+            brow = modules.Brow(rig_size=canon.scene_size, side=side, parent=canon.rig, joint_parent=faceinfo.top_joint, guides=[guides.brow[0]], control_space=[faceinfo.top_control], )
+            browinfo = brow.build()
 
-        brow = modules.Brow(rig_size=canon.scene_size, side=side, parent=canon.rig, joint_parent=faceinfo.top_joint, guides=[guides.brow[0]], control_space=[faceinfo.top_control], )
-        browinfo = brow.build()
+            cheek = modules.Cheek(rig_size=canon.scene_size, side=side, parent=canon.rig, joint_parent=faceinfo.mid_joint, guides=guides.cheek[side], puff_space=[faceinfo.lower_control], cheekbone_space=[faceinfo.upper_control], driver=jawinfo.jaw, head_space=headinfo.control)
+            cheekinfo = cheek.build()
 
-        cheek = modules.Cheek(rig_size=canon.scene_size, side=side, parent=canon.rig, joint_parent=faceinfo.mid_joint, guides=guides.cheek[side], puff_space=[faceinfo.lower_control], cheekbone_space=[faceinfo.upper_control], driver=jawinfo.jaw, head_space=headinfo.control)
-        cheekinfo = cheek.build()
+            ear = modules.Ear(rig_size=canon.scene_size, side=side, parent=canon.rig, joint_parent=faceinfo.mid_joint, guides=guides.ear, main_space=[faceinfo.muppet_control], driver=jawinfo.jaw, head_space=headinfo.control)
+            earinfo = ear.build()
 
-        ear = modules.Ear(rig_size=canon.scene_size, side=side, parent=canon.rig, joint_parent=faceinfo.mid_joint, guides=guides.ear, main_space=[faceinfo.muppet_control], driver=jawinfo.jaw, head_space=headinfo.control)
-        earinfo = ear.build()
-
-        eye = modules.Eye(rig_size=canon.scene_size, part="eye", side=side, parent=canon.rig, joint_parent=faceinfo.upper_joint, guides=guides.eye[side], muppet=faceinfo.muppet_control, jaw=jawinfo.jaw, control_parent=canon.rig, control_space=[faceinfo.upper_control.ctrl], look_parent=look.main_ctrl.ctrl)
-        eye.build()
+            eye = modules.Eye(rig_size=canon.scene_size, part="eye", side=side, parent=canon.rig, joint_parent=faceinfo.upper_joint, guides=guides.eye[side], muppet=faceinfo.muppet_control, jaw=jawinfo.jaw, control_parent=canon.rig, control_space=[faceinfo.upper_control.ctrl], look_parent=look.main_ctrl.ctrl)
+            eye.build()
             
     
       
