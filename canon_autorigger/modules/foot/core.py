@@ -9,7 +9,7 @@ from Workshop.joint import create_joint
 from Workshop.maya_api.node import ConditionNode, DistanceBetweenNode, MultiplyDivideNode, ReverseNode
 from Workshop.guide.core import GuideInfo
 from Workshop.transform.constraint import constraint
-from Workshop.maya_api.attribute_utils import add_proxy, set_attribute
+from Workshop.maya_api.attribute_utils import add_proxy, connect_attributes, set_attribute
 
 from ..ik import auto_pv_space, create_IK_single_chain
 from ..module_shared import fkik_switch, module_prep, module_space
@@ -105,6 +105,278 @@ class Foot:
 
         return pos[1]
         
+
+    def _build_limited_roll_copy(self, roll_info):
+        """Mirror the evaluated roll pivots under the length-limited leg output.
+
+        The *source* roll tree stays parented under the animator's foot controls.
+        Only the mirrored hierarchy moves with the length-limited leg joint.
+        We connect LOCAL transform channels, so the roll/bank pivots retain
+        their original relationships instead of copying world matrices.
+        """
+        if not self.leg_info.ik_len:
+            raise ValueError("Foot roll length copy requires leg IK length joints.")
+
+        def long_path(node):
+            matches = cmds.ls(node, long=True) or []
+            if len(matches) != 1:
+                raise RuntimeError(f"Roll transform is missing or ambiguous: {node}")
+            return matches[0]
+
+        root = long_path(roll_info.roll_grp)
+        up = long_path(roll_info.up_driver)
+        down = long_path(roll_info.down_driver)
+
+        def path_from_root(leaf):
+            path = []
+            current = leaf
+            while current != root:
+                path.append(current)
+                parents = cmds.listRelatives(current, parent=True, fullPath=True) or []
+                if not parents:
+                    raise RuntimeError(f"{leaf} is not beneath {root}")
+                current = parents[0]
+            return list(reversed(path))
+
+        # The source roll is planted under the animator foot control.
+        # Follow its root, not IK_len: otherwise the pivot lift is doubled.
+        offset = cmds.createNode(
+            "transform", name=f"foot_{self.side}_limited_roll_offset",
+            parent=self.guts,
+        )
+        cmds.xform(
+            offset, worldSpace=True,
+            matrix=cmds.xform(self.guides[0].name, query=True,
+                              worldSpace=True, matrix=True),
+        )
+        cmds.parentConstraint(root, offset, maintainOffset=True)
+
+        # A separate layer applies ONLY the displacement caused by the
+        # capped leg length.  Before the cap it remains at (0, 0, 0).
+        correction = cmds.createNode(
+            "transform", name=f"foot_{self.side}_roll_reach_correction",
+            parent=offset,
+        )
+
+        # Recreate the union of the paths leading to ankle and ball/toe.
+        # This includes bank and twist pivots, the roll center and the
+        # complete back/front chains, without duplicating animator controls.
+        # Include every pivot from roll.py, not just the paths to the
+        # ankle and toe. This retains the complete banking/twist structure.
+        pivot_sources = [long_path(p) for p in roll_info.pivot_transforms]
+        pivot_sources += [up, down]
+        originals = [root]
+        for leaf in pivot_sources:
+            for source in path_from_root(leaf):
+                if source not in originals:
+                    originals.append(source)
+        # Source pivots are listed in build order, not necessarily DAG order
+        # (roll_center gets reparented underneath bank_twist_offset).
+        originals.sort(key=lambda item: item.count("|"))
+
+        mirrored = {}
+        for source in originals:
+            if source == root:
+                parent = correction
+            else:
+                src_parent = cmds.listRelatives(
+                    source, parent=True, fullPath=True,
+                )[0]
+                parent = mirrored[src_parent]
+
+            short_name = source.rsplit("|", 1)[-1].replace(":", "_")
+            copy = cmds.createNode(
+                "transform",
+                name=f"{short_name}_limited_{self.side}",
+                parent=parent,
+            )
+            mirrored[source] = copy
+
+            cmds.setAttr(
+                f"{copy}.rotateOrder",
+                cmds.getAttr(f"{source}.rotateOrder"),
+            )
+            # Match rest local pivots, then mirror every animated component.
+            # The root is special: its position is held relative to the
+            # length offset, not driven by the unrestricted foot control.
+            if source == root:
+                cmds.xform(
+                    copy, worldSpace=True,
+                    matrix=cmds.xform(source, query=True,
+                                      worldSpace=True, matrix=True),
+                )
+                continue
+
+            for attr in ("rotatePivot", "rotatePivotTranslate",
+                         "scalePivot", "scalePivotTranslate", "rotateAxis"):
+                value = cmds.getAttr(f"{source}.{attr}")[0]
+                cmds.setAttr(f"{copy}.{attr}", *value, type="double3")
+
+            for base, axes in (("translate", "XYZ"),
+                               ("rotate", "XYZ"),
+                               ("scale", "XYZ"),
+                               ("shear", "XYZ")):
+                # Maya's shear channels are XY/XZ/YZ, not shearX/Y/Z.
+                if base == "shear":
+                    suffixes = ("XY", "XZ", "YZ")
+                else:
+                    suffixes = axes
+                for axis in suffixes:
+                    cmds.connectAttr(
+                        f"{source}.{base}{axis}",
+                        f"{copy}.{base}{axis}",
+                        force=True,
+                    )
+
+        # --------------------------------------------------
+        # Reach-only offset (the tested double-lift correction).
+        # --------------------------------------------------
+        # Measure the ankle against the hip.  This is the *unrestricted*
+        # source roll, never the limited copy, avoiding evaluation cycles.
+        limb_root = self.leg_info.ik_joints[0]
+        limb_short = limb_root.rsplit("|", 1)[-1]
+        if not limb_short.startswith("IK_") or not limb_short.endswith("_jnt"):
+            raise RuntimeError(f"Unexpected IK root name: {limb_root}")
+        prefix = limb_short[len("IK_"):-len("_jnt")]
+        distance_node = f"{prefix}_stretch_distance"
+        length_sum = f"{prefix}_limb_length_sum.output1D"
+        if not cmds.objExists(distance_node):
+            raise RuntimeError(f"Missing stretch distance: {distance_node}")
+        if not cmds.objExists(length_sum):
+            raise RuntimeError(f"Missing limb length output: {length_sum}")
+        hip_matrix = cmds.connectionInfo(
+            f"{distance_node}.inMatrix1", sourceFromDestination=True,
+        )
+        if not hip_matrix:
+            raise RuntimeError("Missing hip matrix driving stretch distance")
+        ankle_source = cmds.connectionInfo(
+            f"{distance_node}.inMatrix2", sourceFromDestination=True,
+        )
+        # The limb stretch module measures its own end_pos transform.
+        # That is a valid endpoint even if end_ik_hook has a different
+        # structure in a particular Biped_Limb revision.  The Foot.build()
+        # method connects the *actual* endpoint to the source roll ankle.
+        if not ankle_source or not ankle_source.endswith(".worldMatrix[0]"):
+            raise RuntimeError(
+                "Stretch distance needs a transform worldMatrix endpoint. "
+                f"Found {ankle_source!r}"
+            )
+
+        hip_dm = cmds.createNode(
+            "decomposeMatrix", name=f"{prefix}_reach_hip_dm",
+        )
+        ankle_dm = cmds.createNode(
+            "decomposeMatrix", name=f"{prefix}_reach_ankle_dm",
+        )
+        cmds.connectAttr(hip_matrix, f"{hip_dm}.inputMatrix")
+        cmds.connectAttr(f"{up}.worldMatrix[0]", f"{ankle_dm}.inputMatrix")
+
+        direction = cmds.createNode(
+            "plusMinusAverage", name=f"{prefix}_reach_direction",
+        )
+        cmds.setAttr(f"{direction}.operation", 2)
+        cmds.connectAttr(
+            f"{ankle_dm}.outputTranslate", f"{direction}.input3D[0]",
+        )
+        cmds.connectAttr(
+            f"{hip_dm}.outputTranslate", f"{direction}.input3D[1]",
+        )
+
+        safe_distance = cmds.createNode(
+            "condition", name=f"{prefix}_reach_safe_distance",
+        )
+        cmds.setAttr(f"{safe_distance}.operation", 2)  # greater than
+        cmds.connectAttr(f"{distance_node}.distance",
+                         f"{safe_distance}.firstTerm")
+        cmds.setAttr(f"{safe_distance}.secondTerm", 0.001)
+        cmds.connectAttr(f"{distance_node}.distance",
+                         f"{safe_distance}.colorIfTrueR")
+        cmds.setAttr(f"{safe_distance}.colorIfFalseR", 0.001)
+
+        unit = cmds.createNode(
+            "multiplyDivide", name=f"{prefix}_reach_unit_vector",
+        )
+        cmds.setAttr(f"{unit}.operation", 2)  # divide
+        for axis in "XYZ":
+            cmds.connectAttr(
+                f"{direction}.output3D{axis.lower()}",
+                f"{unit}.input1{axis}",
+            )
+            cmds.connectAttr(
+                f"{safe_distance}.outColorR", f"{unit}.input2{axis}",
+            )
+
+        excess = cmds.createNode(
+            "plusMinusAverage", name=f"{prefix}_reach_excess",
+        )
+        cmds.setAttr(f"{excess}.operation", 2)
+        cmds.connectAttr(length_sum, f"{excess}.input1D[0]")
+        cmds.connectAttr(
+            f"{distance_node}.distance", f"{excess}.input1D[1]",
+        )
+
+        gate = cmds.createNode(
+            "condition", name=f"{prefix}_reach_excess_gate",
+        )
+        cmds.setAttr(f"{gate}.operation", 2)  # distance > allowed length
+        cmds.connectAttr(
+            f"{distance_node}.distance", f"{gate}.firstTerm",
+        )
+        cmds.connectAttr(length_sum, f"{gate}.secondTerm")
+        cmds.connectAttr(
+            f"{excess}.output1D", f"{gate}.colorIfTrueR",
+        )
+        cmds.setAttr(f"{gate}.colorIfFalseR", 0)
+
+        displacement = cmds.createNode(
+            "multiplyDivide", name=f"{prefix}_reach_world_delta",
+        )
+        for axis in "XYZ":
+            cmds.connectAttr(
+                f"{unit}.output{axis}", f"{displacement}.input1{axis}",
+            )
+            cmds.connectAttr(
+                f"{gate}.outColorR", f"{displacement}.input2{axis}",
+            )
+
+        to_local = cmds.createNode(
+            "vectorProduct", name=f"{prefix}_reach_local_delta",
+        )
+        cmds.setAttr(f"{to_local}.operation", 3)  # vector * matrix
+        cmds.setAttr(f"{to_local}.normalizeOutput", False)
+        cmds.connectAttr(
+            f"{displacement}.output", f"{to_local}.input1",
+        )
+        cmds.connectAttr(
+            f"{offset}.worldInverseMatrix[0]", f"{to_local}.matrix",
+        )
+        cmds.connectAttr(f"{to_local}.output", f"{correction}.translate")
+
+        # Intermediary joints give the downstream IK/toe setup a distinct
+        # driven layer. They never feed the unrestricted roll hierarchy.
+        foot_driver = cmds.createNode(
+            "joint", name=f"IK_roll_limited_foot_{self.side}_jnt",
+            parent=offset,
+        )
+        ball_driver = cmds.createNode(
+            "joint", name=f"IK_roll_limited_ball_{self.side}_jnt",
+            parent=offset,
+        )
+        for joint, source in ((foot_driver, up), (ball_driver, down)):
+            cmds.xform(
+                joint, worldSpace=True,
+                matrix=cmds.xform(source, query=True,
+                                  worldSpace=True, matrix=True),
+            )
+            cmds.parentConstraint(
+                mirrored[source], joint, maintainOffset=False,
+            )
+            cmds.setAttr(f"{joint}.visibility", 0)
+
+        self.limited_roll_offset = offset
+        self.limited_roll_pivots = mirrored
+        self.limited_roll_joints = [foot_driver, ball_driver]
+        return foot_driver, ball_driver
 
     def build(self):
         prep = module_prep(part=self.part, parent=self.parent, side=self.side, fkik=True)
@@ -243,18 +515,70 @@ class Foot:
         cmds.parent(roll_info.roll_grp, self.back_piv.ctrl)
         add_proxy(source=self.leg_info.ik_stretch_attr, proxy_list=[self.ik_foot.ctrl], proxy_name='stretch')
 
-        # connecting the rool to the foot and leg
+        # --------------------------------------------------
+        # Planted source roll vs. length-limited driven roll.
+        # --------------------------------------------------
+        # roll_grp is ALREADY parented beneath back_piv.ctrl above.
+        # Do not constrain it to the IK length joint; it must remain
+        # planted at the control pivot while the control moves past reach.
 
-        constraint(drivers=[roll_info.down_driver], driven=roll_ik.handle, constraint_type='parent', parent=self.guts)
-        constraint(drivers=[roll_info.down_driver], driven=self.ik_roll_joints[1], constraint_type='orient', parent=self.guts)
-        constraint(drivers=[roll_info.up_driver], driven=self.ik_hook[0], constraint_type='parent', parent=self.guts)
-        constraint(drivers=[self.ik_hook[1]], driven=self.ik_roll_joints[0], constraint_type='parent', parent=self.guts)
-        constraint(drivers=[self.ik_roll_joints[0]], driven=self.ik_joints[0], constraint_type='parent', parent=self.guts)
-        constraint(drivers=[roll_info.down_driver], driven=self.ik_toes.top, constraint_type='parent', parent=self.guts)
-        constraint(drivers=[self.back_piv.ctrl], driven=self.leg_info.ik_len[0].handle, constraint_type='parent', parent=self.guts)
-        constraint(drivers=[self.back_piv.ctrl], driven=self.leg_info.ik_len[2], constraint_type='orient', parent=self.guts)
-        constraint(drivers=[self.leg_info.ik_len[2]], driven=roll_info.roll_grp, constraint_type='parent', parent=self.guts)
-        constraint(drivers=[self.back_piv.ctrl], driven=self.leg_info.end_ik_hook[2], constraint_type='parent', parent=self.guts)
+        # The stretch measuring end_pos must follow the UNLIMITED roll ankle
+        # target, never the length-limited copy (that would create a cycle).
+        # No height_difference translation is connected to end_pos.
+        limb_root = self.leg_info.ik_joints[0]
+        limb_short = limb_root.rsplit("|", 1)[-1]
+        if not limb_short.startswith("IK_") or not limb_short.endswith("_jnt"):
+            raise RuntimeError(f"Unexpected IK root name: {limb_root}")
+        stretch_name = limb_short[len("IK_"):-len("_jnt")]
+        endpoint_matrix = cmds.connectionInfo(
+            f"{stretch_name}_stretch_distance.inMatrix2",
+            sourceFromDestination=True,
+        )
+        if not endpoint_matrix or not endpoint_matrix.endswith(".worldMatrix[0]"):
+            raise RuntimeError(
+                f"Cannot resolve stretch endpoint: {endpoint_matrix!r}"
+            )
+        end_pos = endpoint_matrix.rsplit(".worldMatrix[0]", 1)[0]
+        if not cmds.objExists(end_pos):
+            raise RuntimeError(f"Stretch endpoint does not exist: {end_pos}")
+        constraint(
+            drivers=[roll_info.up_driver],
+            driven=end_pos,
+            constraint_type="parent",
+            parent=self.guts,
+        )
+
+        # The separate IK length chain still follows the animator's
+        # base foot pivot and provides the limited world-space motion.
+        constraint(
+            drivers=[self.back_piv.ctrl],
+            driven=self.leg_info.ik_len[0].handle,
+            constraint_type="parent",
+            parent=self.guts,
+        )
+        constraint(
+            drivers=[self.back_piv.ctrl],
+            driven=self.leg_info.ik_len[2],
+            constraint_type="orient",
+            parent=self.guts,
+        )
+
+        # Mirror the complete pivot paths under an IK-length-driven offset.
+        # Both downstream IK and toes read from the LIMITED copy.
+        limited_ankle, limited_toe = self._build_limited_roll_copy(roll_info)
+
+        constraint(drivers=[limited_toe], driven=roll_ik.handle,
+                   constraint_type='parent', parent=self.guts)
+        constraint(drivers=[limited_toe], driven=self.ik_roll_joints[1],
+                   constraint_type='orient', parent=self.guts)
+        constraint(drivers=[limited_ankle], driven=self.ik_hook[0],
+                   constraint_type='parent', parent=self.guts)
+        constraint(drivers=[self.ik_hook[1]], driven=self.ik_roll_joints[0],
+                   constraint_type='parent', parent=self.guts)
+        constraint(drivers=[self.ik_roll_joints[0]], driven=self.ik_joints[0],
+                   constraint_type='parent', parent=self.guts)
+        constraint(drivers=[limited_toe], driven=self.ik_toes.top,
+                   constraint_type='parent', parent=self.guts)
 
         self.bind_joints = []
 

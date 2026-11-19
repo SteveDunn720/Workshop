@@ -7,6 +7,7 @@ from Workshop.joint import create_joint
 from Workshop.transform.utils import create_transform
 from Workshop.control.core import Control
 from Workshop.transform.constraint import constraint
+from Workshop.maya_api.attribute_utils import set_attribute
 
 
 from ..display_line import create_connection_curve
@@ -581,9 +582,15 @@ class Biped_Limb:
         #stretch
         
         if not self.ik_end_control:
-            end_pos = create_transform(name=f'{self.guides[2].descriptor}_len_pos', transform=self.guides[2].name, parent=self.guts)
+            end_pos_offset = create_transform(name=f'{self.guides[2].descriptor}_len_pos_offset', transform=self.guides[2].name, parent=self.guts)
+            end_pos_sdk = create_transform(name=f'{self.guides[2].descriptor}_len_pos_sdk', transform=self.guides[2].name, parent=end_pos_offset)
+            end_pos = create_transform(name=f'{self.guides[2].descriptor}_len_pos', transform=self.guides[2].name, parent=end_pos_sdk)
+            for attrs in ['rotateX','rotateY','rotateZ',]:
+                set_attribute(f'{end_pos_offset}.{attrs}', 0)
         else:
             end_pos = self.ik_end_ctrl.ctrl
+            end_pos_offset = self.ik_end_ctrl.top
+            end_pos_sdk = self.ik_end_ctrl.sdk
 
         build_stretchy_ik(
             name=f'{self.guides[0].descriptor}',
@@ -793,7 +800,7 @@ class Biped_Limb:
                 fk_root = self.fk_controls[0],
                 ik_root = self.ik_controls[0],
                 fk_ik_switch = self.FK_IK_Switch,
-                end_ik_hook = [self.ik_hook, self.ik_joints[-1], end_pos],
+                end_ik_hook = [self.ik_hook, self.ik_joints[-1], [end_pos, end_pos_sdk, end_pos_offset]],
                 ik_controls = self.ik_controls,
                 fk_controls = self.fk_controls,
                 ik_len=ik_len,

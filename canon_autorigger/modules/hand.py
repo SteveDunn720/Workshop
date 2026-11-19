@@ -216,8 +216,8 @@ class Hand:
 
         constraint(drivers=[self.ik_hand.ctrl], driven=self.ik_hook[0], constraint_type="parent", parent=self.guts)
         constraint(drivers=[self.ik_hook[1]], driven=self.ik_joints[0], constraint_type="parent", parent=self.guts)
-        constraint(drivers=[self.ik_hand.ctrl], driven=self.ik_hook[2], constraint_type="parent", parent=self.guts)
-        add_proxy(source=f"{self.ik_hook[2]}.stretch", proxy_list=[self.ik_hand.ctrl], proxy_name="stretch")
+        constraint(drivers=[self.ik_hand.ctrl], driven=self.ik_hook[2][-1], constraint_type="parent", parent=self.guts)
+        add_proxy(source=f"{self.ik_hook[2][0]}.stretch", proxy_list=[self.ik_hand.ctrl], proxy_name="stretch")
 
         self.bind_jnt = create_joint(
             name=f"def_{self.part}_{self.side}", transform=self.guides.name,

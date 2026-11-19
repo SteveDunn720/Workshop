@@ -26,6 +26,7 @@ class module_info:
     twist_ctrl:Control
     roll_grp:str
     height_calc:str
+    pivot_transforms:list[str]
 
 class Roll:
     def __init__(
@@ -392,6 +393,6 @@ class Roll:
         obj_ref_tag(bank_out.ctrl)
         obj_ref_tag(bank_in.ctrl)
 
-        info = module_info(up_driver=back_tforms[-1], down_driver=front_tforms[-1], roll_grp=roll_group, roll_ctrl=self.smart_roll, twist_ctrl=self.smart_twist, height_calc=f"{self.smart_roll.ctrl}.height_difference")
+        info = module_info(up_driver=back_tforms[-1], down_driver=front_tforms[-1], roll_grp=roll_group, roll_ctrl=self.smart_roll, twist_ctrl=self.smart_twist, height_calc=f"{self.smart_roll.ctrl}.height_difference", pivot_transforms=roll_tforms)
         return info
         

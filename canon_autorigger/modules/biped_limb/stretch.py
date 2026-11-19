@@ -21,13 +21,14 @@ def build_stretchy_ik(
     soft_range: float = 0.05,
 ):
     """
-    Stretchy IK with a soft maximum-length limit.
+    Stretchy IK with an animator-controlled maximum-length limit.
 
     stretch = 0.0 : no extension
     stretch = 0.2 : maximum 1.2x original length
     stretch = 1.0 : unrestricted stretch
 
-    The final soft_range of extension eases into the cap.
+    The limit is a hard cap (no soft ramp), avoiding knee re-bending.
+    soft_range is retained for API compatibility but no longer used.
     """
 
     if not cmds.attributeQuery(
@@ -56,9 +57,6 @@ def build_stretchy_ik(
 
     if original_length <= 0:
         raise ValueError("Original IK length must be positive.")
-
-    if not 0 < soft_range:
-        raise ValueError("soft_range must be positive.")
 
     # -------------------------------------------------
     # Helpers for native Maya utility nodes
@@ -202,79 +200,17 @@ def build_stretchy_ik(
     cap = f"{cap_node}.output1D"
 
     # -------------------------------------------------
-    # Soft ramp before the cap
+    # Maximum stretch, without the soft-stretch overshoot.
     # -------------------------------------------------
-
-    ramp_start = subtract(
-        "ramp_start",
-        cap,
-        soft_range,
-    )
-
-    remap = cmds.createNode(
-        "remapValue",
-        name=f"{name}_soft_stretch",
-    )
-
-    cmds.connectAttr(
-        extension_ratio,
-        f"{remap}.inputValue",
-    )
-    cmds.connectAttr(
-        ramp_start,
-        f"{remap}.inputMin",
-    )
-    cmds.connectAttr(
-        cap,
-        f"{remap}.inputMax",
-    )
-    cmds.connectAttr(
-        ramp_start,
-        f"{remap}.outputMin",
-    )
-    cmds.connectAttr(
-        cap,
-        f"{remap}.outputMax",
-    )
-
-    # Approximate the cubic easing curve:
-    # f(t) = t + t^2 - t^3
-    #
-    # Using three remap points with spline interpolation.
-
-    for index, position, value in [
-        (0, 0.0, 0.0),
-        (1, 0.5, 0.625),
-        (2, 1.0, 1.0),
-    ]:
-        prefix = f"{remap}.value[{index}]"
-        cmds.setAttr(
-            f"{prefix}.value_Position", position
-        )
-        cmds.setAttr(
-            f"{prefix}.value_FloatValue", value
-        )
-        cmds.setAttr(
-            f"{prefix}.value_Interp", 3
-        )
-
-    # Below ramp: normal extension.
-    # Inside ramp: eased extension.
-    soft_ratio = condition(
-        "soft_selection",
-        extension_ratio,
-        ramp_start,
-        f"{remap}.outValue",
-        extension_ratio,
-    )
-
-    # Above cap: hard maximum.
+    # The previous remap made the segments longer than the ankle reach
+    # near the cap, causing a knee re-bend / pop.  Use the actual
+    # extension ratio all the way to the cap instead.
     limited_ratio = condition(
         "stretch_cutoff",
         extension_ratio,
         cap,
         cap,
-        soft_ratio,
+        extension_ratio,
     )
 
     # At stretch=1, bypass the limiter entirely.
