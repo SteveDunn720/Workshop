@@ -12,7 +12,7 @@ from Workshop.canon_autorigger.modules.foot.roll_guides import generate_foot_gui
 @dataclass
 class rig_config:
     cor_joints:bool = True
-    face:bool = False
+    face:bool = True
 
 
 

@@ -86,8 +86,6 @@ class Roll:
             self.smart_roll.ctrl,
             rz=(-45, 45), #type:ignore
             erz=(True, True), #type:ignore
-            rx=(-45, 45), #type:ignore
-            erx=(True, False), #type:ignore
         ) 
 
         lock_tag(object=self.smart_roll.ctrl, rotate=(False, True, False), hide_tag=True)
