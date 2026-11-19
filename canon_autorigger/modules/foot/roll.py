@@ -25,6 +25,7 @@ class module_info:
     roll_ctrl:Control
     twist_ctrl:Control
     roll_grp:str
+    height_calc:str
 
 class Roll:
     def __init__(
@@ -268,6 +269,96 @@ class Roll:
             bank_condition.out_color.g.connect_to(f'{constraint[0]}.{weight_attrs[1]}') #type:ignore
 
         cmds.parent(roll_center, bank_twist_offset)
+        # --------------------------------------------------
+        # Foot roll height difference (local arc only)
+        # --------------------------------------------------
+
+        # Both references use the same parent space.
+        # This avoids measuring the leg's stretch movement.
+        height_rest = create_transform(
+            name=f"roll_{self.side}_height_rest",
+            transform=self.guides.true_foot.name,
+            parent=bank_twist_offset,
+        )
+
+        # Compose the local roll chain.
+        # Do not use worldMatrix here.
+        height_matrix = cmds.createNode(
+            "multMatrix",
+            name=f"roll_{self.side}_height_matrix",
+        )
+
+        roll_chain = [
+            *reversed(back_tforms),
+            roll_center,
+        ]
+
+        for index, transform in enumerate(roll_chain):
+            cmds.connectAttr(
+                f"{transform}.matrix",
+                f"{height_matrix}.matrixIn[{index}]",
+            )
+
+        current_dm = cmds.createNode(
+            "decomposeMatrix",
+            name=f"roll_{self.side}_height_current_dm",
+        )
+
+        cmds.connectAttr(
+            f"{height_matrix}.matrixSum",
+            f"{current_dm}.inputMatrix",
+        )
+
+        rest_dm = cmds.createNode(
+            "decomposeMatrix",
+            name=f"roll_{self.side}_height_rest_dm",
+        )
+
+        cmds.connectAttr(
+            f"{height_rest}.matrix",
+            f"{rest_dm}.inputMatrix",
+        )
+
+        height_diff = cmds.createNode(
+            "plusMinusAverage",
+            name=f"roll_{self.side}_height_diff_pma",
+        )
+
+        cmds.setAttr(
+            f"{height_diff}.operation",
+            2,  # Subtract
+        )
+
+        cmds.connectAttr(
+            f"{current_dm}.outputTranslateY",
+            f"{height_diff}.input1D[0]",
+        )
+
+        cmds.connectAttr(
+            f"{rest_dm}.outputTranslateY",
+            f"{height_diff}.input1D[1]",
+        )
+
+        cmds.addAttr(
+            self.smart_roll.ctrl,
+            longName="height_difference",
+            attributeType="double",
+            keyable=False,
+        )
+
+        cmds.setAttr(
+            f"{self.smart_roll.ctrl}.height_difference",
+            channelBox=True,
+        )
+
+        cmds.connectAttr(
+            f"{height_diff}.output1D",
+            f"{self.smart_roll.ctrl}.height_difference",
+        )
+
+        roll_tforms.append(height_rest)
+
+        roll_tforms.append(height_rest)
 
         cmds.connectAttr(f"{self.smart_twist}.translate", f"{twist_main}.translate")
         cmds.connectAttr(f"{self.smart_twist}.rotate", f"{twist_main}.rotate")
@@ -301,6 +392,6 @@ class Roll:
         obj_ref_tag(bank_out.ctrl)
         obj_ref_tag(bank_in.ctrl)
 
-        info = module_info(up_driver=back_tforms[-1], down_driver=front_tforms[-1], roll_grp=roll_group, roll_ctrl=self.smart_roll, twist_ctrl=self.smart_twist)
+        info = module_info(up_driver=back_tforms[-1], down_driver=front_tforms[-1], roll_grp=roll_group, roll_ctrl=self.smart_roll, twist_ctrl=self.smart_twist, height_calc=f"{self.smart_roll.ctrl}.height_difference")
         return info
         
