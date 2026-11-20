@@ -5,6 +5,8 @@ from Workshop.canon_autorigger.module_schema import (
     ModuleSetting,
 )
 from Workshop.transform.utils import create_transform
+from Workshop.guide.core import GuideInfo
+from .correctives.blend import Blend
 
 from .correctives.ik_correctives import Ik_correctives
 
@@ -58,6 +60,9 @@ class Chest_Cor:
         self,
         driver: str,
         parent_space: str,
+        blend:GuideInfo,
+        blend_parent:str,
+        blend_driver:str,
         clav_driver: str | None = None,
         part: str = "chest_cor",
         side: str = "M",
@@ -86,6 +91,9 @@ class Chest_Cor:
         self.divisions = divisions
         self.control_shape = control_shape
         self.control_color = control_color
+        self.blend = blend
+        self.blend_parent = blend_parent
+        self.blend_driver = blend_driver
 
         self.corrective_names = (
             pec_name,
@@ -123,3 +131,23 @@ class Chest_Cor:
             )
 
             corrective.build()
+
+        bicep = Blend(
+            part="bicep",
+            side=self.side,
+            parent=self.main_grp,
+            joint_parent=self.blend_parent,
+            guides=[self.blend],
+            driver=self.blend_driver, #type:ignore
+
+            blend=0.5,
+            translate_blend=1.0,
+
+            driver_axis="z",
+            driver_rot_range=(0, 90),
+            mult_range=(1, 1),
+
+            pop_amount=self.rig_size * 1/10 ,
+            pop_axis="y",
+        )
+        bicep.build()

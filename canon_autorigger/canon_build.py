@@ -110,7 +110,7 @@ def build(rig_name:str, config:rig_config):
             wrist_cor = modules.Wrist_Cor(rig_size=canon.scene_size, joint_parent=arm_info.lower_sub_joints[-1], parent=canon.correctives, side=side, guides=guides.wrist_correctives[side], driver=hand_info.joint)
             wrist_cor_info = wrist_cor.build()
 
-            chest_cor = modules.Chest_Cor(rig_size=canon.scene_size, joint_parent=spineinfo.bind_joints[-1], parent=canon.correctives, side=side, guides=guides.chest_correctives[side], driver=arm_info.upper_sub_joints[0], parent_space=spineinfo.chest_off.ctrl, clav_driver=clav_info.joint)
+            chest_cor = modules.Chest_Cor(rig_size=canon.scene_size, joint_parent=spineinfo.bind_joints[-1], parent=canon.correctives, side=side, guides=guides.chest_correctives[side], driver=arm_info.upper_sub_joints[0], parent_space=spineinfo.chest_off.ctrl, clav_driver=clav_info.joint, blend=guides.chest_correctives[f'{side}_bicep'], blend_parent=clav_info.joint, blend_driver=arm_info.bind_joints[0],)
             chest_cor_info = chest_cor.build()
 
 

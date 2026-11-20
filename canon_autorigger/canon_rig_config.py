@@ -149,6 +149,7 @@ def read_guides(rig_name:str='Canon')->cannon_guide_config:
         elbow_correctives[side] = [read_guide(f'elbowin_{side}_guide'), read_guide(f'lowerbicep_{side}_guide'), read_guide(f'lowertricep_{side}_guide'), read_guide(f'pronator_{side}_guide')]
         wrist_correctives[side] = [read_guide(f'wristin_{side}_guide'), read_guide(f'wristout_{side}_guide'), read_guide(f'wristup_{side}_guide'), read_guide(f'wristdown_{side}_guide'), ]
         chest_correctives[side] = [pec_cor[side], trap_cor[side], necktrap_cor[side]]
+        chest_correctives[f'{side}_bicep'] = read_guide(f'bicep_{side}_guide')
     #face_guides
 
     face = [read_guide('upper_head_M_guide'), read_guide('lower_head_M_guide'), read_guide('mid_head_M_guide'), read_guide('top_head_M_guide'), read_guide('jaw_M_guide')]
