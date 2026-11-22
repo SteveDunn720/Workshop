@@ -1,10 +1,7 @@
 from dataclasses import dataclass
 import maya.cmds as cmds
 
-RIG_BUILD_DIRECTORY = r'C:\Users\sldun\Documents\maya\projects\rig_build'
-CANNON_DIRECTORY = 'canon_rigs'
-CANNON_PROP_DIRECTORY = 'canon_prop_rigs'
-
+from Workshop.config import RIG_BUILD_DIRECTORY, CANNON_DIRECTORY, CANNON_PROP_DIRECTORY
 
 
 @dataclass
