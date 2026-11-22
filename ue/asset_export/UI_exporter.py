@@ -9,7 +9,7 @@ except:
     from shiboken2 import wrapInstance
 
 
-from Workshop.UE_asset_export.auto_lod_export import export_verified_asset
+from ue.UE_asset_export.auto_lod_export import export_verified_asset
 
 
 # -----------------------------

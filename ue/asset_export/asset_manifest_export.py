@@ -1,7 +1,7 @@
 import json
 import os
 import maya.cmds as cmds
-from Workshop.UE_asset_export.asset_verifiy import verify_asset, strip_lod
+from ue.UE_asset_export.asset_verifiy import verify_asset, strip_lod
 
 
 def write_manifest(

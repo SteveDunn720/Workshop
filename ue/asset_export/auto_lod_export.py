@@ -1,8 +1,8 @@
 import os
 import maya.cmds as cmds
-from Workshop.UE_asset_export.asset_verifiy import verify_asset, extract_lod
-from Workshop.UE_asset_export.asset_handeling import restore_layout, return_to_origin
-from Workshop.UE_asset_export.asset_manifest_export import write_manifest
+from ue.UE_asset_export.asset_verifiy import verify_asset, extract_lod
+from ue.UE_asset_export.asset_handeling import restore_layout, return_to_origin
+from ue.UE_asset_export.asset_manifest_export import write_manifest
 
 
 

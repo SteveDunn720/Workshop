@@ -176,13 +176,13 @@ generate_autoPV(['upperarm_l', 'lowerarm_l', 'hand_l'], 'your_mom2')
 
 
 
-from Workshop.UE_asset_export.auto_lod_export import export_verified_asset
+from ue.UE_asset_export.auto_lod_export import export_verified_asset
 
 
 export_verified_asset('DoorA')
 
 
-from Workshop.UE_asset_export.UI_exporter import show_ui
+from ue.UE_asset_export.UI_exporter import show_ui
 show_ui()
 
 
