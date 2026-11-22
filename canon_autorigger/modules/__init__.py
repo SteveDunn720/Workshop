@@ -30,6 +30,7 @@ from . import chest_cor
 from . import matrix_spline
 from . import eye
 from . import look
+from . import quadruped_leg
 
 from .root import Root
 from .biped_limb import Biped_Limb
@@ -62,6 +63,7 @@ from .chest_cor import Chest_Cor
 from .matrix_spline import MatrixSpline
 from .eye import Eye
 from .look import Look
+from .quadruped_leg import Quadruped_Leg
 
 
 
@@ -126,9 +128,11 @@ __all__ = [
 "matrix_spline",
 "MatrixSpline",
 "eye",
-"Eye"
+"Eye",
 "look",
 "Look",
+"quadruped_leg",
+"Quadruped_Leg",
 ]
 
 MODULE_CLASSES = [

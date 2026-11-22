@@ -78,7 +78,26 @@ def fkik_switch(controls:list|None, node_attr:str, descriptor:str, fk_grp:str, i
         cmds.connectAttr(rev.output.x, f'{parent_con.connections[1]}')   #type:ignore
     if controls:
         for control in controls:
-            cmds.addAttr(control, longName='FKIK_Switch', proxy=FK_IK_Switch)
+            node = control.ctrl if isinstance(control, Control) else control
+
+            """print(
+                f"FKIK DEBUG: control={control!r}, "
+                f"node={node!r}, "
+                f"type={type(node)}, "
+                f"exists={cmds.objExists(node) if isinstance(node, str) else False}"
+            )"""
+
+            if not isinstance(node, str) or not cmds.objExists(node):
+                raise RuntimeError(
+                    f"Invalid FK/IK control: {node!r} "
+                    f"(original: {control!r})"
+                )
+
+            cmds.addAttr(
+                node,
+                longName="FKIK_Switch",
+                proxy=FK_IK_Switch,
+            )
 
     return FK_IK_Switch
 
