@@ -18,6 +18,7 @@ from Workshop.transform.constraint import constraint
 class Socket:
     def __init__(
         self,
+        part:str,
         guts:str,
         main_ctrl:Control,
         guides: dict,
@@ -50,6 +51,7 @@ class Socket:
         self.main_color = main_color
         self.sub_color = sub_color
         self.control_space = control_space
+        self.part = part
 
     def disconnect_socket_joint_scale_shear(self) -> None:
         """Remove scale/shear drivers from socket joints."""
@@ -234,18 +236,18 @@ class Socket:
         create_attribute(primary_object=driver, attr_name="socket_follow", min=0,max=1, default=default_mult)
 
         follow_pos = create_transform(
-            name=f"socket_{self.side}_follow_pos",
+            name=f"socket_{self.part}_{self.side}_follow_pos",
             parent=self.control_grp,
             transform=driver,
         )
         follow_offset = create_transform(
-            name=f"socket_{self.side}_follow_offset",
+            name=f"socket_{self.part}_{self.side}_follow_offset",
             parent=follow_pos,
             transform=driver,
         )
 
         controls_grp = create_transform(
-            name=f"socket_{self.side}_controls_grp",
+            name=f"socket_{self.part}_{self.side}_controls_grp",
             parent=follow_offset,
         )
 
@@ -294,7 +296,7 @@ class Socket:
 
         # Every upper/lower sub-control is a direct child of this group.
         self.sub_socket_controls_grp = create_transform(
-            name=f"sub_socket_controls_{self.side}_grp",
+            name=f"sub_socket_{self.part}_controls_{self.side}_grp",
             parent=self.socket_follow_grp,
         )
 
@@ -322,7 +324,7 @@ class Socket:
         for corner, index in (("inner", 0), ("outer", -1)):
             guide = curve_guides["upper"].locator_list[index]
             control = create_control(
-                name=f"socket_{corner}_corner_{self.side}",
+                name=f"socket_{self.part}_{corner}_corner_{self.side}",
                 parent=self.socket_follow_grp,
                 transform=guide.name,
                 size=self.rig_size * 1/180,
@@ -337,7 +339,7 @@ class Socket:
             mid_guide = curve_guides[vertical].locator_list[3]
 
             control = create_control(
-                name=f"socket_{vertical}_{self.side}",
+                name=f"socket_{self.part}_{vertical}_{self.side}",
                 parent=self.socket_follow_grp,
                 transform=mid_guide.name,
                 size=self.rig_size * 1/180,
@@ -367,7 +369,7 @@ class Socket:
                     parameter=percent,
                     tangent_orient=True,
                 )
-                name = f"socket_{vertical}_{index:02d}_{self.side}"
+                name = f"socket_{self.part}_{vertical}_{index:02d}_{self.side}"
 
                 control = create_control(
                     name=name,
@@ -389,9 +391,9 @@ class Socket:
                 joints.append(joint)
 
             # Preserve the old inner-corner joint name ONLY for the lead.
-            lead_name = f"{vertical}_inner_corner_{self.side}_jnt"
-            lead_joint = cmds.rename(joints[0], lead_name)
-            joints[0] = lead_joint
+
+            lead_joint = joints[0]
+            lead_name = joints[0]
             self.sub_socket_joints[vertical] = joints
 
             for index, joint in enumerate(joints):
@@ -418,7 +420,7 @@ class Socket:
 
         for vertical in ("upper", "lower"):
             self.socket_splines[vertical] = self.create_eyelid_driver_spline(
-                name=f"socket_{vertical}_{self.side}",
+                name=f"socket_{self.part}_{vertical}_{self.side}",
                 curve=self.guides[f"socket_{vertical}"].name,
                 inner_corner=self.corner_controls["inner"].ctrl,
                 middle_control=self.parent_controls[f"{vertical}_ctrl"].ctrl,

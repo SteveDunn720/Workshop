@@ -123,6 +123,7 @@ class Eye:
 
         self.eyelid = Eyelid(
             side=self.side,
+            part=self.part,
             guides=self.guides,
             rig_size=self.rig_size,
             main_ctrl=self.main_ctrl,
@@ -143,6 +144,7 @@ class Eye:
 
         self.socket = Socket(
             side=self.side,
+            part=self.part,
             guts=self.guts,
             guides=self.guides,
             rig_size=self.rig_size,
@@ -170,6 +172,7 @@ class Eye:
             component_grp=self.guts,
             control_grp=self.control_grp,
             main_color = self.main_color,
+            part=self.part,
         )
 
         self.eyeball.build_eyeball()

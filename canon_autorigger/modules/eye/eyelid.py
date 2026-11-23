@@ -27,6 +27,7 @@ class Eyelid:
     def __init__(
         self,
         side: str,
+        part:str,
         guides: dict[str, GuideInfo],
         main_ctrl: Control,
         parent: str,
@@ -55,6 +56,7 @@ class Eyelid:
         self.component_grp = component_grp
         self.control_grp = control_grp
         self.guts = guts
+        self.part = part
 
         self.blink_guides = {}
         self.blink_curves = {}
@@ -116,7 +118,7 @@ class Eyelid:
                 lower_pin=lower["pin"],
                 upper_collision=upper["collision"],
                 lower_collision=lower["collision"],
-                name=f"eyelid_collision_{index:02d}_{self.side}",
+                name=f"eyelid_{self.part}_collision_{index:02d}_{self.side}",
                 push=push,
             )
 
@@ -297,7 +299,7 @@ class Eyelid:
 
             for attribute in ("translateX", "rotateZ"):
                 sum_node = SumNode(
-                    name=f"eyelid_{name}_{attribute}_{self.side}_SUM",
+                    name=f"eyelid_{self.part}_{name}_{attribute}_{self.side}_SUM",
                 )
 
                 sum_node.input[0].connect_from(f"{control.ctrl}.{attribute}")
@@ -358,7 +360,7 @@ class Eyelid:
                 # ---------------------------------------------
 
                 joint = create_joint(
-                    name=f"eyelid_{vertical}_macro_{index:02d}_{self.side}",
+                    name=f"eyelid_{self.part}_{vertical}_macro_{index:02d}_{self.side}",
                     parent=self.expression_driver_grp,
                     transform=fake_driver,
                     connect=True,
@@ -385,7 +387,7 @@ class Eyelid:
                 skinMethod=0,
                 normalizeWeights=1,
                 maximumInfluences=5,
-                name=f"{vertical}_macro_{self.side}_skin",
+                name=f"{vertical}_{self.part}_macro_{self.side}_skin",
             )[0]  # type:ignore
 
             self.macro_skin_clusters[vertical] = skin
@@ -473,12 +475,12 @@ class Eyelid:
 
         for vertical in ("upper", "lower"):
             self.expression_control_grps[vertical] = create_transform(
-                name=f"eyelid_{vertical}_expression_controls_{self.side}_grp",
+                name=f"eyelid_{self.part}_{vertical}_expression_controls_{self.side}_grp",
                 parent=self.blink_controls[vertical].ctrl,
             )
 
         self.expression_driver_grp = create_transform(
-            name=f"expression_drivers_{self.side}_grp",
+            name=f"expression_drivers_{self.part}_{self.side}_grp",
             parent=self.eyes_setup_grp,
         )
 
@@ -603,7 +605,7 @@ class Eyelid:
             matrix = macro_matrices["upper"][index]
 
             control, driver = self.create_expression_control_pair(
-                name=f"eyelid_{corner}_{self.side}",
+                name=f"eyelid_{self.part}_{corner}_{self.side}",
                 matrix=matrix,
                 control_parent=self.main_ctrl.ctrl,
                 fake_parent=self.expression_driver_grp,
@@ -623,7 +625,7 @@ class Eyelid:
             matrix = macro_matrices[vertical][2]
 
             control, driver = self.create_expression_control_pair(
-                name=f"eyelid_{vertical}_mid_{self.side}",
+                name=f"eyelid_{self.part}_{vertical}_mid_{self.side}",
                 matrix=matrix,
                 control_parent=self.expression_control_grps[vertical],
                 fake_parent=self.expression_follow_grp,
@@ -654,7 +656,7 @@ class Eyelid:
                 matrix = macro_matrices[vertical][index]
 
                 control, driver = self.create_expression_control_pair(
-                    name=f"eyelid_{vertical}_macro_{index:02d}_{self.side}",
+                    name=f"eyelid_{self.part}_{vertical}_macro_{index:02d}_{self.side}",
                     matrix=matrix,
                     control_parent=major_control.ctrl,
                     fake_parent=major_driver,
@@ -716,7 +718,7 @@ class Eyelid:
         """Connect sub-controls to their IK proxy drivers."""
 
         self.ik_driver_grp = create_transform(
-            name=f"eyelid_ik_drivers_{self.side}_grp",
+            name=f"eyelid_{self.part}_ik_drivers_{self.side}_grp",
             parent=self.eyes_setup_grp,
         )
 
@@ -900,12 +902,12 @@ class Eyelid:
         # -----------------------------------------------------
 
         self.eye_ik_grp = create_transform(
-            name=f"eye_ik_{self.side}_grp",
+            name=f"eye_{self.part}_ik_{self.side}_grp",
             parent=self.blink_setup_grp,
         )
 
         self.collision_grp = create_transform(
-            name=f"eyelid_collision_{self.side}_grp",
+            name=f"eyelid_{self.part}_collision_{self.side}_grp",
             parent=self.blink_setup_grp,
         )
 
@@ -922,7 +924,7 @@ class Eyelid:
         # -----------------------------------------------------
         for vertical in ("upper", "lower"):
             vertical_grp = create_transform(
-                name=f"{vertical}_ik_{self.side}_grp",
+                name=f"{vertical}_{self.part}_ik_{self.side}_grp",
                 parent=self.eye_ik_grp,
             )
 
@@ -933,7 +935,7 @@ class Eyelid:
             for i in range(sub_divisions):
                 percent = i / (sub_divisions - 1)
 
-                name = f"{vertical}_eyelid_{i:02d}_{self.side}"
+                name = f"{vertical}_eyelid_{self.part}_{i:02d}_{self.side}"
 
                 # ---------------------------------------------
                 # Initial position on neutral/rest curve
@@ -1257,7 +1259,7 @@ class Eyelid:
             # -----------------------------------------------------
             blendshape = cmds.blendShape(
                 curve,
-                name=f"{vertical}_blink_{self.side}_BS",
+                name=f"{vertical}_{self.part}_blink_{self.side}_BS",
                 frontOfChain=True,
             )[0] #type:ignore
 
@@ -1366,12 +1368,12 @@ class Eyelid:
                 ]
 
                 output = self.create_blink_remap(
-                    name=f"{vertical}_{target_name}_{self.side}_RMV",
+                    name=f"{vertical}_{self.part}_{target_name}_{self.side}_RMV",
                     input_attr=input_attr,
                     positions=normalized_points,
                 )
 
-                multiplier = MultiplyDivideNode(name=f"{vertical}_{target_name}_{self.side}_MD")
+                multiplier = MultiplyDivideNode(name=f"{vertical}_{self.part}_{target_name}_{self.side}_MD")
                 multiplier.input2.x.set(maximum_weight)
                 multiplier.input1.x.connect_from(output)
                 multiplier.output.x.connect_to(f"{blendshape}.weight[{index}]")
@@ -1402,7 +1404,7 @@ class Eyelid:
         # ----------------------------------------
 
         self.eyes_setup_grp = create_transform(
-            name=f'eyelid_logic_{self.side}',
+            name=f'eyelid_{self.part}_logic_{self.side}',
             parent=self.guts,
         )
 
@@ -1410,10 +1412,8 @@ class Eyelid:
         # Side-specific group
         # ----------------------------------------
 
-        side_group_name = f"eye_blink_{self.side}_grp"
+        side_group_name = f"eye_blink{self.part}_{self.side}_grp"
 
-        if cmds.objExists(side_group_name):
-            raise ValueError(f"Blink setup already exists: {side_group_name}")
 
         self.blink_setup_grp = create_transform(
             name=side_group_name,
@@ -1462,7 +1462,7 @@ class Eyelid:
 
             curve = cmds.duplicate(
                 self.blink_guides[rest_key],
-                name=f"{vertical}_blink_curve_{self.side}",
+                name=f"{vertical}_{self.part}_blink_curve_{self.side}",
                 returnRootsOnly=True,
             )[0]
 
@@ -1484,7 +1484,7 @@ class Eyelid:
 
             curve = cmds.duplicate(
                 self.blink_guides[rest_key],
-                name=f"{vertical}_expression_rest_{self.side}",
+                name=f"{vertical}_{self.part}_expression_rest_{self.side}",
                 returnRootsOnly=True,
             )[0]
 
@@ -1711,13 +1711,13 @@ class Eyelid:
     def setup_expression_follow(self) -> None:
         """Create the fake eyelid follow group before expression controls."""
         expression_follow_offset = create_transform(
-            name=f"eyelid_follow_{self.side}_fake_grp_offset",
+            name=f"eyelid_{self.part}_follow_{self.side}_fake_grp_offset",
             parent=self.eyes_setup_grp,
             transform=self.guides["center"].name,
         )
 
         self.expression_follow_grp = create_transform(
-            name=f"eyelid_follow_{self.side}_fake_grp",
+            name=f"eyelid_{self.part}_follow_{self.side}_fake_grp",
             parent=expression_follow_offset,
             transform=self.guides["center"].name,
         )
@@ -1744,13 +1744,13 @@ class Eyelid:
         self.sub_joints = []
 
         self.look_offset = create_transform(
-            name=f"look_offset_{self.side}",
+            name=f"look_{self.part}_offset_{self.side}",
             parent=self.main_ctrl.ctrl,
             transform=self.guides["center"].name,
         )
 
         self.sub_grp = create_transform(
-            name=f"sub_eyelid_controls_{self.side}",
+            name=f"sub_{self.part}_eyelid_controls_{self.side}",
             parent=self.main_ctrl.ctrl,
             transform=self.guides["center"].name,
         )
@@ -1770,7 +1770,7 @@ class Eyelid:
             )
 
             self.blink_controls[vertical] = create_control(
-                name=f"{vertical}_blink_{self.side}",
+                name=f"{vertical}_{self.part}_blink_{self.side}",
                 parent=self.main_ctrl.ctrl,
                 transform=blink_matrix,
                 size=self.rig_size * 1/80,
@@ -1808,7 +1808,7 @@ class Eyelid:
                 )
 
                 sub_ctrl = create_control(
-                    name=f"{vertical}_{i}_{self.side}",
+                    name=f"{self.part}_{vertical}_{i}_{self.side}",
                     parent=self.sub_grp,
                     transform=matrix,
                     size=self.rig_size * 1/240,
@@ -1818,7 +1818,7 @@ class Eyelid:
                     color_type=self.sub_color
                 )
                 sub_jnt = create_joint(
-                    name=f"def_eyelid_{vertical}_{i}_{self.side}",
+                    name=f"def_eyelid_{self.part}_{vertical}_{i}_{self.side}",
                     parent=self.joint_parent,
                     transform=sub_ctrl.ctrl,
                 )

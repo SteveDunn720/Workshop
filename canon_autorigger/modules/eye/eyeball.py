@@ -138,7 +138,7 @@ class Eyeball:
             )  # type:ignore
 
         dilation_mult = MultiplyDivideNode(
-            name=f"{circle_type}_dilation_mult_{self.side}_MD"
+            name=f"{circle_type}_{self.part}_dilation_mult_{self.side}_MD"
         )
 
         # Fixed dilation angle instead of DEV attribute
@@ -147,17 +147,17 @@ class Eyeball:
         dilation_mult.input1.x.connect_from(dilation_attr)
 
         etq_node = EulerToQuatNode(
-            name=f"{circle_type}_dilation_mult_{self.side}_ETQ",
+            name=f"{circle_type}_{self.part}_dilation_mult_{self.side}_ETQ",
         )
         etq_node.input_rotate.x.connect_from(dilation_mult.output.x)
 
         radius_adjust = MultiplyDivideNode(
-            name=f"{circle_type}_radius_adjust_{self.side}_MD"
+            name=f"{circle_type}_{self.part}_radius_adjust_{self.side}_MD"
         )
         radius_adjust.input1.x.connect_from(etq_node.output_quat.x)
 
         z_trans_adl = SumNode(
-            name=f"{circle_type}_translateZ_{self.side}_ADL"
+            name=f"{circle_type}_{self.part}_translateZ_{self.side}_ADL"
         )
 
         radius_adjust.output.x.connect_to(z_trans_adl.input[0])
@@ -187,7 +187,7 @@ class Eyeball:
         add_attribute_header(target=self.main_ctrl.ctrl, name="dilation_controls")
 
         self.eye_ctrl = create_control(
-            name=f"eye_{self.side}",
+            name=f"{self.part}_{self.side}",
             parent=self.main_ctrl.ctrl,
             transform=self.guides["center"].name,
             control_shape="circle",
@@ -201,7 +201,7 @@ class Eyeball:
         )
 
         self.look_ctrl = create_control(
-            name=f"look_{self.side}",
+            name=f"look_{self.part}_{self.side}",
             parent=self.control_grp,
             transform=self.guides["aim"].name,
             control_shape="circle",
@@ -212,20 +212,20 @@ class Eyeball:
 
         self.look_root = create_joint(
             transform=self.eye_ctrl.ctrl,
-            name=f"look_root_{self.side}",
+            name=f"look_{self.part}_root_{self.side}",
             parent=self.component_grp,
             connect=False,
         )
 
         self.look_end = create_joint(
             transform=self.look_ctrl.ctrl,
-            name=f"look_end_{self.side}",
+            name=f"look_{self.part}_end_{self.side}",
             parent=self.look_root,
             connect=False,
         )
 
         self.ik_handle, self.effector = cmds.ikHandle(
-            name=f"aim_sc_{self.side}_ikh",
+            name=f"aim_sc_{self.part}_{self.side}_ikh",
             startJoint=self.look_root,
             endEffector=self.look_end,
             solver="ikSCsolver",
@@ -258,7 +258,7 @@ class Eyeball:
         create_attribute(primary_object=self.main_ctrl.ctrl, attr_name="center_dilation", min=0, max=10, keyable=False, hidden=True, default=0)
 
         dilation_offset = create_transform(
-            name=f"dilation_{self.side}_Offset",
+            name=f"dilation_{self.part}_{self.side}_Offset",
             parent=self.eye_ctrl.ctrl,
             transform=self.guides["center"].name,
         )
@@ -269,7 +269,7 @@ class Eyeball:
 
         for i, circle_type in enumerate(["center", "iris", "pupil", "end"]):
             circle = self.create_eye_preview_circle(
-                name_suffix=f"{circle_type}_{self.side}", parent=f"{dilation_offset}"
+                name_suffix=f"{circle_type}_{self.part}_{self.side}", parent=f"{dilation_offset}"
             )
             self.preview_circles[f"{circle_type}"] = circle
             create_attribute(primary_object=circle, attr_name="dilation_amount",)
@@ -339,8 +339,8 @@ class Eyeball:
                 blend = ["pupil", "pupil"]
                 blend_num = (x - pupil_percent) / (1.0 - pupil_percent)
 
-            blendnode = BlendColorsNode(name=f"blend_dilation_{i:02d}_{self.side}_BC")
-            blendnode2 = BlendColorsNode(name=f"blend_offset_{i:02d}_{self.side}_BC")
+            blendnode = BlendColorsNode(name=f"blend_{self.part}_dilation_{i:02d}_{self.side}_BC")
+            blendnode2 = BlendColorsNode(name=f"blend_{self.part}_offset_{i:02d}_{self.side}_BC")
             blendnode.color1.r.connect_from(
                 source_attr=f"{self.preview_circles[blend[0]]}.dilation_amount"
             )

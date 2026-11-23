@@ -380,8 +380,8 @@ def build(rig_name:str, config:rig_config):
             eye = modules.Eye(rig_size=canon.scene_size, part="eye", side=side, parent=canon.rig, joint_parent=faceinfo.upper_joint, guides=guides.eye[side], muppet=faceinfo.muppet_control, jaw=jawinfo.jaw, control_parent=canon.rig, control_space=[faceinfo.upper_control.ctrl], look_parent=look.main_ctrl.ctrl)
             eye.build()
 
-            #eye = modules.Eye(rig_size=canon.scene_size, part="eye_lower", side=side, parent=canon.rig, joint_parent=faceinfo.upper_joint, guides=guides.eye[f'{side}_lowerx'], muppet=faceinfo.muppet_control, jaw=jawinfo.jaw, control_parent=canon.rig, control_space=[faceinfo.upper_control.ctrl], look_parent=look.main_ctrl.ctrl)
-            #eye.build()
+            eye = modules.Eye(rig_size=canon.scene_size, part="eye_lower", side=side, parent=canon.rig, joint_parent=faceinfo.upper_joint, guides=guides.eye[f'{side}_lower'], muppet=faceinfo.muppet_control, jaw=jawinfo.jaw, control_parent=canon.rig, control_space=[faceinfo.upper_control.ctrl], look_parent=look.main_ctrl.ctrl)
+            eye.build()
 
 
 
