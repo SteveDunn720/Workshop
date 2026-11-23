@@ -102,7 +102,7 @@ def read_guides(rig_name:str='Canon')->cannon_guide_config:
     metatarsals = {}
     
 
-    for side in ['L',]: #'R'
+    for side in ['L', "R"]: #'R'
         leg[side] = [read_guide(f'upperleg_{side}_guide'), read_guide(f'knee_{side}_guide'), read_guide(f'huck_{side}_guide'), read_guide(f'foot_{side}_guide')]
         arm[side] = [read_guide(f'shoulder_{side}_guide'), read_guide(f'elbow_{side}_guide'), read_guide(f'hand_{side}_guide')]
         foot[side] = [read_guide(f'foot_{side}_guide'), read_guide(f'toe_ball_{side}_guide'), read_guide(f'toe_ee_{side}_guide')]
@@ -237,7 +237,7 @@ def build(rig_name:str, config:rig_config):
     #build_prep
 
     cmds.file(new=True, force=True)
-    imported_nodes = load_guides(rig_type='canon', rig=rig_name)
+    imported_nodes = load_guides(rig_type='Characters', rig=rig_name)
     canon = configure_canon_scene(rig_name=rig_name)
     cmds.refresh()
 
@@ -274,7 +274,7 @@ def build(rig_name:str, config:rig_config):
 
     ##side modules
 
-    for side in ["L"]:
+    for side in ["L", "R"]:
     
         leg = modules.Quadruped_Leg(part='leg', rig_size=canon.scene_size, parent=canon.rig, joint_parent=hipinfo.hip_joint, side=side, guides=guides.leg[side],ik_end_control = False, fk_control_space=[hipinfo.hip_control.ctrl], ik_root_control_space=[ hipinfo.hip_control.ctrl, root_info.root_control.ctrl,], ik_pv_control_space=[root_info.root_control.ctrl, hipinfo.hip_control.ctrl], ik_end_control_space=[root_info.root_control.ctrl, hipinfo.hip_control.ctrl], ikfk_blend=0, ik_length=True, fk_shape_twist=90)
         leg_info = leg.build()
@@ -367,14 +367,14 @@ def build(rig_name:str, config:rig_config):
         tongue = modules.Tongue(rig_size=canon.scene_size, parent=canon.rig, joint_parent=faceinfo.lower_joint, guides=[guides.tongue], control_space=[jawinfo.jaw])
         tongueinfo = tongue.build()
 
-        for side in ["L"]:
+        for side in ["L", "R"]:
             brow = modules.Brow(rig_size=canon.scene_size, side=side, parent=canon.rig, joint_parent=faceinfo.top_joint, guides=[guides.brow[0]], control_space=[faceinfo.top_control], )
             browinfo = brow.build()
 
             #cheek = modules.Cheek(rig_size=canon.scene_size, side=side, parent=canon.rig, joint_parent=faceinfo.mid_joint, guides=guides.cheek[side], puff_space=[faceinfo.lower_control], cheekbone_space=[faceinfo.upper_control], driver=jawinfo.jaw, head_space=headinfo.control)
             #cheekinfo = cheek.build()
 
-            look = modules.Look(rig_size=canon.scene_size, parent=canon.rig, parent_jnt=faceinfo.mid_joint, guides=[guides.eye[f'{side}']["aim"], guides.eye[f'{side}_lower']["aim"]], control_parent=canon.rig, parent_spaces=[headinfo.control.ctrl])
+            look = modules.Look(side=side ,rig_size=canon.scene_size, parent=canon.rig, parent_jnt=faceinfo.mid_joint, guides=[guides.eye[f'{side}']["aim"], guides.eye[f'{side}_lower']["aim"]], control_parent=canon.rig, parent_spaces=[headinfo.control.ctrl])
             look.build()
 
             eye = modules.Eye(rig_size=canon.scene_size, part="eye", side=side, parent=canon.rig, joint_parent=faceinfo.upper_joint, guides=guides.eye[side], muppet=faceinfo.muppet_control, jaw=jawinfo.jaw, control_parent=canon.rig, control_space=[faceinfo.upper_control.ctrl], look_parent=look.main_ctrl.ctrl)

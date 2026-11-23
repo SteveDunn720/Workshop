@@ -125,7 +125,7 @@ def build(rig_name:str):
     #build_prep
 
     cmds.file(new=True, force=True)
-    imported_nodes = load_guides(rig_type='canon', rig=rig_name)
+    imported_nodes = load_guides(rig_type='Characters', rig=rig_name)
     canon = configure_canon_scene(rig_name=rig_name)
     cmds.refresh()
 

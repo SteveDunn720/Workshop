@@ -31,24 +31,26 @@ def import_guides(rig: str, rig_type: str, work:bool = True):
     import_maya_file(filepath=Path(model_file))
     import_maya_file(filepath=Path(guide_file))
 
-    work_path = Path(f"{work_file}")
+    if work:
 
-    if work_path.exists():
-        result = cmds.confirmDialog(
-            title="Import Work File",
-            message=(
-                f"A work file was found for '{rig}'.\n\n"
-                "Would you like to import it?"
-            ),
-            button=["Import", "Skip"],
-            defaultButton="Import",
-            cancelButton="Skip",
-            dismissString="Skip",
-            icon="question",
-        )
+        work_path = Path(f"{work_file}")
 
-        if result == "Import":
-            import_maya_file(filepath=work_path)
+        if work_path.exists():
+            result = cmds.confirmDialog(
+                title="Import Work File",
+                message=(
+                    f"A work file was found for '{rig}'.\n\n"
+                    "Would you like to import it?"
+                ),
+                button=["Import", "Skip"],
+                defaultButton="Import",
+                cancelButton="Skip",
+                dismissString="Skip",
+                icon="question",
+            )
+
+            if result == "Import":
+                import_maya_file(filepath=work_path)
 
 
 

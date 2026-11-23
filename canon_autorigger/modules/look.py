@@ -42,7 +42,7 @@ class Look:
         self.control_grp = prep.control_grp
         self.guts = prep.guts
 
-        mid_guide = create_midpoint_guide(guide_a=self.guides[0], guide_b=self.guides[1], name=f'{self.part}_{self.side}', parent='guides', create=True)
+        mid_guide = create_midpoint_guide(guide_a=self.guides[0], guide_b=self.guides[1], name=f'{self.part}_Main_{self.side}', parent='guides', create=True)
 
         self.main_ctrl = create_control(
             name=mid_guide.descriptor,
