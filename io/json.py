@@ -1,4 +1,4 @@
-import io
+"import io
 from pathlib import Path
 from typing import Any, BinaryIO, TypeVar
 
@@ -151,4 +151,4 @@ def export_json(filepath: Path, obj: Any, pretty: bool = True, compact: bool = T
         compact: When True use the compact formatting scheme (only does anything if ``pretty`` is also True).
     """
     filepath.parent.mkdir(parents=True, exist_ok=True)
-    filepath.write_bytes(_encode_json(obj, pretty=pretty, compact=compact))
+    filepath.write_bytes(_encode_json(obj, pretty=pretty, compact=compact))"

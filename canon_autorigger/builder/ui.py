@@ -16,6 +16,7 @@ except ImportError:
 from Workshop import config
 from Workshop.canon_autorigger.builder import assets
 from.capture import capture_perspective_profile
+from..build_management.file_managment import export_guides, import_guides
 
 
 # Optional integration: pass a Workshop snapshot callable to show_ui(),
@@ -110,13 +111,13 @@ class AssetTab(QtWidgets.QWidget):
         action_names = [
             ('Validate / Initialize', self.validate_initialize),
             ('Export Skins', lambda: self.placeholder('Export Skins')),
-            ('Load Guides File', lambda: self.placeholder('Load Guides File')),
+            ('Load Guides File', self.load_guides),
             ('Export Defaults', lambda: self.placeholder('Export Defaults')),
             ('Generate Guides', lambda: self.placeholder('Generate Guides')),
             ('Export Control Shapes', lambda: self.placeholder('Export Control Shapes')),
             ('Open Guide Editor', lambda: self.placeholder('Open Guide Editor')),
             ('Export PSD / Shapes', lambda: self.placeholder('Export PSD / Shapes')),
-            ('Export Guides', lambda: self.placeholder('Export Guides')),
+            ('Export Guides', self.export_guides),
         ]
         for index, (label, callback) in enumerate(action_names):
             actions.addWidget(_button(label, callback), index // 2, index % 2)
@@ -168,6 +169,47 @@ class AssetTab(QtWidgets.QWidget):
             self.asset_combo.setEditText(selected)
         self.asset_combo.blockSignals(False)
         self.update_state()
+
+    def export_guides(self):
+        if not self.name:
+            QtWidgets.QMessageBox.warning(
+                self, "Export Guides", "Please select an asset."
+            )
+            return
+
+        try:
+            export_guides(
+                rig=self.name,
+                rig_type=self.category,
+            )
+
+            self.status.setText(f"Exported guides for {self.name}")
+
+        except Exception as exc:
+            QtWidgets.QMessageBox.critical(
+                self, "Export Failed", str(exc)
+            )
+
+
+    def load_guides(self):
+        if not self.name:
+            QtWidgets.QMessageBox.warning(
+                self, "Load Guides", "Please select an asset."
+            )
+            return
+
+        try:
+            import_guides(
+                rig=self.name,
+                rig_type=self.category,
+            )
+
+            self.status.setText(f"Loaded guides for {self.name}")
+
+        except Exception as exc:
+            QtWidgets.QMessageBox.critical(
+                self, "Import Failed", str(exc)
+            )
 
     def update_state(self, *_):
         self.load_profile()

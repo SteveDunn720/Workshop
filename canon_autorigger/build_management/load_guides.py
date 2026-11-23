@@ -2,6 +2,7 @@ from dataclasses import dataclass
 import maya.cmds as cmds
 
 from Workshop.config import RIG_BUILD_DIRECTORY, CANNON_DIRECTORY, CANNON_PROP_DIRECTORY
+from .file_managment import import_guides
 
 
 @dataclass
@@ -13,39 +14,11 @@ class import_info:
 
 def load_guides(rig:str, rig_type:str = 'canon'):
     import_node_list = []
+    import_guides(rig_type=rig_type, rig=rig, work=False)
 
-    if rig_type == 'canon':
-        path_ = rf'{RIG_BUILD_DIRECTORY}\{CANNON_DIRECTORY}\{rig}\{rig}_guides.mb'
-        print(path_)
-        import_nodes = import_from_path(path_=path_)
-        for node in import_nodes.top:
-            short_name = node.rsplit("|", 1)[-1]
-            
-            if short_name not in ['guides', 'geo']:
-                cmds.delete(short_name)
-            else:
-                import_node_list.append(short_name)
-        clean_scene()
-        return import_node_list
-
-    elif rig_type == 'prop':
-            path_ = rf'{RIG_BUILD_DIRECTORY}\{CANNON_PROP_DIRECTORY}\{rig}\{rig}_guides.mb'
-            print(path_)
-            import_nodes = import_from_path(path_=path_)
-            for node in import_nodes.top:
-                short_name = node.rsplit("|", 1)[-1]
-                
-                if short_name not in ['guides', 'geo']:
-                    cmds.delete(short_name)
-                else:
-                    import_node_list.append(short_name)
-            clean_scene()
-            return import_node_list
-            
-    else:
-        print(f'rig_type:{rig_type} not supported')
-        return
-
+    
+    clean_scene()
+    return import_node_list
 
 
 def clean_scene():

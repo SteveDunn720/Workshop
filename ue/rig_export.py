@@ -8,7 +8,7 @@ from Workshop.io.fbx import export_fbx_file
 def publish_ue_rig(
     path: Path,
     model: str = "geo",
-    skel: str = "root_C0_root_jnt",
+    skel: str = "def_root_jnt",
 ) -> None:
     """
     Exports the rig, with a clean hierarchy, to a given path

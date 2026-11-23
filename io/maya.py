@@ -84,7 +84,7 @@ def export_maya_file(
     filepath: Path,
     nodes: Iterable[str] | None = None,
     *,
-    binary: bool = False,
+    binary: bool = True,
     force: bool = False,
     write_node_uuid: bool = False,
 ) -> bool:
