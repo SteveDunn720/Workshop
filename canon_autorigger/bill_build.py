@@ -181,7 +181,7 @@ def read_guides(rig_name:str='Canon')->cannon_guide_config:
     brow = [read_guide('brow_L_guide'), ]#read_guide('brow_R_guide')]
 
     #geo temp logic, need to decide later how this will work
-    primary_mesh = 'polySurface1'
+    primary_mesh = 'Bill_UBM_low'
     #tag geo
 
     all_guides = cannon_guide_config(

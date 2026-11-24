@@ -11,6 +11,7 @@ from Workshop.guide.core import SplineGuideInfo
 from Workshop.transform.utils import get_distance_between
 from Workshop.skin.split.tag import tag_for_weight_split
 from Workshop.nurbs.curve import get_curve_point_matrix
+from Workshop.maya_api.attribute_utils import add_proxy
 
 from ..module_shared import create_module_switch,  module_prep, module_space
 
@@ -24,6 +25,11 @@ from Workshop.canon_autorigger.module_schema import (
     ModuleRelationship,
     ModuleGuide,
     ModuleSplineGuide
+)
+
+from .stabilization import (
+    create_limited_control,
+    connect_limited_control,
 )
 
 
@@ -617,7 +623,7 @@ class Spine:
         module_space(control=self.chest, space_list=self.control_space)
         self.chest_off = create_control(
             name=f'{self.chest_des}_off_{self.side}',
-            parent=self.chest.ctrl,
+            parent=self.control_grp,
             transform=self.guides.upper.name,
             size=self.rig_size * self.chest_off_control_size,
             control_shape=self.chest_off_shape,
@@ -659,9 +665,41 @@ class Spine:
             
 
         if self.hybrid:
-            hyrbid = build_hybrid(part=self.part, guts=self.guts, side=self.side, control_grp=self.control_grp, guide_curve=self.curve, guide_list=self.curve.locator_list, cv_transforms=[self.hip.ctrl, self.chest_off.ctrl,],  rig_size=self.rig_size, hip=self.hip, hip_des=self.hip_des, hybrid_mid_shape=self.hybrid_mid_shape, main_color=self.main_control_color, mid_control_size = self.hyrbid_mid_control_size, sub_spine_control_size = self.hybrid_sub_size, sub_offset =self.hybrid_sub_offset)
+            chest_input = create_limited_control(
+                control=self.chest_off,
+                follow_driver=self.chest.ctrl,
+                parent=self.control_grp,
+            )
+            hyrbid = build_hybrid(
+                part=self.part,
+                guts=self.guts,
+                side=self.side,
+                control_grp=self.control_grp,
+                guide_curve=self.curve,
+                guide_list=self.curve.locator_list,
+                cv_transforms=[
+                    self.hip.ctrl,
+                    chest_input.raw_driver,
+                ],
+                rig_size=self.rig_size,
+                hip=self.hip,
+                hip_des=self.hip_des,
+                hybrid_mid_shape=self.hybrid_mid_shape,
+                main_color=self.main_control_color,
+                mid_control_size=self.hyrbid_mid_control_size,
+                sub_spine_control_size=self.hybrid_sub_size,
+                sub_offset=self.hybrid_sub_offset,
+                cog=self.cog.ctrl,
+                chest=self.chest.ctrl,
+            )
+
+            connect_limited_control(
+                control=chest_input,
+                limited_driver=hyrbid.chest_driver,
+                name=f"{self.chest_des}_{self.side}",
+            )
             #constraint(drivers=[self.hip.ctrl, self.chest_off.ctrl], driven=hyrbid.mid.top, constraint_type='parent', maintain_offset=True)
-            cmds.parent(hyrbid.mid.top, self.chest.ctrl)
+            #cmds.parent(hyrbid.mid.top, self.chest.ctrl)
             #cmds.parentConstraint(self.hip.ctrl, hyrbid.mid.top, maintainOffset=True)
             #cmds.parentConstraint(self.chest_off.ctrl, hyrbid.mid.top, maintainOffset=True)
             #chest_jnt = create_joint(name=f'Hybrid_{self.chest_des}_{self.side}', transform=self.chest_off.ctrl, parent=jnt_par, bind_set= False, ue_set=False,)
@@ -672,6 +710,20 @@ class Spine:
                 "joints": hyrbid.joints,
                 "visibility": [hyrbid.grp],
             }
+
+   
+            add_proxy(source=hyrbid.min_stretch , proxy_list=[self.chest.ctrl])
+            add_proxy(source=hyrbid.max_stretch , proxy_list=[self.chest.ctrl])
+            add_proxy(source=hyrbid.soft_range , proxy_list=[self.chest.ctrl])
+
+            """constraint(
+                driven=self.chestswitch_joint,
+                drivers=[hyrbid.chest_driver],
+                constraint_type="parent",
+                maintain_offset=True,
+                parent=self.guts,
+            )"""
+
 
         self.spine_switch = create_module_switch(
             driven=self.switch_joints,
