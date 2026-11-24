@@ -13,7 +13,11 @@ from Workshop.maya_api.attribute_utils import set_attribute
 from ..display_line import create_connection_curve
 from ..ik import create_IK_rotate_plane, create_IK_single_chain, IK_data
 from ..module_shared import module_prep, module_space, fkik_switch
-from ..twist import create_swing_driver, create_twist
+from ..twist import (
+    create_swing_driver,
+    create_twist,
+    TwistData,
+)
 from ..correctives.ik_bone import IK_Bone
 
 from .stretch import build_stretchy_ik
@@ -28,28 +32,39 @@ from Workshop.canon_autorigger.module_schema import (
 
 @dataclass
 class moudle_info:
-    fk_root:Control
-    ik_root:Control
-    fk_ik_switch:str
-    end_ik_hook:list
-    ik_controls:list
-    fk_controls:list
-    ik_len:list
-    ik_stretch_attr:str
-    ik_joints:list
-    fk_joints:list
-    switch_joints:list
-    bind_joints:list
-    controls:list
+    fk_root: Control
+    ik_root: Control
+
+    fk_ik_switch: str
+    end_ik_hook: list
+
+    ik_controls: list
+    fk_controls: list
+
+    ik_len: list
+    ik_stretch_attr: str
+
+    ik_joints: list
+    fk_joints: list
+    switch_joints: list
+    bind_joints: list
+
+    controls: list
+
     ik_main_handle: IK_data
     ik_singlechain: IK_data | None
-    ik_len_joints:list
-    fk_hook:str
-    upper_sub_joints:list
-    lower_sub_joints:list
-    auto_pv_driven:str | None
-    swing:str
+    ik_len_joints: list
 
+    fk_hook: str
+
+    upper_sub_joints: list
+    middle_sub_joints: list
+    lower_sub_joints: list
+
+    twists: list[TwistData]
+
+    auto_pv_driven: str | None
+    swing: str
 
 
 class Quadruped_Leg:
@@ -198,7 +213,7 @@ class Quadruped_Leg:
         bendy_control_shape:str = 'round_square',
         twist_count:int = 4, 
         auto_pv_space:bool = False,
-        twist_joints: bool = False,
+        twist_joints: bool = True,
         ik_bone: bool = False,
         ik_bone_offset: float = 1/50,
 
@@ -496,18 +511,33 @@ class Quadruped_Leg:
 
         jnt_par = self.joint_parent
 
-        #bind chain
-        for i,jnt in enumerate(self.guides):
-            bind_jnt = create_joint(name=f'def_{jnt.descriptor}', transform=jnt.name, parent=jnt_par, connect=False)   
+                # --------------------------------------------------
+        # Bind chain
+        # --------------------------------------------------
+
+        jnt_par = self.joint_parent
+
+        for guide in self.guides:
+
+            bind_jnt = create_joint(
+                name=f"def_{guide.descriptor}",
+                transform=guide.name,
+                parent=jnt_par,
+                connect=False,
+            )
+
             self.bind_joints.append(bind_jnt)
             jnt_par = bind_jnt
-            #constraint(drivers=[self.switch_joints[i]], driven=bind_jnt, parent=self.guts, constraint_type="parent")
 
         # --------------------------------------------------
         # Twist joints
         # --------------------------------------------------
 
         self.twists = []
+
+        self.upper_twists = []
+        self.middle_twists = []
+        self.lower_twists = []
 
         if self.twist_joints:
 
@@ -529,40 +559,71 @@ class Quadruped_Leg:
                     control_parent=self.bend_control_grp,
                     rig_size=self.rig_size / 10,
                     control_shape=self.bendy_control_shape,
+
+                    start_at_root=(i == 0),
+                    root_offset=0.1,
+
+                    constrain_endpoints=False,
                 )
 
                 self.twists.append(twist)
 
-        else:
+                if twist.control:
+                    self.controls.append(twist.control)
 
-            # Without twist joints, we still need to
-            # constrain the bind joints to the switch chain.
+            # Organize each segment independently.
 
-            for switch_joint, bind_joint in zip(
+            self.upper_twists = self.twists[0].twist_joints
+            self.middle_twists = self.twists[1].twist_joints
+            self.lower_twists = self.twists[2].twist_joints
+
+        # --------------------------------------------------
+        # Main bind joint constraints
+        # --------------------------------------------------
+
+        for i, (switch_joint, bind_joint) in enumerate(
+            zip(
                 self.switch_joints,
                 self.bind_joints,
                 strict=True,
+            )
+        ):
+
+            # The final bind joint is temporary when
+            # an external foot module is being used.
+
+            if (
+                not self.ik_end_control
+                and i == len(self.bind_joints) - 1
             ):
+                continue
 
-                constraint(
-                    drivers=[switch_joint],
-                    driven=bind_joint,
-                    constraint_type="parent",
-                    maintain_offset=True,
-                    parent=self.guts,
-                )
-
+            constraint(
+                drivers=[switch_joint],
+                driven=bind_joint,
+                constraint_type="parent",
+                maintain_offset=True,
+                parent=self.guts,
+            )
 
         # --------------------------------------------------
         # IK Bone Correctives
         # --------------------------------------------------
 
+        # Reserved for corrective joint setup.
 
-
+        # --------------------------------------------------
+        # Remove temporary end bind joint
+        # --------------------------------------------------
 
         if not self.ik_end_control:
+
             cmds.delete(self.bind_joints[-1])
             self.bind_joints.pop()
+
+        # --------------------------------------------------
+        # Pole vector display lines
+        # --------------------------------------------------
 
         pv_line = create_connection_curve(
             start=self.switch_joints[1],
@@ -572,36 +633,18 @@ class Quadruped_Leg:
         )
 
         pv_line_b = create_connection_curve(
-                start=self.switch_joints[2],
-                end=self.ik_pv_ctrl_b.ctrl,
-                parent=self.ik_control_grp,
-                name=f"{self.part}_{self.side}_b_pv_line",
-            )
-
-        mid = len(self.twists) // 2
-
-        upper_twist_data = self.twists[:mid]
-        lower_twist_data = self.twists[mid:]
-
-        self.upper_twists = [
-            joint
-            for twist in upper_twist_data
-            for joint in twist.twist_joints
-            
-        ]
-
-        self.lower_twists = [
-            joint
-            for twist in lower_twist_data
-            for joint in twist.twist_joints
-        ]
+            start=self.switch_joints[2],
+            end=self.ik_pv_ctrl_b.ctrl,
+            parent=self.ik_control_grp,
+            name=f"{self.part}_{self.side}_b_pv_line",
+        )
 
         # --------------------------------------------------
         # Root swing joint
         # --------------------------------------------------
 
         self.swing_joint = create_joint(
-            name=f'{self.part}_swing_{self.side}',
+            name=f"{self.part}_swing_{self.side}",
             transform=self.guides[0].name,
             parent=self.guts,
             connect=False,
@@ -611,13 +654,15 @@ class Quadruped_Leg:
 
         # Static orientation reference.
         # Prevents the swing joint from inheriting root twist.
+
         swing_up = create_transform(
-            name=f'{self.part}_swing_up_{self.side}',
+            name=f"{self.part}_swing_up_{self.side}",
             transform=self.guides[0].name,
             parent=self.guts,
         )
 
         # Match root translation.
+
         constraint(
             drivers=[self.switch_joints[0]],
             driven=self.swing_joint,
@@ -626,13 +671,17 @@ class Quadruped_Leg:
         )
 
         # Determine the joint's primary direction.
+
         primary_sign = (
-            -1 if cmds.getAttr(
+            -1
+            if cmds.getAttr(
                 f"{self.switch_joints[1]}.translateY"
-            ) < 0 else 1
+            ) < 0
+            else 1
         )
 
         # Aim toward the next joint, removing axial twist.
+
         cmds.aimConstraint(
             self.switch_joints[1],
             self.swing_joint,
@@ -644,32 +693,63 @@ class Quadruped_Leg:
             maintainOffset=False,
         )
 
-
-
-
+        # --------------------------------------------------
+        # Module outputs
+        # --------------------------------------------------
 
         self.info = moudle_info(
-                fk_root = self.fk_controls[0],
-                ik_root = self.ik_controls[0],
-                fk_ik_switch = self.FK_IK_Switch,
-                end_ik_hook = [self.ik_hook, self.ik_joints[-1], [end_pos, end_pos_sdk, end_pos_offset]],
-                ik_controls = self.ik_controls,
-                fk_controls = self.fk_controls,
-                ik_len=ik_len,
-                ik_stretch_attr = f'{end_pos}.stretch',
-                fk_joints=self.fk_joints,
-                ik_joints=self.ik_joints,
-                switch_joints=self.switch_joints,
-                bind_joints=self.bind_joints,
-                controls = self.controls,
-                ik_main_handle=self.ik_handle,
-                ik_singlechain=self.ik_len_chain if self.ik_length else None,
-                ik_len_joints = self.ik_len_joints if self.ik_length else [],
-                fk_hook = fk_hook,
-                upper_sub_joints=self.upper_twists,
-                lower_sub_joints=self.lower_twists,
-                auto_pv_driven = pv_driven,
-                swing = self.swing_joint 
-                )
-        
+            fk_root=self.fk_controls[0],
+            ik_root=self.ik_controls[0],
+
+            fk_ik_switch=self.FK_IK_Switch,
+
+            end_ik_hook=[
+                self.ik_hook,
+                self.ik_joints[-1],
+                [
+                    end_pos,
+                    end_pos_sdk,
+                    end_pos_offset,
+                ],
+            ],
+
+            ik_controls=self.ik_controls,
+            fk_controls=self.fk_controls,
+
+            ik_len=ik_len,
+            ik_stretch_attr=f"{end_pos}.stretch",
+
+            fk_joints=self.fk_joints,
+            ik_joints=self.ik_joints,
+            switch_joints=self.switch_joints,
+            bind_joints=self.bind_joints,
+
+            controls=self.controls,
+
+            ik_main_handle=self.ik_handle,
+
+            ik_singlechain=(
+                self.ik_len_chain
+                if self.ik_length
+                else None
+            ),
+
+            ik_len_joints=(
+                self.ik_len_joints
+                if self.ik_length
+                else []
+            ),
+
+            fk_hook=fk_hook,
+
+            upper_sub_joints=self.upper_twists,
+            middle_sub_joints=self.middle_twists,
+            lower_sub_joints=self.lower_twists,
+
+            twists=self.twists,
+
+            auto_pv_driven=pv_driven,
+            swing=self.swing_joint,
+        )
+
         return self.info

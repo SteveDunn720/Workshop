@@ -1422,6 +1422,7 @@ def drive_twist_joints(
     control=None,
     start_at_root: bool = False,
     root_offset: float = 0.1,
+    constrain_endpoints: bool = True,
 ):
     """
     Drive a deformation twist segment from a switch-joint segment.
@@ -1454,19 +1455,21 @@ def drive_twist_joints(
     # Start / end deformation joints
     # ---------------------------------------------------------
 
-    constraint(
-        drivers=[start_driver],
-        driven=start_joint,
-        maintain_offset=True,
-        parent=cst_parent,
-    )
+    if constrain_endpoints:
 
-    constraint(
-        drivers=[end_driver],
-        driven=end_joint,
-        maintain_offset=True,
-        parent=cst_parent,
-    )
+        constraint(
+            drivers=[start_driver],
+            driven=start_joint,
+            maintain_offset=True,
+            parent=cst_parent,
+        )
+
+        constraint(
+            drivers=[end_driver],
+            driven=end_joint,
+            maintain_offset=True,
+            parent=cst_parent,
+        )
 
     # ---------------------------------------------------------
     # Capture driver rest translation
@@ -1572,6 +1575,7 @@ def create_twist(
     control_shape:str = "round_square",
     start_at_root: bool = False,
     root_offset: float = 0.1,
+    constrain_endpoints: bool = True,
 
 ) -> TwistData:
     """
@@ -1691,6 +1695,7 @@ def create_twist(
         control=control,
         start_at_root=start_at_root,
         root_offset=root_offset,
+        constrain_endpoints=constrain_endpoints
     )
 
     # ---------------------------------------------------------
