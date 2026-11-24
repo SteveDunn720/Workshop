@@ -8,6 +8,12 @@ from Workshop.maya_api.attribute_utils import set_attribute
 from .utils import curve_midpoint
 from Workshop.control.core import Control, create_control
 from Workshop.guide.curve import GuideCurve
+import maya.cmds as cmds
+
+from Workshop.maya_api.node import (
+    MultiplyDivideNode,
+    SumNode,
+)
 
 @dataclass
 class hybrid_info:
@@ -16,9 +22,71 @@ class hybrid_info:
     joints:list
     grp:str
 
+def create_soft_driver(
+    driver: str,
+    influences: list[tuple[str, tuple[float, float, float]]],
+) -> str:
 
+    soft_driver = create_transform(
+        name=f"{driver}_soft",
+        parent=driver,
+        transform=driver,
+    )
 
-def build_hybrid(part:str, guts:str, side:str, control_grp:str, guide_curve:GuideCurve, guide_list:list, cv_transforms:list,  rig_size:float, hip, hip_des, hybrid_mid_shape:str, main_color:str, mid_control_size:float=1/3, sub_spine_control_size = 1/30, sub_offset =(0,0,1/4)):
+    cmds.setAttr(f"{soft_driver}.translate", 0, 0, 0)
+    cmds.setAttr(f"{soft_driver}.rotate", 0, 0, 0)
+    cmds.setAttr(f"{soft_driver}.scale", 1, 1, 1)
+
+    translate_sum = [
+        SumNode(name=f"{soft_driver}_translate{axis}_SUM")
+        for axis in "XYZ"
+    ]
+
+    for index, (influence, weight) in enumerate(influences):
+
+        mult = MultiplyDivideNode(
+            name=f"{soft_driver}_{index:02d}_MD"
+        )
+
+        mult.input1.connect_from(influence)
+        mult.input2.set(weight)
+
+        translate_sum[0].input[index].connect_from(mult.output.x)
+        translate_sum[1].input[index].connect_from(mult.output.y)
+        translate_sum[2].input[index].connect_from(mult.output.z)
+
+    for axis, total in zip("XYZ", translate_sum):
+        total.output.connect_to(
+            f"{soft_driver}.translate{axis}"
+        )
+
+    return soft_driver
+
+def get_translate_delta(driver: str) -> str:
+
+    rest = cmds.getAttr(f"{driver}.translate")[0]
+
+    delta = cmds.createNode(
+        "plusMinusAverage",
+        name=f"{driver}_delta_PMA",
+    )
+
+    cmds.setAttr(f"{delta}.operation", 2)
+
+    cmds.connectAttr(
+        f"{driver}.translate",
+        f"{delta}.input3D[0]",
+    )
+
+    cmds.setAttr(
+        f"{delta}.input3D[1]",
+        *rest,
+        type="double3",
+    )
+
+    return f"{delta}.output3D"
+
+def build_hybrid(part:str, guts:str, side:str, control_grp:str, guide_curve:GuideCurve, guide_list:list, cv_transforms:list,  rig_size:float, hip, hip_des, hybrid_mid_shape:str, main_color:str, mid_control_size:float=1/3, sub_spine_control_size = 1/30, sub_offset =(0,0,1/4), soft_influence: float = 0.2):
     hybrid_grp = create_transform(name=f'{part}_{side}_hybrid_grp', parent=control_grp)
 
     mid_guide = curve_midpoint(curve=guide_curve.curve)
@@ -52,9 +120,36 @@ def build_hybrid(part:str, guts:str, side:str, control_grp:str, guide_curve:Guid
         set_attribute(attr=f'{lower_driver}.{attrs}', value=0)
         set_attribute(attr=f'{upper_driver}.{attrs}', value=0)
 
-    cv_transforms.insert(1, lower_driver)
-    cv_transforms.insert(2, mid.ctrl)
-    cv_transforms.insert(3, upper_driver)
+    weight = (soft_influence,) * 3
+
+    lower_delta = get_translate_delta(lower_driver)
+    upper_delta = get_translate_delta(upper_driver)
+
+    lower_soft = create_soft_driver(
+        driver=lower_driver,
+        influences=[
+            (f"{mid.ctrl}.translate", weight),
+        ],
+    )
+
+    mid_soft = create_soft_driver(
+        driver=mid.ctrl,
+        influences=[
+            (lower_delta, weight),
+            (upper_delta, weight), #type:ignore
+        ],
+    )
+
+    upper_soft = create_soft_driver(
+        driver=upper_driver,
+        influences=[
+            (f"{mid.ctrl}.translate", weight),
+        ],
+    )
+
+    cv_transforms.insert(1, lower_soft)
+    cv_transforms.insert(2, mid_soft)
+    cv_transforms.insert(3, upper_soft)
 
     spine_off_ctrls = []
     spine_driven = []
