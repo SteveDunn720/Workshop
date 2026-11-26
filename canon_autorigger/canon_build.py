@@ -8,11 +8,14 @@ from Workshop.canon_autorigger import modules
 from Workshop.tag.core import get_tags
 from Workshop.canon_autorigger.canon_rig_config import read_guides
 from Workshop.canon_autorigger.modules.foot.roll_guides import generate_foot_guides
+from Workshop.canon_autorigger.prop_auto_resolve import auto_build_prop
+from Workshop.guide.resolver import resolve_module_instances
 
 @dataclass
 class rig_config:
     cor_joints:bool = True
     face:bool = True
+    extra = True
 
 
 
@@ -160,6 +163,49 @@ def build(rig_name:str, config:rig_config):
 
             eye = modules.Eye(rig_size=canon.scene_size, part="eye", side=side, parent=canon.rig, joint_parent=faceinfo.upper_joint, guides=guides.eye[side], muppet=faceinfo.muppet_control, jaw=jawinfo.jaw, control_parent=canon.rig, control_space=[faceinfo.upper_control.ctrl], look_parent=look.main_ctrl.ctrl)
             eye.build()
+
+
+    # ==========================================
+    # ADDITIONAL PROP MODULES
+    # ==========================================
+
+    if config.extra:
+
+        extras_root = "extras_root_M_guide"
+
+        if cmds.objExists(extras_root):
+
+            print("Building additional character modules...")
+
+            extras_instances = resolve_module_instances(
+                extras_root
+            )
+
+            extras_owners = {
+                instance.guides[0]
+                for instance in extras_instances
+                if instance.guides
+            }
+
+            character_instances = [
+                instance
+                for instance in resolve_module_instances(
+                    "root_M_guide"
+                )
+                if instance.guides
+                and instance.guides[0] not in extras_owners
+            ]
+
+            extras_info = auto_build_prop(
+                root=extras_root,
+                parent=canon.rig,
+                rig_size=canon.scene_size,
+                build_root=False,
+                external_instances=character_instances,
+            )
+
+        else:
+            print("No additional character modules found.")
             
     
       

@@ -27,32 +27,50 @@ def auto_build_prop(
     parent: str = "rig",
     rig_size: float = 1.0,
     dry_run: bool = False,
+    build_root: bool = True,
+    external_instances: list[ModuleInstance] | None = None,
 ) -> PropBuildResults:
     """
     Resolve and build all module instances
     found beneath the root guide.
+
+    build_root:
+        Whether to build the root module itself.
+
+    external_instances:
+        Existing module instances available for
+        relationship resolution, but not building.
     """
 
-    instances = resolve_module_instances(
-        root
-    )
+    instances = resolve_module_instances(root)
+
+    # Optionally skip the root module.
+    if not build_root:
+        instances = [
+            instance
+            for instance in instances
+            if not (
+                instance.module == "root"
+                and instance.guides
+                and instance.guides[0] == root
+            )
+        ]
+
+    # Modules available for relationship resolution.
+    relationship_instances = [
+        *(external_instances or []),
+        *instances,
+    ]
 
     results = PropBuildResults(
-        instances=instances
+        instances=instances,
     )
 
     if dry_run:
-
-        print_build_plan(
-            instances
-        )
-
+        print_build_plan(instances)
         return results
 
-    # --------------------------------------------------
-    # BUILD MODULES
-    # --------------------------------------------------
-
+    # Build only the requested modules.
     for index, instance in enumerate(instances):
 
         key = (
@@ -68,7 +86,7 @@ def auto_build_prop(
 
         result = build_module_instance(
             instance=instance,
-            instances=instances,
+            instances=relationship_instances,
             parent=parent,
             rig_size=rig_size,
         )
