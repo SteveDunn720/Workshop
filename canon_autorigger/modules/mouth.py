@@ -660,11 +660,33 @@ class Mouth:
         )
  
 
-    def connect_jaw(self, control:Control, jaw:Control, x_range:tuple=(-90,90), y_range:tuple=(-20,20), z_range:tuple=(-90,90), trans_mult:float= .5, rot_mult:float=1, extra_offset:bool=False, x_mult=1, jaw_forward:bool=False):
-        control.jaw_pos = create_transform(name=f'{control.name}_jaw_pos', parent=control.top, transform=jaw.ctrl)
+    def connect_jaw(
+        self,
+        control: Control,
+        jaw: Control,
+        x_range: tuple = (-90, 90),
+        y_range: tuple = (-20, 20),
+        z_range: tuple = (-90, 90),
+        trans_mult: float = .5,
+        rot_mult: float = 1.0,
+        extra_offset: bool = False,
+        x_mult: float = 1.0,
+        jaw_forward: bool = False,
+        x_negative_mult: float | None = None,
+    ):
+        # --------------------------------------------------
+        # Jaw hierarchy
+        # --------------------------------------------------
+
+        control.jaw_pos = create_transform(
+            name=f"{control.name}_jaw_pos",
+            parent=control.top,
+            transform=jaw.ctrl,
+        )
+
         if jaw_forward:
             control.jaw_slide = create_transform(
-                name=f'{control.name}_jaw_slide',
+                name=f"{control.name}_jaw_slide",
                 parent=control.jaw_pos,
                 transform=jaw.ctrl,
             )
@@ -673,49 +695,191 @@ class Mouth:
 
         else:
             jaw_offset_parent = control.jaw_pos
-        control.jaw_offset = create_transform(name=f'{control.name}_jaw_offset', parent=jaw_offset_parent, transform=jaw.ctrl)
 
-        
+        control.jaw_offset = create_transform(
+            name=f"{control.name}_jaw_offset",
+            parent=jaw_offset_parent,
+            transform=jaw.ctrl,
+        )
+
+        # --------------------------------------------------
+        # Control offsets
+        # --------------------------------------------------
 
         if extra_offset:
-            control.extra_offset = create_transform(name=f'{control.name}_extra_offset', parent=control.jaw_offset, transform=control.ctrl)
+            control.extra_offset = create_transform(
+                name=f"{control.name}_extra_offset",
+                parent=control.jaw_offset,
+                transform=control.ctrl,
+            )
+
             cmds.parent(control.sdk, control.extra_offset)
+
         else:
             cmds.parent(control.sdk, control.jaw_offset)
 
         lock_tag(object=control.jaw_pos)
         lock_tag(object=control.jaw_offset)
 
-        remapx = RemapValueNode.create(name=f"{control.name}_remapX")
-        remapx.input_max.set(x_range[1])
-        remapx.input_min.set(x_range[0])
-        remapx.output_max.set(x_range[1] * x_mult)
-        remapx.output_min.set(x_range[0] * x_mult)
-        remapx.input_value.connect_from(f'{jaw.ctrl}.rotateX')
-        remapx.output.connect_to(f'{control.jaw_offset}.rotateX')
+        # --------------------------------------------------
+        # Jaw rotation X
+        # --------------------------------------------------
 
-        remapz = RemapValueNode.create(name=f"{control.name}_remapZ")
-        remapz.input_max.set(z_range[1])
+        if x_negative_mult is None:
+
+            # Original jaw follow behavior.
+            remapx = RemapValueNode.create(
+                name=f"{control.name}_remapX"
+            )
+
+            remapx.input_min.set(x_range[0])
+            remapx.input_max.set(x_range[1])
+
+            remapx.output_min.set(x_range[0] * x_mult)
+            remapx.output_max.set(x_range[1] * x_mult)
+
+            remapx.input_value.connect_from(
+                f"{jaw.ctrl}.rotateX"
+            )
+
+            remapx.output.connect_to(
+                f"{control.jaw_offset}.rotateX"
+            )
+
+        else:
+
+            # Asymmetric follow requires a range spanning zero.
+            if not x_range[0] < 0 < x_range[1]:
+                raise ValueError(
+                    "Asymmetric jaw follow requires an X range "
+                    "containing both positive and negative values."
+                )
+
+            # --------------------------------------------------
+            # Positive X: Jaw opening
+            # --------------------------------------------------
+
+            positive = RemapValueNode.create(
+                name=f"{control.name}_jaw_positive_RMV"
+            )
+
+            positive.input_min.set(0.0)
+            positive.input_max.set(x_range[1])
+
+            positive.output_min.set(0.0)
+            positive.output_max.set(x_range[1] * x_mult)
+
+            positive.input_value.connect_from(
+                f"{jaw.ctrl}.rotateX"
+            )
+
+            # --------------------------------------------------
+            # Negative X: Jaw moving upward
+            # --------------------------------------------------
+
+            negative = RemapValueNode.create(
+                name=f"{control.name}_jaw_negative_RMV"
+            )
+
+            negative.input_min.set(x_range[0])
+            negative.input_max.set(0.0)
+
+            negative.output_min.set(
+                x_range[0] * x_negative_mult
+            )
+            negative.output_max.set(0.0)
+
+            negative.input_value.connect_from(
+                f"{jaw.ctrl}.rotateX"
+            )
+
+            # --------------------------------------------------
+            # Combine positive and negative rotation
+            # --------------------------------------------------
+
+            rotation_sum = SumNode.create(
+                name=f"{control.name}_jaw_rotation_SUM"
+            )
+
+            rotation_sum.input[0].connect_from(
+                positive.output
+            )
+
+            rotation_sum.input[1].connect_from(
+                negative.output
+            )
+
+            rotation_sum.output.connect_to(
+                f"{control.jaw_offset}.rotateX"
+            )
+
+        # --------------------------------------------------
+        # Jaw rotation Z
+        # --------------------------------------------------
+
+        remapz = RemapValueNode.create(
+            name=f"{control.name}_remapZ"
+        )
+
         remapz.input_min.set(z_range[0])
-        remapz.output_max.set(z_range[1] * rot_mult)
+        remapz.input_max.set(z_range[1])
+
         remapz.output_min.set(z_range[0] * rot_mult)
-        remapz.input_value.connect_from(f'{jaw.ctrl}.rotateZ')
-        remapz.output.connect_to(f'{control.jaw_offset}.rotateZ')
+        remapz.output_max.set(z_range[1] * rot_mult)
 
-        remapy = RemapValueNode.create(name=f"{control.name}_remapY")
-        remapy.input_max.set(y_range[1])
+        remapz.input_value.connect_from(
+            f"{jaw.ctrl}.rotateZ"
+        )
+
+        remapz.output.connect_to(
+            f"{control.jaw_offset}.rotateZ"
+        )
+
+        # --------------------------------------------------
+        # Jaw rotation Y
+        # --------------------------------------------------
+
+        remapy = RemapValueNode.create(
+            name=f"{control.name}_remapY"
+        )
+
         remapy.input_min.set(y_range[0])
-        remapy.output_max.set(y_range[1] * rot_mult)
-        remapy.output_min.set(y_range[0] * rot_mult)
-        remapy.input_value.connect_from(f'{jaw.ctrl}.rotateY')
-        remapy.output.connect_to(f'{control.jaw_offset}.rotateY')
+        remapy.input_max.set(y_range[1])
 
-        mult = MultiplyDivideNode.create(name=f"{control.name}_mult")
-        mult.input1.connect_from(f'{jaw.ctrl}.translate')
-        mult.input2.set((trans_mult, trans_mult, trans_mult))
+        remapy.output_min.set(y_range[0] * rot_mult)
+        remapy.output_max.set(y_range[1] * rot_mult)
+
+        remapy.input_value.connect_from(
+            f"{jaw.ctrl}.rotateY"
+        )
+
+        remapy.output.connect_to(
+            f"{control.jaw_offset}.rotateY"
+        )
+
+        # --------------------------------------------------
+        # Jaw translation
+        # --------------------------------------------------
+
+        mult = MultiplyDivideNode.create(
+            name=f"{control.name}_mult"
+        )
+
+        mult.input1.connect_from(
+            f"{jaw.ctrl}.translate"
+        )
+
+        mult.input2.set(
+            (trans_mult, trans_mult, trans_mult)
+        )
+
         mult.output.connect_to(
-                        f'{control.jaw_offset}.translate'
-                    )
+            f"{control.jaw_offset}.translate"
+        )
+
+        # --------------------------------------------------
+        # Forward jaw slide
+        # --------------------------------------------------
 
         if jaw_forward:
             forward_remap = RemapValueNode.create(
@@ -723,17 +887,17 @@ class Mouth:
             )
 
             forward_remap.input_value.connect_from(
-                f'{jaw.ctrl}.rotateX'
+                f"{jaw.ctrl}.rotateX"
             )
 
             forward_remap.input_max.set(90)
 
             forward_remap.output_max.connect_from(
-                f'{jaw.ctrl}.jaw_mult'
+                f"{jaw.ctrl}.jaw_mult"
             )
 
             forward_remap.output.connect_to(
-                f'{control.jaw_slide}.translateZ'
+                f"{control.jaw_slide}.translateZ"
             )
 
 
@@ -942,7 +1106,7 @@ class Mouth:
 
                 corner_controls['L'] = self.l_corner
 
-                self.connect_jaw(jaw=self.jaw, control=self.l_corner, rot_mult=.4, x_mult=.4, )
+                self.connect_jaw(jaw=self.jaw, control=self.l_corner, rot_mult=.4, x_mult=.4,  x_negative_mult=1.0,)
 
                 lock_tag(object=self.l_corner.ctrl, translate=(False,False,True), rotate=(True,True,False), scale=(True,True,True), visibility=True, hide_tag=True)
 
@@ -967,7 +1131,7 @@ class Mouth:
 
                 corner_controls['R'] = self.r_corner
 
-                self.connect_jaw(jaw=self.jaw, control=self.r_corner, rot_mult=.4, x_mult=.4, )
+                self.connect_jaw(jaw=self.jaw, control=self.r_corner, rot_mult=.4, x_mult=.4,  x_negative_mult=1.0,)
 
                 lock_tag(object=self.r_corner.ctrl, translate=(False,False,True), rotate=(True,True,False), scale=(True,True,True), visibility=True, hide_tag=True)
 
@@ -1006,7 +1170,7 @@ class Mouth:
                             shape_rotation_offset=(0, 0, 0)
                         ) 
 
-                        self.connect_jaw(jaw=self.jaw, control=self.upper_lip, x_range=(-90,0), rot_mult=.2, trans_mult=.25)
+                        self.connect_jaw(jaw=self.jaw, control=self.upper_lip, x_range=(-90,0), rot_mult=.2, trans_mult=.25,)
                         create_driver_offset(control=self.upper_lip, driver=self.muppet, x_range=(-90,0))
 
                     if vertical == 'lower':
@@ -1086,7 +1250,7 @@ class Mouth:
 
                 macro[f'{vertical}_corner_{side}'] = lip_corner
 
-                self.connect_jaw(jaw=self.jaw, control=lip_corner, rot_mult=.4, extra_offset=True, x_mult=.4, )
+                self.connect_jaw(jaw=self.jaw, control=lip_corner, rot_mult=.4, extra_offset=True, x_mult=.4, x_negative_mult=1.0,)
 
                 #cmds.hide(lip_corner.top)
 
