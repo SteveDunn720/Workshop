@@ -1,4 +1,4 @@
-"import io
+import io
 from pathlib import Path
 from typing import Any, BinaryIO, TypeVar
 

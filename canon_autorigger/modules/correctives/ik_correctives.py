@@ -374,7 +374,7 @@ class Ik_correctives:
             # Stretch
             # ----------------------------------------------
 
-            ik_dist = DistanceBetweenNode(
+            ik_dist = DistanceBetweenNode.create(
                 name=f"{descriptor}_distance",
             )
 

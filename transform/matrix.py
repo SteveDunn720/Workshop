@@ -255,8 +255,8 @@ def localize_and_decompose_matrix(transform: str, parent: str) -> DecomposeMatri
 def _get_joint_orient_euler(joint: str) -> MEulerRotation:
     sel: MSelectionList = MSelectionList()
     sel.add(joint)
-    obj: MObject = sel.getDependNode.create(0)
-    fn: MFnDependencyNode = MFnDependencyNode.create(obj)
+    obj: MObject = sel.getDependNode(0)
+    fn: MFnDependencyNode = MFnDependencyNode(obj)
     plug: MPlug = fn.findPlug("jointOrient", False)
     # Radians
     x = plug.child(0).asDouble()

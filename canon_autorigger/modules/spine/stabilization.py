@@ -719,7 +719,7 @@ def create_soft_limit(
 
     def condition(suffix, a, b, true, false, operation):
 
-        node = cmds.createNode.create(
+        node = cmds.createNode(
             "condition",
             name=f"{name}_{suffix}_COND",
         )
@@ -736,7 +736,7 @@ def create_soft_limit(
     # Convert wrapper output to a native plug.
     def sum_plug(suffix, *values):
 
-        node = cmds.createNode.create(
+        node = cmds.createNode(
             "plusMinusAverage",
             name=f"{name}_{suffix}_PMA",
         )
@@ -917,7 +917,7 @@ def limit_spine_length(
     if len(drivers) != len(percentages):
         raise ValueError("Expected five spine drivers.")
 
-    reference_grp = cmds.createNode.create(
+    reference_grp = cmds.createNode(
         "transform",
         name=f"{name}_lengthLimit_grp",
         parent=cog,

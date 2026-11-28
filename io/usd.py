@@ -5,7 +5,7 @@ from typing import ParamSpec, TypeVar
 
 from maya import cmds
 
-from core import confirm_overwrite
+from .core import confirm_overwrite
 from Workshop.maya_api.utils import ensure_plugin_loaded
 
 P = ParamSpec("P")

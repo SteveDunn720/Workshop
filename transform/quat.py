@@ -213,7 +213,7 @@ def relative_rotation(
 
     # Rotation-only matrix. Strip translation, scale and shear
     # before extracting the rotational delta.
-    pick_rotation = cmds.createNode.create(
+    pick_rotation = cmds.createNode(
         "pickMatrix",
         name=f"{name}_rotation_pick",
     )
@@ -248,7 +248,7 @@ def relative_rotation(
     )
 
     # Subtract the rest-relative translation.
-    translation_delta = cmds.createNode.create(
+    translation_delta = cmds.createNode(
         "plusMinusAverage",
         name=f"{name}_translation_delta",
     )
@@ -340,12 +340,12 @@ def signed_relative_twist(
     #
     # This implementation uses an expression for the signed angle.
 
-    expression_node = cmds.createNode.create(
+    expression_node = cmds.createNode(
         "expression",
         name=f"{name}_signed_twist_expr",
     )
 
-    output_node = cmds.createNode.create(
+    output_node = cmds.createNode(
         "network",
         name=f"{name}_signed_twist_output",
     )
