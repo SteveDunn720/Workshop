@@ -978,6 +978,7 @@ class Eyelid:
                     parent=vertical_grp,
                     transform=root_matrix,
                     connect=False,
+                    bind_set=False
                 )
 
                 # ---------------------------------------------
@@ -989,6 +990,7 @@ class Eyelid:
                     parent=root_joint,
                     transform=control_matrix,
                     connect=False,
+                    bind_set=False,
                 )
 
                 # ---------------------------------------------
