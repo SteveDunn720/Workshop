@@ -8,7 +8,7 @@ from Workshop.maya_api.node import BlendMatrixNode, MultMatrixNode
 from Workshop.transform.utils import create_transform
 
 from Workshop.guide.curve import GuideCurve
-from Workshop.maya_api.attribute_utils import add_attribute_header, add_proxy, connect_attributes, create_attribute, disconnect_attribute, set_attribute
+from attribute_utils import add_attribute_header, add_proxy, connect_attributes, create_attribute, disconnect_attribute, set_attribute
 from Workshop.skin.split.tag import tag_for_weight_split
 from Workshop.spline.matrix_spline.build import matrix_spline_from_transforms
 from Workshop.spline.matrix_spline.core import MatrixSpline

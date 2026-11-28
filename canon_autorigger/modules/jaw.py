@@ -2,7 +2,7 @@ from dataclasses import dataclass
 
 from Workshop.canon_autorigger.build_management.dev import create_dev_attribute
 from Workshop.canon_autorigger.module_schema import ModuleGuide, ModuleRelationship, ModuleSetting
-from Workshop.maya_api.attribute_utils import create_attribute, connect_attributes
+from attribute_utils import create_attribute, connect_attributes
 from Workshop.control.core import Control
 from Workshop.transform.constraint import constraint
 from Workshop.control import create_control

@@ -7,7 +7,7 @@ from Workshop.guide.core import GuideInfo
 from Workshop.maya_api.node import BlendColorsNode, MultiplyDivideNode, SumNode
 from Workshop.nurbs.curve import get_nurbs_curve_radius
 from Workshop.transform.matrix import matrix_constraint
-from Workshop.maya_api.attribute_utils import create_attribute
+from attribute_utils import create_attribute
 
 from ..module_shared import module_prep, module_space
 from .eyelid import Eyelid

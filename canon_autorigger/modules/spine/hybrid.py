@@ -8,7 +8,7 @@ from Workshop.spline.matrix_spline.build import (
     matrix_spline_from_transforms,
 )
 from Workshop.nurbs.curve import get_curve_point_matrix
-from Workshop.maya_api.attribute_utils import set_attribute
+from attribute_utils import set_attribute
 from Workshop.control.core import Control, create_control
 from Workshop.guide.curve import GuideCurve
 

@@ -3,7 +3,7 @@ from dataclasses import dataclass
 import maya.cmds as cmds
 
 from Workshop.control.core import Control
-from Workshop.maya_api.attribute_utils import set_attribute
+from attribute_utils import set_attribute
 from Workshop.canon_autorigger.build_management.dev import create_dev_attribute
 from Workshop.canon_autorigger.module_schema import (
     ModuleRelationship, ModuleSetting, ModuleSplineGuide,

@@ -3,7 +3,7 @@ from typing import Any
 
 import maya.cmds as cmds
 
-from Workshop.maya_api.attribute_utils import (
+from attribute_utils import (
     add_attribute_header,
     create_attribute,
     

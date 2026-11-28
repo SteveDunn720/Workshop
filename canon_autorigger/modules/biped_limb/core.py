@@ -7,7 +7,7 @@ from Workshop.joint import create_joint
 from Workshop.transform.utils import create_transform
 from Workshop.control.core import Control
 from Workshop.transform.constraint import constraint
-from Workshop.maya_api.attribute_utils import set_attribute
+from attribute_utils import set_attribute
 
 
 from ..display_line import create_connection_curve

@@ -7,7 +7,7 @@ from Workshop.control import create_control
 from Workshop.control.core import Control
 from Workshop.guide.core import GuideInfo
 from Workshop.joint import create_joint
-from Workshop.maya_api.attribute_utils import add_proxy
+from attribute_utils import add_proxy
 from Workshop.transform.constraint import constraint
 
 from .ik import auto_pv_space

@@ -2,7 +2,7 @@ from dataclasses import dataclass
 
 
 from Workshop.control.core import Control
-from Workshop.maya_api.attribute_utils import connect_attributes
+from attribute_utils import connect_attributes
 from Workshop.transform.constraint import constraint
 from Workshop.control import create_control
 from Workshop.joint import create_joint

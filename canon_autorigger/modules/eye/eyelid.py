@@ -13,7 +13,7 @@ from Workshop.control.core import Control
 from Workshop.joint import create_joint
 from Workshop.maya_api.node import BlendColorsNode, BlendMatrixNode, ComposeMatrixNode, ConditionNode, DecomposeMatrixNode, DistanceBetweenNode, MultMatrixNode, MultiplyDivideNode, PlusMinusAverageNode, PointOnCurveNode, RemapValueNode, SumNode
 from Workshop.transform.utils import create_transform
-from Workshop.maya_api.attribute_utils import create_attribute, add_proxy, add_attribute_header, set_attribute, connect_attributes
+from attribute_utils import create_attribute, add_proxy, add_attribute_header, set_attribute, connect_attributes
 from Workshop.skin.split.tag import tag_for_weight_split
 from Workshop.nurbs.curve import smooth_curve_weights
 from Workshop.transform.constraint import Constraint, constraint
