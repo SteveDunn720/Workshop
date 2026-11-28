@@ -189,7 +189,7 @@ show_ui()
     del sys.modules[name]
 import yrig
 
-from yrig.blendshape import read_blendshape, write_blendshape
+from Workshop.blendshape import read_blendshape, write_blendshape
 
 
 
@@ -324,7 +324,7 @@ import yrig
 mc.delete('eye_L')
 mc.delete('eye_R')
 
-from yrig.component.y_eye_01.eye import Eye
+from Workshop.component.y_eye_01.eye import Eye
 
 eye_L = Eye(
     part="eye",
@@ -348,7 +348,7 @@ eye_R.build()
 
 
 
-from yrig.control import create_control
+from Workshop.control import create_control
 main_ctrl = create_control(
             name='test',
             parent=None,
