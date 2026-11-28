@@ -1096,7 +1096,7 @@ class Mouth:
                 ################################# 
 
                 self.connect_to_path(transform=corner_pin, control=lip_corner, path_curve=path, path_percent=corner_percent, driver_control=self.r_corner if side =='R' else self.l_corner, twist_percent=1)
-                self.connect_to_path(transform=mid_pin, control=lip_mid, path_curve=path, path_percent=mid_percent, driver_control=self.r_corner if side =='R' else self.l_corner, percent_max=.5, percent_min=.05, twist_percent=0, y_follow=.5, rot_y_follow=-self.rig_size / 800,)
+                self.connect_to_path(transform=mid_pin, control=lip_mid, path_curve=path, path_percent=mid_percent, driver_control=self.r_corner if side =='R' else self.l_corner, percent_max=.5, percent_min=.05, twist_percent=0, y_follow=.5, rot_y_follow=-self.rig_size / 1800,)
 
 
             start = cmds.cluster(f"{path}.cv[0]",name=f"{self.part}_{side}_start_cluster",)
@@ -1202,6 +1202,26 @@ class Mouth:
 
         root_jnt = create_joint(name=f'def_{self.part}_root', transform=center_guide.name, parent=self.joint_parent, connect=False)
         cmds.xform(root_jnt, translation=(0,0, -self.rig_size / 10,), relative=True, objectSpace=True)
+
+        corner_joints = {}
+
+        for side, control in corner_controls.items():
+            jnt = create_joint(
+                name=f"def_{control.name}",
+                transform=control.ctrl,
+                parent=root_jnt,
+                connect=False,
+            )
+
+            constraint(
+                driven=jnt,
+                drivers=[control.ctrl],
+                constraint_type="parent",
+                maintain_offset=False,
+                parent=self.guts,
+            )
+
+            corner_joints[side] = jnt
 
         sub_mouth_grp = create_transform(name=f'{self.part}_subcontrols', parent=self.control_grp)
 
