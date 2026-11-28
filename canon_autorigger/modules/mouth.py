@@ -402,6 +402,7 @@ class Mouth:
         driver: Control,
         weight_plug=None,
     ):
+        return
         up_sum = SumNode(
             name=f"{cluster}_Y_SUM"
         )
@@ -479,6 +480,8 @@ class Mouth:
         percent_max: float = .999,
         percent_min: float = .1,
         twist_percent:float = .5,
+        y_follow: float | str = 1.0,
+        rot_y_follow: float = 0.0,
 
     ):
 
@@ -566,9 +569,54 @@ class Mouth:
 
         dec.input_matrix.connect_from(mm.matrix_sum)
 
-        dec.output_translate.connect_to(f'{control.sdk}.translate')
-        dec.output_rotate.x.connect_to(f'{control.sdk}.rotateX')
-        dec.output_rotate.y.connect_to(f'{control.sdk}.rotateY')
+        # Preserve the existing path translation.
+        dec.output_translate.x.connect_to(f"{control.sdk}.translateX")
+        dec.output_translate.z.connect_to(f"{control.sdk}.translateZ")
+
+        # Direct corner Y influence.
+        y_mult = MultiplyDivideNode(
+            name=f"{transform}_y_follow_MD"
+        )
+
+        y_mult.input1.x.connect_from(
+            f"{driver_control.ctrl}.translateY"
+        )
+
+        if isinstance(y_follow, str):
+            y_mult.input2.x.connect_from(y_follow)
+        else:
+            y_mult.input2.x.set(y_follow)
+
+        # Combine the original path Y with the direct Y influence.
+        y_sum = SumNode(
+            name=f"{transform}_y_follow_SUM"
+        )
+
+        # Original path translation
+        y_sum.input[0].connect_from(dec.output_translate.y)
+
+        # Corner Y translation influence
+        y_sum.input[1].connect_from(y_mult.output.x)
+
+        # Corner Z rotation influence
+        if rot_y_follow != 0.0:
+            rot_y_mult = MultiplyDivideNode(
+                name=f"{transform}_rot_y_follow_MD"
+            )
+
+            rot_y_mult.input1.x.connect_from(
+                f"{driver_control.ctrl}.rotateZ"
+            )
+
+            rot_y_mult.input2.x.set(rot_y_follow)
+
+            y_sum.input[2].connect_from(rot_y_mult.output.x)
+
+        y_sum.output.connect_to(f"{control.sdk}.translateY")
+
+        # Preserve the existing rotation behavior.
+        dec.output_rotate.x.connect_to(f"{control.sdk}.rotateX")
+        dec.output_rotate.y.connect_to(f"{control.sdk}.rotateY")
 
         rot_Z_sum = SumNode(name=f"{transform}_sum")
 
@@ -923,10 +971,25 @@ class Mouth:
 
                 lock_tag(object=self.r_corner.ctrl, translate=(False,False,True), rotate=(True,True,False), scale=(True,True,True), visibility=True, hide_tag=True)
 
+            driver = self.l_corner if side == "L" else self.r_corner
+            
+            cmds.addAttr(
+                driver.ctrl,
+                longName="mid_y_follow",
+                niceName="Mid Y Follow",
+                attributeType="double",
+                minValue=0.0,
+                maxValue=1.0,
+                defaultValue=0.5,
+                keyable=True,
+            )
+
+            mid_y_follow = f"{driver.ctrl}.mid_y_follow"
 
             for vertical in ['upper', 'lower']:
                 true_list = self.upper_controls if vertical == "upper" else self.lower_controls
                 v_mod = 1 if vertical == 'upper' else -1
+
 
                 if side == 'L':
                     if vertical == 'upper':
@@ -1033,7 +1096,7 @@ class Mouth:
                 ################################# 
 
                 self.connect_to_path(transform=corner_pin, control=lip_corner, path_curve=path, path_percent=corner_percent, driver_control=self.r_corner if side =='R' else self.l_corner, twist_percent=1)
-                self.connect_to_path(transform=mid_pin, control=lip_mid, path_curve=path, path_percent=mid_percent, driver_control=self.r_corner if side =='R' else self.l_corner, percent_max=.5, percent_min=.05, twist_percent=0)
+                self.connect_to_path(transform=mid_pin, control=lip_mid, path_curve=path, path_percent=mid_percent, driver_control=self.r_corner if side =='R' else self.l_corner, percent_max=.5, percent_min=.05, twist_percent=0, y_follow=.5, rot_y_follow=-self.rig_size / 800,)
 
 
             start = cmds.cluster(f"{path}.cv[0]",name=f"{self.part}_{side}_start_cluster",)

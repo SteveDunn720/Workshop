@@ -343,8 +343,27 @@ class AssetTab(QtWidgets.QWidget):
             QtWidgets.QMessageBox.warning(self, 'Incomplete', 'Still missing: ' + ', '.join(updated.missing))
 
     def build_rig(self):
-        """Placeholder for the Canon rig build entry point."""
-        self.placeholder(f'Build Rig (face={self.face.isChecked()})')
+        ###### temp 
+        if self.category == "Characters":
+            if self.name in ["Bill"]:
+                from Workshop.canon_autorigger.bill_build import build, rig_config
+
+                settings = rig_config()
+
+                build(rig_name = 'Bill', config=settings)
+            elif self.name in ["Skel"]:
+                from Workshop.canon_autorigger.skeleton_build_and_config import build
+
+                build(rig_name = 'Skel',)
+            else:
+                from Workshop.canon_autorigger.canon_build import build, rig_config
+
+                settings = rig_config()
+
+
+                build(rig_name = self.name, config=settings) 
+        else:
+            print("Not Set Up")
 
     def placeholder(self, action: str):
         print(f'[Workshop Builder] {self.category} / {self.name} / {self.variant_combo.currentText()} : {action} (placeholder)')
