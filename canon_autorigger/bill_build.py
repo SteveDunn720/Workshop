@@ -284,7 +284,7 @@ def build(rig_name:str, config:rig_config):
         foot_info = foot.build()
 
 
-        clav = modules.Clav(part='clav', side=side, rig_size=canon.scene_size, parent=canon.rig, joint_parent=spineinfo.bind_joints[-1], guides=guides.clav[side], control_space=[spineinfo.chest_off.ctrl, spineinfo.switch_joints[-1]])
+        clav = modules.Clav(part='clav', side=side, rig_size=canon.scene_size, parent=canon.rig, joint_parent=spineinfo.bind_joints[-2], guides=guides.clav[side], control_space=[ spineinfo.switch_joints[-2], spineinfo.chest_off.ctrl,])
         clav_info = clav.build()
 
         arm = modules.Biped_Limb(part='arm', rig_size=canon.scene_size, parent=canon.rig, joint_parent=clav_info.joint, side=side, guides=guides.arm[side],ik_end_control = False, fk_control_space=[clav_info.control.ctrl], ik_root_control_space=[clav_info.control.ctrl, hipinfo.hip_control.ctrl, root_info.root_control.ctrl, spineinfo.switch_joints[-1],], ik_pv_control_space=[ hipinfo.hip_control.ctrl, root_info.root_control.ctrl, spineinfo.switch_joints[-1], clav_info.control.ctrl,], ik_end_control_space=[ hipinfo.hip_control.ctrl, root_info.root_control.ctrl, spineinfo.switch_joints[-1], clav_info.control.ctrl,], ikfk_blend=1, ik_length=True)
