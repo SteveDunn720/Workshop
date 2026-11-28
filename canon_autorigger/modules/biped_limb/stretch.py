@@ -124,7 +124,7 @@ def build_stretchy_ik(
     # Distance and raw stretch ratio
     # -------------------------------------------------
 
-    distance = DistanceBetweenNode(
+    distance = DistanceBetweenNode.create(
         name=f"{name}_stretch_distance"
     )
 
@@ -135,7 +135,7 @@ def build_stretchy_ik(
         f"{ik_control}.worldMatrix[0]"
     )
 
-    ratio = MultiplyDivideNode(
+    ratio = MultiplyDivideNode.create(
         name=f"{name}_stretch_ratio"
     )
     ratio.operation.set(2)
@@ -226,7 +226,7 @@ def build_stretchy_ik(
     # Drive the joint lengths
     # -------------------------------------------------
 
-    lengths = MultiplyDivideNode(
+    lengths = MultiplyDivideNode.create(
         name=f"{name}_stretch_lengths"
     )
 

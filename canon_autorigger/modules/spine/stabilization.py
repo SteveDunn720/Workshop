@@ -28,7 +28,7 @@ def get_relative_matrix(
     name: str,
 ) -> str:
 
-    mult = MultMatrixNode(
+    mult = MultMatrixNode.create(
         name=f"{name}_relative_MM"
     )
 
@@ -55,7 +55,7 @@ def get_relative_position(
         name=name,
     )
 
-    dec = DecomposeMatrixNode(
+    dec = DecomposeMatrixNode.create(
         name=f"{name}_relative_DCM"
     )
 
@@ -105,7 +105,7 @@ def get_distance_ratio(
         0.000001,
     )
 
-    ratio = MultiplyDivideNode(
+    ratio = MultiplyDivideNode.create(
         name=f"{name}_ratio_MD"
     )
 
@@ -186,7 +186,7 @@ def create_dynamic_soft_weight(
     compression_max: float = 0.75,
 ) -> str:
 
-    remap = RemapValueNode(
+    remap = RemapValueNode.create(
         name=f"{name}_compression_RMV"
     )
 
@@ -206,7 +206,7 @@ def create_dynamic_soft_weight(
         2,
     )
 
-    mult = MultiplyDivideNode(
+    mult = MultiplyDivideNode.create(
         name=f"{name}_weight_MD"
     )
 
@@ -267,7 +267,7 @@ def limit_soft_offset(
         0.000001,
     )
 
-    ratio = MultiplyDivideNode(
+    ratio = MultiplyDivideNode.create(
         name=f"{name}_limitRatio_MD"
     )
 
@@ -293,7 +293,7 @@ def limit_soft_offset(
         f"{clamp}.inputR"
     )
 
-    mult = MultiplyDivideNode(
+    mult = MultiplyDivideNode.create(
         name=f"{name}_limitedOffset_MD"
     )
 
@@ -403,7 +403,7 @@ def build_stabilized_drivers(
             name=driver_name,
         )
 
-        dec = DecomposeMatrixNode(
+        dec = DecomposeMatrixNode.create(
             name=f"{driver_name}_DCM"
         )
 
@@ -452,7 +452,7 @@ def build_stabilized_drivers(
                 name=f"{driver_name}_{index:02d}",
             )
 
-            mult = MultiplyDivideNode(
+            mult = MultiplyDivideNode.create(
                 name=f"{driver_name}_{index:02d}_soft_MD"
             )
 
@@ -552,7 +552,7 @@ def get_chain_length_ratio(
     name: str,
 ) -> str:
 
-    total = SumNode(
+    total = SumNode.create(
         name=f"{name}_length_SUM"
     )
 
@@ -571,7 +571,7 @@ def get_chain_length_ratio(
         0.000001,
     )
 
-    ratio = MultiplyDivideNode(
+    ratio = MultiplyDivideNode.create(
         name=f"{name}_lengthRatio_MD"
     )
 
@@ -690,7 +690,7 @@ def create_soft_limit(
 
     def add(suffix, *values):
 
-        node = SumNode(
+        node = SumNode.create(
             name=f"{name}_{suffix}_SUM"
         )
 
@@ -705,7 +705,7 @@ def create_soft_limit(
 
     def multiply(suffix, a, b, divide=False):
 
-        node = MultiplyDivideNode(
+        node = MultiplyDivideNode.create(
             name=f"{name}_{suffix}_MD"
         )
 
@@ -719,7 +719,7 @@ def create_soft_limit(
 
     def condition(suffix, a, b, true, false, operation):
 
-        node = cmds.createNode(
+        node = cmds.createNode.create(
             "condition",
             name=f"{name}_{suffix}_COND",
         )
@@ -736,7 +736,7 @@ def create_soft_limit(
     # Convert wrapper output to a native plug.
     def sum_plug(suffix, *values):
 
-        node = cmds.createNode(
+        node = cmds.createNode.create(
             "plusMinusAverage",
             name=f"{name}_{suffix}_PMA",
         )
@@ -917,7 +917,7 @@ def limit_spine_length(
     if len(drivers) != len(percentages):
         raise ValueError("Expected five spine drivers.")
 
-    reference_grp = cmds.createNode(
+    reference_grp = cmds.createNode.create(
         "transform",
         name=f"{name}_lengthLimit_grp",
         parent=cog,
@@ -1049,7 +1049,7 @@ def limit_spine_length(
     )
 
     # Convert ratio difference to scene units.
-    distance_delta = MultiplyDivideNode(
+    distance_delta = MultiplyDivideNode.create(
         name=f"{name}_distanceDelta_MD"
     )
 
@@ -1063,7 +1063,7 @@ def limit_spine_length(
     # Full correction vector
     # -----------------------------------
 
-    correction = MultiplyDivideNode(
+    correction = MultiplyDivideNode.create(
         name=f"{name}_correction_MD"
     )
 
@@ -1103,7 +1103,7 @@ def limit_spine_length(
             name=driver_name,
         )
 
-        dec = DecomposeMatrixNode(
+        dec = DecomposeMatrixNode.create(
             name=f"{driver_name}_DCM"
         )
 
@@ -1120,7 +1120,7 @@ def limit_spine_length(
             )
 
         # Weighted longitudinal correction.
-        mult = MultiplyDivideNode(
+        mult = MultiplyDivideNode.create(
             name=f"{driver_name}_correction_MD"
         )
 
@@ -1262,7 +1262,7 @@ def create_limited_control(
     # Read only the LOCAL control matrix.
     # Do not read its world matrix.
 
-    mult = MultMatrixNode(
+    mult = MultMatrixNode.create(
         name=f"{name}_rawInput_MM"
     )
 

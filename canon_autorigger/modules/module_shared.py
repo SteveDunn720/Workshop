@@ -65,7 +65,7 @@ def fkik_switch(controls:list|None, node_attr:str, descriptor:str, fk_grp:str, i
     else:
         cmds.addAttr(node_attr, longName='FK_IK_Switch', attributeType='double', defaultValue=1, maxValue=1, minValue=0, keyable=True)
         FK_IK_Switch = f'{node_attr}.FK_IK_Switch'
-    rev = ReverseNode(name=f"{descriptor}_FKIK_rev")
+    rev = ReverseNode.create(name=f"{descriptor}_FKIK_rev")
     rev.input.x.connect_from(FK_IK_Switch)
     rev.output.x.connect_to(f'{ik_grp}.visibility')
     cmds.connectAttr(FK_IK_Switch, f'{fk_grp}.visibility')
@@ -243,7 +243,7 @@ def create_module_switch(
 
     if mode_count == 2:
 
-        reverse = ReverseNode(
+        reverse = ReverseNode.create(
             name=f"{descriptor}_switch_rev"
         )
 
@@ -485,7 +485,7 @@ def create_driver_offset(
 
     for axis, value_range, multiplier in rotation_data:
 
-        remap = RemapValueNode(
+        remap = RemapValueNode.create(
             name=f"{driven_name}_{driver_name}_remap{axis}"
         )
 
@@ -512,7 +512,7 @@ def create_driver_offset(
     # Translation
     # ---------------------------------------------------------
 
-    translate_mult = MultiplyDivideNode(
+    translate_mult = MultiplyDivideNode.create(
         name=f"{driven_name}_{driver_name}_translate_mult"
     )
 
@@ -612,7 +612,7 @@ def create_blend_driver_offset(
     # parent_space.worldInverseMatrix
     # ---------------------------------------------------------
 
-    relative_matrix = MultMatrixNode(
+    relative_matrix = MultMatrixNode.create(
         name=f"{driven_name}_{driver_name}_relative_matrix"
     )
 
@@ -647,7 +647,7 @@ def create_blend_driver_offset(
         type="matrix",
     )
 
-    delta_matrix = MultMatrixNode(
+    delta_matrix = MultMatrixNode.create(
         name=f"{driven_name}_{driver_name}_delta_matrix"
     )
 
@@ -663,7 +663,7 @@ def create_blend_driver_offset(
     # Blend identity -> relative driver delta
     # ---------------------------------------------------------
 
-    blend_matrix = BlendMatrixNode(
+    blend_matrix = BlendMatrixNode.create(
         name=f"{driven_name}_{driver_name}_blend_matrix"
     )
 
@@ -773,7 +773,7 @@ def create_mid_blend_driver_offset(
     # Driver A relative to parent space
     # ---------------------------------------------------------
 
-    driver_a_relative = MultMatrixNode(
+    driver_a_relative = MultMatrixNode.create(
         name=f"{driven_name}_{driver_a_name}_relative_matrix"
     )
 
@@ -789,7 +789,7 @@ def create_mid_blend_driver_offset(
     # Driver B relative to parent space
     # ---------------------------------------------------------
 
-    driver_b_relative = MultMatrixNode(
+    driver_b_relative = MultMatrixNode.create(
         name=f"{driven_name}_{driver_b_name}_relative_matrix"
     )
 
@@ -812,7 +812,7 @@ def create_mid_blend_driver_offset(
     # 1.0 -> B
     # ---------------------------------------------------------
 
-    midpoint_matrix = BlendMatrixNode(
+    midpoint_matrix = BlendMatrixNode.create(
         name=f"{driven_name}_{driver_a_name}_{driver_b_name}_midpoint_matrix"
     )
 
@@ -855,7 +855,7 @@ def create_mid_blend_driver_offset(
     # Therefore blend_offset receives no movement.
     # ---------------------------------------------------------
 
-    delta_matrix = MultMatrixNode(
+    delta_matrix = MultMatrixNode.create(
         name=f"{driven_name}_{driver_a_name}_{driver_b_name}_midpoint_delta"
     )
 

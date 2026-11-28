@@ -13,7 +13,7 @@ from Workshop.control.core import Control
 from Workshop.joint import create_joint
 from Workshop.maya_api.node import BlendColorsNode, BlendMatrixNode, ComposeMatrixNode, ConditionNode, DecomposeMatrixNode, DistanceBetweenNode, MultMatrixNode, MultiplyDivideNode, PlusMinusAverageNode, PointOnCurveNode, RemapValueNode, SumNode
 from Workshop.transform.utils import create_transform
-from attribute_utils import create_attribute, add_proxy, add_attribute_header, set_attribute, connect_attributes
+from Workshop.maya_api.attribute_utils import create_attribute, add_proxy, add_attribute_header, set_attribute, connect_attributes
 from Workshop.skin.split.tag import tag_for_weight_split
 from Workshop.nurbs.curve import smooth_curve_weights
 from Workshop.transform.constraint import Constraint, constraint
@@ -144,16 +144,16 @@ class Eyelid:
         # ---------------------------------------------------------
         midpoint = create_transform(name=f"{name}_midpoint", parent=self.collision_grp)
 
-        midpoint_blend = BlendMatrixNode(name=f"{name}_midpoint_BM")
+        midpoint_blend = BlendMatrixNode.create(name=f"{name}_midpoint_BM")
         midpoint_blend.input_matrix.connect_from(f"{upper_pin}.worldMatrix[0]")
         midpoint_blend.target[0].target_matrix.connect_from(f"{lower_pin}.worldMatrix[0]")
         midpoint_blend.target[0].weight.set(push)
 
-        midpoint_mm = MultMatrixNode(name=f"{name}_midpoint_MM")
+        midpoint_mm = MultMatrixNode.create(name=f"{name}_midpoint_MM")
         midpoint_mm.matrix_in[0].connect_from(midpoint_blend.output_matrix)
         midpoint_mm.matrix_in[1].connect_from(f"{self.collision_grp}.worldInverseMatrix[0]")
 
-        midpoint_dcm = DecomposeMatrixNode(name=f"{name}_midpoint_DCM")
+        midpoint_dcm = DecomposeMatrixNode.create(name=f"{name}_midpoint_DCM")
         midpoint_dcm.input_matrix.connect_from(midpoint_mm.matrix_sum)
         midpoint_dcm.output_translate.connect_to(f"{midpoint}.translate")
         midpoint_dcm.output_rotate.connect_to(f"{midpoint}.rotate")
@@ -165,8 +165,8 @@ class Eyelid:
         def get_local_y(pin: str, suffix: str) -> str:
             """Get pin Y relative to the isolated eye setup."""
 
-            mm = MultMatrixNode(name=f"{name}_{suffix}_compare_MM")
-            dcm = DecomposeMatrixNode(name=f"{name}_{suffix}_compare_DCM")
+            mm = MultMatrixNode.create(name=f"{name}_{suffix}_compare_MM")
+            dcm = DecomposeMatrixNode.create(name=f"{name}_{suffix}_compare_DCM")
             mm.matrix_in[0].connect_from(f"{pin}.worldMatrix[0]",)
             mm.matrix_in[1].connect_from(f"{self.eyes_setup_grp}.worldInverseMatrix[0]")
             dcm.input_matrix.connect_from(mm.matrix_sum)
@@ -175,7 +175,7 @@ class Eyelid:
         upper_y = get_local_y(upper_pin, "upper")
         lower_y = get_local_y(lower_pin, "lower")
 
-        difference = PlusMinusAverageNode(f"{name}_difference_PMA")
+        difference = PlusMinusAverageNode.create(f"{name}_difference_PMA")
         difference.operation.set(2)
         difference.input_1d[0].connect_from(lower_y)
         difference.input_1d[1].connect_from(upper_y)
@@ -183,7 +183,7 @@ class Eyelid:
         # ---------------------------------------------------------
         # Smooth collision activation
         # ---------------------------------------------------------
-        collision_remap = RemapValueNode(name=f"{name}_collision_RMV")
+        collision_remap = RemapValueNode.create(name=f"{name}_collision_RMV")
         collision_remap.input_min.set(-self.soft_distance * self.rig_size/45)
         collision_remap.input_max.set(0)
         collision_remap.output_min.set(0)
@@ -195,7 +195,7 @@ class Eyelid:
         # ---------------------------------------------------------
         # Animator collision strength
         # ---------------------------------------------------------
-        collision_strength = MultiplyDivideNode(name=f"{name}_collision_strength_MD")
+        collision_strength = MultiplyDivideNode.create(name=f"{name}_collision_strength_MD")
         collision_strength.input1.x.connect_from(collision_remap.output)
         collision_strength.input2.x.connect_from(self.collision_attr)
         collision_weight = f"{collision_strength}.outputX"
@@ -207,7 +207,7 @@ class Eyelid:
             (upper_pin, upper_collision, "upper"),
             (lower_pin, lower_collision, "lower"),
         ):
-            blend = BlendMatrixNode(name=f"{name}_{suffix}_collision_BM")
+            blend = BlendMatrixNode.create(name=f"{name}_{suffix}_collision_BM")
             blend.input_matrix.connect_from(f"{pin}.worldMatrix[0]")
             blend.target[0].target_matrix.connect_from(f"{midpoint}.worldMatrix[0]")
             blend.target[0].weight.connect_from(collision_weight)
@@ -218,25 +218,25 @@ class Eyelid:
                 fullPath=True,
             )
 
-            mm = MultMatrixNode(name=f"{name}_{suffix}_local_MM")
+            mm = MultMatrixNode.create(name=f"{name}_{suffix}_local_MM")
             mm.matrix_in[0].connect_from(blend.output_matrix)
             if parent:
                 mm.matrix_in[1].connect_from(f"{parent[0]}.worldInverseMatrix[0]",)
-            dcm = DecomposeMatrixNode(f"{name}_{suffix}_local_DCM")
+            dcm = DecomposeMatrixNode.create(f"{name}_{suffix}_local_DCM")
             dcm.input_matrix.connect_from(mm.matrix_sum)
             # ---------------------------------------------------------
             # Collision gap offset
             # ---------------------------------------------------------
-            gap_mult = MultiplyDivideNode(name=f"{name}_{suffix}_gap_MD")
+            gap_mult = MultiplyDivideNode.create(name=f"{name}_{suffix}_gap_MD")
             # Upper moves downward, lower moves upward.
             direction = -0.5 if suffix == "upper" else 0.5
             gap_mult.input1.x.connect_from(self.collision_gap_attr)
             gap_mult.input2.x.set(direction)
 
-            gap_active = MultiplyDivideNode(name=f"{name}_{suffix}_gap_active_MD")
+            gap_active = MultiplyDivideNode.create(name=f"{name}_{suffix}_gap_active_MD")
             gap_active.input1.x.connect_from(gap_mult.output.x)
             gap_active.input2.x.connect_from(collision_weight)
-            gap_sum = PlusMinusAverageNode(name=f"{name}_{suffix}_gap_PMA")
+            gap_sum = PlusMinusAverageNode.create(name=f"{name}_{suffix}_gap_PMA")
             gap_sum.input_3d[0].connect_from(dcm.output_translate)
             connect_attributes(source=str(gap_active.output.x), destination=[f"{gap_sum}.input3D[1].input3Dy"])
             gap_sum.output_3d.connect_to(f"{collision}.translate")
@@ -298,7 +298,7 @@ class Eyelid:
             blink_control = self.blink_controls[vertical].ctrl
 
             for attribute in ("translateX", "rotateZ"):
-                sum_node = SumNode(
+                sum_node = SumNode.create(
                     name=f"eyelid_{self.part}_{name}_{attribute}_{self.side}_SUM",
                 )
 
@@ -832,31 +832,31 @@ class Eyelid:
             raise ValueError(f"Invalid IK rest length for {name}: {rest_length}")
 
         # Current distanc
-        distance = DistanceBetweenNode(name=f"{name}_distance_DB")
+        distance = DistanceBetweenNode.create(name=f"{name}_distance_DB")
         root_world_matrix = cmds.getAttr(f"{root_joint}.worldMatrix[0]")
         distance.input_matrix1.set(*root_world_matrix)
         distance.input_matrix2.connect_from(f"{ik_handle}.worldMatrix[0]")
         # Current distance / rest distance
-        ratio = MultiplyDivideNode(name=f"{name}_length_ratio_MD")
+        ratio = MultiplyDivideNode.create(name=f"{name}_length_ratio_MD")
         ratio.operation.set(2)
         ratio.input1.x.connect_from(distance.distance)
         ratio.input2.x.set(rest_length)
         # Select stretch vs compression multiplier
-        condition = ConditionNode(name=f"{name}_length_mode_CON")
+        condition = ConditionNode.create(name=f"{name}_length_mode_CON")
         condition.operation.set(2)
         condition.first_term.connect_from(ratio.output.x)
         condition.second_term.set(1.0)
         condition.color_if_true.r.connect_from(f"{control}.stretch")
         condition.color_if_false.r.connect_from(f"{control}.compress")
         # Blend between rest ratio (1) and current ratio
-        blend = BlendColorsNode(name=f"{name}_length_blend_BLC")
+        blend = BlendColorsNode.create(name=f"{name}_length_blend_BLC")
         blend.blender.connect_from(condition.out_color.r)
         blend.color1.r.connect_from(ratio.output.x)
         blend.color2.r.set(1)
         # Store original length on root joint
         rest_len_attr = create_attribute(primary_object=root_joint, attr_name="restLength", default=rest_length, locked=True)
         # Apply length multiplier
-        length_mult = MultiplyDivideNode(name=f"{name}_length_MD")
+        length_mult = MultiplyDivideNode.create(name=f"{name}_length_MD")
         length_mult.operation.set(1)
         length_mult.input1.x.connect_from(blend.output.r)
         # Use the original signed local joint translation.
@@ -1097,18 +1097,18 @@ class Eyelid:
         cmds.setAttr(f"{motion_path}.uValue", parameter)
 
         # World position -> parent-local position.
-        compose = ComposeMatrixNode(name=f"{transform}_CM")
+        compose = ComposeMatrixNode.create(name=f"{transform}_CM")
         compose.input_translate.connect_from(
             f"{motion_path}.allCoordinates"
         )
 
-        mult = MultMatrixNode(name=f"{transform}_MM")
+        mult = MultMatrixNode.create(name=f"{transform}_MM")
         mult.matrix_in[0].connect_from(compose.output_matrix)
         mult.matrix_in[1].connect_from(
             f"{transform}.parentInverseMatrix[0]"
         )
 
-        decompose = DecomposeMatrixNode(name=f"{transform}_DCM")
+        decompose = DecomposeMatrixNode.create(name=f"{transform}_DCM")
         decompose.input_matrix.connect_from(mult.matrix_sum)
         decompose.output_translate.connect_to(
             f"{transform}.translate"
@@ -1137,7 +1137,7 @@ class Eyelid:
         positions: [(input_position, output_weight), ...]
         """
         positions = sorted(positions, key=lambda item: item[0])
-        node = RemapValueNode(name=name)
+        node = RemapValueNode.create(name=name)
         node.input_value.connect_from(input_attr)
         node.input_min.set(positions[0][0])
         node.input_max.set(positions[-1][0])
@@ -1375,7 +1375,7 @@ class Eyelid:
                     positions=normalized_points,
                 )
 
-                multiplier = MultiplyDivideNode(name=f"{vertical}_{self.part}_{target_name}_{self.side}_MD")
+                multiplier = MultiplyDivideNode.create(name=f"{vertical}_{self.part}_{target_name}_{self.side}_MD")
                 multiplier.input2.x.set(maximum_weight)
                 multiplier.input1.x.connect_from(output)
                 multiplier.output.x.connect_to(f"{blendshape}.weight[{index}]")

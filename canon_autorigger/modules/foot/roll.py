@@ -131,7 +131,7 @@ class Roll:
 
         #senstivity_mult
 
-        sensitivty = MultiplyDivideNode(name=f'roll_{self.side}_md')
+        sensitivty = MultiplyDivideNode.create(name=f'roll_{self.side}_md')
         sensitivty.input1.z.connect_from(f'{self.smart_roll.ctrl}.roll_angle')
         sensitivty.input2.z.set(-1)
         sensitivty.input1.x.connect_from(f'{self.smart_roll.ctrl}.rotateZ')
@@ -139,8 +139,8 @@ class Roll:
 
         #toe_tip_roll
 
-        toe_tip_remap = RemapValueNode(name=f'toe_roll_{self.side}_remap')
-        toe_tip_adl = AddDLNode(name=f'toe_roll_{self.side}_adl')
+        toe_tip_remap = RemapValueNode.create(name=f'toe_roll_{self.side}_remap')
+        toe_tip_adl = AddDLNode.create(name=f'toe_roll_{self.side}_adl')
         toe_tip_adl.input_1.set(90)
         toe_tip_adl.input_2.connect_from(f'{self.smart_roll.ctrl}.roll_angle')
         toe_tip_remap.input_max.connect_from(toe_tip_adl.output)
@@ -152,9 +152,9 @@ class Roll:
 
         #ball_roll
 
-        ball_adl = AddDLNode(name=f'ball_roll_{self.side}_adl')
-        ball_remap1 = RemapValueNode(name=f'ball_roll1_{self.side}_remap')
-        ball_remap2 = RemapValueNode(name=f'ball_roll2_{self.side}_remap')
+        ball_adl = AddDLNode.create(name=f'ball_roll_{self.side}_adl')
+        ball_remap1 = RemapValueNode.create(name=f'ball_roll1_{self.side}_remap')
+        ball_remap2 = RemapValueNode.create(name=f'ball_roll2_{self.side}_remap')
 
         ball_remap1.input_value.connect_from(f'{self.smart_roll.ctrl}.rotateX')
         ball_remap1.input_max.connect_from(f'{self.smart_roll.ctrl}.roll_angle')
@@ -172,7 +172,7 @@ class Roll:
 
         #heel_roll
 
-        heel_remap = RemapValueNode(name=f'heel_roll_{self.side}_remap')
+        heel_remap = RemapValueNode.create(name=f'heel_roll_{self.side}_remap')
         heel_remap.input_max.set(-90)
         heel_remap.output_max.set(-90)
         heel_remap.input_value.connect_from(f'{self.smart_roll.ctrl}.rotateX')
@@ -220,28 +220,28 @@ class Roll:
                         weightAliasList=True
                     )
 
-        twist_inverse = MultiplyDivideNode(name = f'twist_inverse_{self.side}_md')
+        twist_inverse = MultiplyDivideNode.create(name = f'twist_inverse_{self.side}_md')
         twist_inverse.input1.connect_from(f'{twist_main}.translate')
         twist_inverse.input2.set((-1,-1,-1))
         twist_inverse.output.connect_to(f'{bank_twist_offset}.translate')
 
         bank_width = (abs(cmds.getAttr(f'{inbank_main}.translateX')) + abs(cmds.getAttr(f'{outbank_main}.translateX')))/2
-        bank_width_mult = MultiplyDivideNode(name = f'bank_width_{self.side}_md')
+        bank_width_mult = MultiplyDivideNode.create(name = f'bank_width_{self.side}_md')
         cmds.setAttr(f'{self.smart_roll.ctrl}.bank_width', bank_width)
         bank_width_mult.input1.x.connect_from(f'{self.smart_roll.ctrl}.bank_width')
         bank_width_mult.input1.y.connect_from(f'{self.smart_roll.ctrl}.bank_width')
         bank_width_mult.input2.x.set(-1)
 
-        bank_neg = RemapValueNode(name=f'bank_neg_{self.side}_remap')
+        bank_neg = RemapValueNode.create(name=f'bank_neg_{self.side}_remap')
         bank_neg.input_value.connect_from(sensitivty.output.x)
         bank_neg.input_max.set(-90)
         bank_neg.output_max.set(-90)
 
-        bank_pos = RemapValueNode(name=f'bank_pos_{self.side}_remap')
+        bank_pos = RemapValueNode.create(name=f'bank_pos_{self.side}_remap')
         bank_pos.input_value.connect_from(sensitivty.output.x)
         bank_pos.input_max.set(90)
         bank_pos.output_max.set(90)
-        bank_condition = ConditionNode(name=f'bank_{self.side}_condition')
+        bank_condition = ConditionNode.create(name=f'bank_{self.side}_condition')
         bank_condition.operation.set(3)
         bank_condition.first_term.connect_from(sensitivty.output.x)
         bank_condition.color_if_true.set((1,0,0))

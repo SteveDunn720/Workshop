@@ -51,7 +51,7 @@ def _extract_segment_twist(
         axis=primary_axis.lower(),
     )
 
-    euler = QuatToEulerNode(
+    euler = QuatToEulerNode.create(
         name=f"{descriptor}_segment_twist_euler"
     )
 

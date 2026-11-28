@@ -105,9 +105,9 @@ def auto_pv_space(end_control:Control, pv_control:Control, parent:str, parent_sp
             cmds.connectAttr(f'{end_control.ctrl}.{attr}{axis}', f'{offset}.{attr}{axis}') # probably need a more fool proof set up here, but this works for now
     
 
-    mult = MultiplyDivideNode(name=f'{pv_control.name}_auto_pv_mult')
-    sum = SumNode(name=f'{pv_control.name}_auto_pv_sumY')
-    swing_remap = RemapValueNode(name=f'{pv_control.name}_auto_pv_swingX')
+    mult = MultiplyDivideNode.create(name=f'{pv_control.name}_auto_pv_mult')
+    sum = SumNode.create(name=f'{pv_control.name}_auto_pv_sumY')
+    swing_remap = RemapValueNode.create(name=f'{pv_control.name}_auto_pv_swingX')
 
     swing_remap.input_max.set(swing_range[0][1])
     swing_remap.input_min.set(swing_range[0][0])

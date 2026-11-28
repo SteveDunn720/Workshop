@@ -2,7 +2,7 @@ from dataclasses import dataclass
 
 from Workshop.canon_autorigger.build_management.dev import create_dev_attribute
 from Workshop.canon_autorigger.module_schema import ModuleGuide, ModuleRelationship, ModuleSetting
-from attribute_utils import create_attribute, connect_attributes
+from Workshop.maya_api.attribute_utils import create_attribute, connect_attributes
 from Workshop.control.core import Control
 from Workshop.transform.constraint import constraint
 from Workshop.control import create_control
@@ -338,7 +338,7 @@ class Jaw:
             weight=self.larynx_follow_weight,
         )
 
-        larynx_remap = RemapValueNode(name='larynx_remap')
+        larynx_remap = RemapValueNode.create(name='larynx_remap')
         larynx_remap.input_value.connect_from(f'{self.jaw_ctrl.ctrl}.rotateX')
         larynx_range = create_dev_attribute(
             attribute_name=f"{self.part}_{self.side}_larynx_remap_range",
@@ -356,7 +356,7 @@ class Jaw:
         larynx_remap.output_max.connect_from(f'{self.jaw_ctrl.ctrl}.larynx_mult')
         larynx_remap.output.connect_to(f'{self.larynx_ctrl.sdk}.translateY')
 
-        jaw_remap = RemapValueNode(name='jaw_remap')
+        jaw_remap = RemapValueNode.create(name='jaw_remap')
         jaw_remap.input_value.connect_from(f'{self.jaw_ctrl.ctrl}.rotateX')
         jaw_range = create_dev_attribute(
             attribute_name=f"{self.part}_{self.side}_jaw_remap_range",

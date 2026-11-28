@@ -7,7 +7,7 @@ from Workshop.guide.core import GuideInfo
 from Workshop.maya_api.node import BlendColorsNode, MultiplyDivideNode, SumNode
 from Workshop.nurbs.curve import get_nurbs_curve_radius
 from Workshop.transform.matrix import matrix_constraint
-from attribute_utils import create_attribute
+from Workshop.maya_api.attribute_utils import create_attribute
 
 from ..module_shared import module_prep, module_space
 from .eyelid import Eyelid
@@ -177,15 +177,15 @@ class Eye:
 
         self.eyeball.build_eyeball()
 
-        self.eye_look_offset_node = BlendColorsNode(name=f"look_blend_{self.side}_BC")
+        self.eye_look_offset_node = BlendColorsNode.create(name=f"look_blend_{self.side}_BC")
 
         if self.side == "R":
-            mirroraim = MultiplyDivideNode(name=f"{self.side}_aim_mirror_MD")
+            mirroraim = MultiplyDivideNode.create(name=f"{self.side}_aim_mirror_MD")
             mirroraim.input2.set((-1, -1, -1))
             mirroraim.input1.connect_from(f"{self.eyeball.look_root}.rotate")
             # add_node.input[0].connect_from(f"{self.eyeball.look_root}.rotate{axes}")
         for axes in ["X", "Y", "Z"]:
-            add_node = SumNode(name=f"look_{axes}_{self.side}_ADL")
+            add_node = SumNode.create(name=f"look_{axes}_{self.side}_ADL")
             if self.side == "R":
                 add_node.input[0].connect_from(f"{mirroraim.output}{axes}")
             else:

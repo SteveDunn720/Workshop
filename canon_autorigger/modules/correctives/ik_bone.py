@@ -11,7 +11,7 @@ from Workshop.transform.utils import create_transform
 
 from Workshop.canon_autorigger.module_schema import ModuleRelationship, ModuleSetting
 from Workshop.canon_autorigger.build_management.dev import create_dev_attribute
-from attribute_utils import create_attribute, set_attribute, connect_attributes
+from Workshop.maya_api.attribute_utils import create_attribute, set_attribute, connect_attributes
 from Workshop.transform.constraint import constraint
 
 from ..module_shared import module_prep

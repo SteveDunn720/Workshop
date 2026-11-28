@@ -168,7 +168,7 @@ class NL_Fold:
         create_mid_blend_driver_offset(control=controls[1], driver_a=controls[0], driver_b=controls[2], parent_space=self.control_space[0],blend=self.driver_blend )
         
         control_max = cmds.getAttr(f'{self.corner.ctrl}.maxTransXLimit')
-        corner_remap = RemapValueNode(name = f'{controls[2].name}_remap')
+        corner_remap = RemapValueNode.create(name = f'{controls[2].name}_remap')
         corner_remap.input_value.connect_from(f'{self.corner.ctrl}.translateX')
         input_max_attr = create_dev_attribute(
             attribute_name=f"{self.part}_{self.side}_corner_input_max",

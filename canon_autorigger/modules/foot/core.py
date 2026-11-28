@@ -9,7 +9,7 @@ from Workshop.joint import create_joint
 from Workshop.maya_api.node import ConditionNode, DistanceBetweenNode, MultiplyDivideNode, ReverseNode
 from Workshop.guide.core import GuideInfo
 from Workshop.transform.constraint import constraint
-from attribute_utils import add_proxy, connect_attributes, set_attribute
+from Workshop.maya_api.attribute_utils import add_proxy, connect_attributes, set_attribute
 
 from ..ik import auto_pv_space, create_IK_single_chain
 from ..module_shared import fkik_switch, module_prep, module_space

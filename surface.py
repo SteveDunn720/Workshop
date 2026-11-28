@@ -133,7 +133,7 @@ def uv_pin(
 
     if uv_pin_node is None:
         # Create the UVPin node and connect it.
-        uv_pin_node = UvPinNode(pin_name)
+        uv_pin_node = UvPinNode.create(pin_name)
         uv_pin_node.original_geometry.connect_from(f"{original_shape}.{shape_output}")
         uv_pin_node.deformed_geometry.connect_from(f"{primary_shape}.{shape_output}")
         index = 0
@@ -206,7 +206,7 @@ def uv_pin_multi(
     """
 
     primary_shape, original_shape, shape_output = _get_surface_shapes(surface)
-    uv_pin_node = UvPinNode(name)
+    uv_pin_node = UvPinNode.create(name)
     uv_pin_node.original_geometry.connect_from(f"{original_shape}.{shape_output}")
     uv_pin_node.deformed_geometry.connect_from(f"{primary_shape}.{shape_output}")
 
@@ -236,10 +236,10 @@ def closest_point_on_surface_reader(
     shape = get_shape(surface)
     if shape is None:
         raise ValueError(f"{surface} has no valid shape")
-    closest_point_node = ClosestPointOnSurfaceNode(f"{transform_name}_closestPoint")
+    closest_point_node = ClosestPointOnSurfaceNode.create(f"{transform_name}_closestPoint")
     closest_point_node.input_surface.connect_from(f"{shape}.worldSpace[0]")
 
-    world_driver_pos = MultiplyPointByMatrixNode(f"{transform_name}_world_pos")
+    world_driver_pos = MultiplyPointByMatrixNode.create(f"{transform_name}_world_pos")
     world_driver_pos.input_matrix.connect_from(f"{transform}.worldMatrix[0]")
     closest_point_node.in_position.connect_from(world_driver_pos.output)
 
@@ -274,7 +274,7 @@ def surface_slide_constraint(
     if shape is None:
         raise ValueError(f"{surface} has no valid shape")
 
-    local_slider_pos = MultiplyPointByMatrixNode(f"{slider_name}_local_pos")
+    local_slider_pos = MultiplyPointByMatrixNode.create(f"{slider_name}_local_pos")
     local_slider_pos.input_point.connect_from(closest_point_reader.position)
     local_slider_pos.input_matrix.connect_from(f"{slider_transform}.parentInverseMatrix[0]")
     local_slider_pos.output.connect_to(f"{slider_transform}.translate")

@@ -31,7 +31,7 @@ def build_compressible_ik_length(
         # Preserve whether the joint extends down the positive or negative axis.
         direction = 1.0 if original_length >= 0.0 else -1.0
 
-        distance = DistanceBetweenNode(name=f"{name}_compress_distance")
+        distance = DistanceBetweenNode.create(name=f"{name}_compress_distance")
         distance.input_matrix1.connect_from(
             f"{root_reference}.worldMatrix[0]"
         )
@@ -41,13 +41,13 @@ def build_compressible_ik_length(
 
         # Convert the always-positive world-space distance into the joint's
         # original positive or negative translate direction.
-        signed_distance = MultiplyDivideNode(
+        signed_distance = MultiplyDivideNode.create(
             name=f"{name}_compress_signed_distance"
         )
         signed_distance.input1.x.connect_from(distance.distance)
         signed_distance.input2.x.set(direction)
 
-        compress_condition = ConditionNode(
+        compress_condition = ConditionNode.create(
             name=f"{name}_compress_condition"
         )
 

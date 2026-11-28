@@ -137,7 +137,7 @@ class Metacarpal:
                     weight=weights[i],
                     attr=True,
                 )
-                translate_blend = BlendColorsNode(name=f"{ctrl.ctrl}_meta_BC")
+                translate_blend = BlendColorsNode.create(name=f"{ctrl.ctrl}_meta_BC")
                 translate_blend.color2.connect_from(f"{self.roll_ctrl.ctrl}.translate")
                 translate_blend.blender.set(weights[i])
                 translate_blend.output.connect_to(f"{ctrl.sdk}.translate")

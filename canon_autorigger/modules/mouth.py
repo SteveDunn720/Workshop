@@ -109,7 +109,7 @@ class Mouth:
 
         # Convert the blended world matrix into the
         # intermediate driver's local space.
-        mult = MultMatrixNode(
+        mult = MultMatrixNode.create(
             name=f"{name}_local_MM"
         )
 
@@ -121,7 +121,7 @@ class Mouth:
             f"{self.guts}.worldInverseMatrix[0]"
         )
 
-        decompose = DecomposeMatrixNode(
+        decompose = DecomposeMatrixNode.create(
             name=f"{name}_DCM"
         )
 
@@ -188,7 +188,7 @@ class Mouth:
 
         # Convert resulting world matrix into midpoint's
         # parent space.
-        mult = MultMatrixNode(
+        mult = MultMatrixNode.create(
             name=f"{name}_local_MM"
         )
 
@@ -200,7 +200,7 @@ class Mouth:
             f"{self.guts}.worldInverseMatrix[0]"
         )
 
-        decompose = DecomposeMatrixNode(
+        decompose = DecomposeMatrixNode.create(
             name=f"{name}_DCM"
         )
 
@@ -251,7 +251,7 @@ class Mouth:
 
 
         # LEFT SIDE
-        left_remap = RemapValueNode(
+        left_remap = RemapValueNode.create(
             name=f"{name}_left_sticky_RMV"
         )
 
@@ -267,7 +267,7 @@ class Mouth:
 
 
         # RIGHT SIDE
-        right_remap = RemapValueNode(
+        right_remap = RemapValueNode.create(
             name=f"{name}_right_sticky_RMV"
         )
 
@@ -283,7 +283,7 @@ class Mouth:
 
 
         # Add the contribution from both corners.
-        sticky_sum = SumNode(
+        sticky_sum = SumNode.create(
             name=f"{name}_sticky_SUM"
         )
 
@@ -297,7 +297,7 @@ class Mouth:
 
 
         # Clamp the combined sticky value to 0 -> 1.
-        sticky_remap = RemapValueNode(
+        sticky_remap = RemapValueNode.create(
             name=f"{name}_sticky_RMV"
         )
 
@@ -339,7 +339,7 @@ class Mouth:
         cmds.setAttr(f"{driver}.rotate", 0, 0, 0)
 
         # Drive BASE from the final control world matrix.
-        mm = MultMatrixNode(
+        mm = MultMatrixNode.create(
             name=f"{control.name}_driver_base_MM"
         )
 
@@ -351,7 +351,7 @@ class Mouth:
             f"{self.guts}.worldInverseMatrix[0]"
         )
 
-        dec = DecomposeMatrixNode(
+        dec = DecomposeMatrixNode.create(
             name=f"{control.name}_driver_base_DCM"
         )
 
@@ -370,13 +370,13 @@ class Mouth:
         # -------------------------
 
         translate_sum = [
-            SumNode(name=f"{driver}_translate{axis}_SUM")
+            SumNode.create(name=f"{driver}_translate{axis}_SUM")
             for axis in "XYZ"
         ]
 
         for index, (influence, weight) in enumerate(influences):
 
-            mult = MultiplyDivideNode(
+            mult = MultiplyDivideNode.create(
                 name=f"{driver}_{influence.name}_soft_MD"
             )
 
@@ -403,7 +403,7 @@ class Mouth:
         weight_plug=None,
     ):
         return
-        up_sum = SumNode(
+        up_sum = SumNode.create(
             name=f"{cluster}_Y_SUM"
         )
 
@@ -416,7 +416,7 @@ class Mouth:
         # up_sum.input[1].connect_from(jaw_y_output)
 
         if weight_plug:
-            mult = MultiplyDivideNode(
+            mult = MultiplyDivideNode.create(
                 name=f"{cluster}_Y_weight_MD"
             )
 
@@ -441,7 +441,7 @@ class Mouth:
         output_min: float,
         output_max: float,
     ):
-        remap = RemapValueNode(
+        remap = RemapValueNode.create(
             name=f"{name}_weight_RMV"
         )
 
@@ -458,8 +458,8 @@ class Mouth:
         return remap.output
 
     def get_curve_percent(self, guide:GuideInfo, curve:str)->float:
-        near = NearestPointOnCurveNode(name=f'{self.part}_NPOC')
-        dec = DecomposeMatrixNode(name=f'{self.part}_DCM')
+        near = NearestPointOnCurveNode.create(name=f'{self.part}_NPOC')
+        dec = DecomposeMatrixNode.create(name=f'{self.part}_DCM')
 
         dec.input_matrix.connect_from(f'{guide.name}.worldMatrix[0]')
         near.in_position.connect_from(dec.output_translate)
@@ -493,7 +493,7 @@ class Mouth:
 
         half_default = path_percent * 0.5
 
-        positive = RemapValueNode(
+        positive = RemapValueNode.create(
             name=f"{transform}_positive_remap"
         )
 
@@ -507,7 +507,7 @@ class Mouth:
         positive.input_value.connect_from(f'{driver_control.ctrl}.translateX')
 
 
-        negative = RemapValueNode(
+        negative = RemapValueNode.create(
             name=f"{transform}_negative_remap"
         )
 
@@ -522,7 +522,7 @@ class Mouth:
         negative.input_value.connect_from(f'{driver_control.ctrl}.translateX')
 
 
-        total = SumNode(
+        total = SumNode.create(
             name=f"{transform}_curve_drive_sum"
         )
 
@@ -530,7 +530,7 @@ class Mouth:
         total.input[1].connect_from(negative.output)
 
 
-        poc = PointOnCurveNode(name=f"{transform}_curve_poc")
+        poc = PointOnCurveNode.create(name=f"{transform}_curve_poc")
 
         curve_shape = cmds.listRelatives(
             path_curve,
@@ -560,12 +560,12 @@ class Mouth:
 
         original_inverse_matrix = cmds.getAttr(f'{control.top}.worldInverseMatrix[0]')
 
-        mm = MultMatrixNode(name=f"{transform}_MM")
+        mm = MultMatrixNode.create(name=f"{transform}_MM")
 
         mm.matrix_in[0].connect_from(f"{transform}.worldMatrix[0]")
         mm.matrix_in[1].set(original_inverse_matrix)
 
-        dec = DecomposeMatrixNode(name=f"{transform}_MM")
+        dec = DecomposeMatrixNode.create(name=f"{transform}_MM")
 
         dec.input_matrix.connect_from(mm.matrix_sum)
 
@@ -574,7 +574,7 @@ class Mouth:
         dec.output_translate.z.connect_to(f"{control.sdk}.translateZ")
 
         # Direct corner Y influence.
-        y_mult = MultiplyDivideNode(
+        y_mult = MultiplyDivideNode.create(
             name=f"{transform}_y_follow_MD"
         )
 
@@ -588,7 +588,7 @@ class Mouth:
             y_mult.input2.x.set(y_follow)
 
         # Combine the original path Y with the direct Y influence.
-        y_sum = SumNode(
+        y_sum = SumNode.create(
             name=f"{transform}_y_follow_SUM"
         )
 
@@ -600,7 +600,7 @@ class Mouth:
 
         # Corner Z rotation influence
         if rot_y_follow != 0.0:
-            rot_y_mult = MultiplyDivideNode(
+            rot_y_mult = MultiplyDivideNode.create(
                 name=f"{transform}_rot_y_follow_MD"
             )
 
@@ -618,12 +618,12 @@ class Mouth:
         dec.output_rotate.x.connect_to(f"{control.sdk}.rotateX")
         dec.output_rotate.y.connect_to(f"{control.sdk}.rotateY")
 
-        rot_Z_sum = SumNode(name=f"{transform}_sum")
+        rot_Z_sum = SumNode.create(name=f"{transform}_sum")
 
         if twist_percent == 1:
             ctrl_twist=f'{driver_control.ctrl}.rotateZ'
         else:
-            mult = MultiplyDivideNode(name=f"{transform}_MD")
+            mult = MultiplyDivideNode.create(name=f"{transform}_MD")
             mult.input1.x.connect_from(f'{driver_control.ctrl}.rotateZ')
             mult.input2.x.set(twist_percent)
             ctrl_twist = mult.output.x
@@ -639,7 +639,7 @@ class Mouth:
         control_min: float,
         push_amount: float,
     ):
-        push_remap = RemapValueNode(
+        push_remap = RemapValueNode.create(
             name=f"{cluster}_push_RMV"
         )
 
@@ -686,7 +686,7 @@ class Mouth:
         lock_tag(object=control.jaw_pos)
         lock_tag(object=control.jaw_offset)
 
-        remapx = RemapValueNode(name=f"{control.name}_remapX")
+        remapx = RemapValueNode.create(name=f"{control.name}_remapX")
         remapx.input_max.set(x_range[1])
         remapx.input_min.set(x_range[0])
         remapx.output_max.set(x_range[1] * x_mult)
@@ -694,7 +694,7 @@ class Mouth:
         remapx.input_value.connect_from(f'{jaw.ctrl}.rotateX')
         remapx.output.connect_to(f'{control.jaw_offset}.rotateX')
 
-        remapz = RemapValueNode(name=f"{control.name}_remapZ")
+        remapz = RemapValueNode.create(name=f"{control.name}_remapZ")
         remapz.input_max.set(z_range[1])
         remapz.input_min.set(z_range[0])
         remapz.output_max.set(z_range[1] * rot_mult)
@@ -702,7 +702,7 @@ class Mouth:
         remapz.input_value.connect_from(f'{jaw.ctrl}.rotateZ')
         remapz.output.connect_to(f'{control.jaw_offset}.rotateZ')
 
-        remapy = RemapValueNode(name=f"{control.name}_remapY")
+        remapy = RemapValueNode.create(name=f"{control.name}_remapY")
         remapy.input_max.set(y_range[1])
         remapy.input_min.set(y_range[0])
         remapy.output_max.set(y_range[1] * rot_mult)
@@ -710,7 +710,7 @@ class Mouth:
         remapy.input_value.connect_from(f'{jaw.ctrl}.rotateY')
         remapy.output.connect_to(f'{control.jaw_offset}.rotateY')
 
-        mult = MultiplyDivideNode(name=f"{control.name}_mult")
+        mult = MultiplyDivideNode.create(name=f"{control.name}_mult")
         mult.input1.connect_from(f'{jaw.ctrl}.translate')
         mult.input2.set((trans_mult, trans_mult, trans_mult))
         mult.output.connect_to(
@@ -718,7 +718,7 @@ class Mouth:
                     )
 
         if jaw_forward:
-            forward_remap = RemapValueNode(
+            forward_remap = RemapValueNode.create(
                 name=f"{control.name}_forward_remap"
             )
 
@@ -746,7 +746,7 @@ class Mouth:
         right_inward: float,
         push_amount: float,
     ):
-        left_push = RemapValueNode(
+        left_push = RemapValueNode.create(
             name=f"{control.name}_L_push_RMV"
         )
 
@@ -760,7 +760,7 @@ class Mouth:
         )
 
 
-        right_push = RemapValueNode(
+        right_push = RemapValueNode.create(
             name=f"{control.name}_R_push_RMV"
         )
 
@@ -774,7 +774,7 @@ class Mouth:
         )
 
 
-        push_sum = SumNode(
+        push_sum = SumNode.create(
             name=f"{control.name}_push_SUM"
         )
 
@@ -1176,7 +1176,7 @@ class Mouth:
                 push_amount=arc_length /30 ,
             )
 
-            """ up_sum = SumNode(name=f'{driver.name}_SUM')
+            """ up_sum = SumNode.create(name=f'{driver.name}_SUM')
 
             up_sum.input[0].connect_from(f'{driver.ctrl}.translateY')
 

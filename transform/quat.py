@@ -35,7 +35,7 @@ def drive_rotation_with_quat(transform: str, quat_attribute: QuatAttribute) -> N
     """
     Drive the rotation of a transform using a QuatAttribute via a QuatToEuler node.
     """
-    euler_angles = QuatToEulerNode(f"{get_short_name(transform)}_euler")
+    euler_angles = QuatToEulerNode.create(f"{get_short_name(transform)}_euler")
     euler_angles.input_rotate_order.connect_from(f"{transform}.rotateOrder")
     quat_attribute.connect_to(euler_angles.input_quat)
     euler_angles.output_rotate.connect_to(f"{transform}.rotate")
@@ -69,7 +69,7 @@ def twist_extract_euler(transform: str, reference_space: str, axis: Axis) -> Qua
     """
     name = f"{get_short_name(transform)}_twist"
     decompose = localize_and_decompose_matrix(transform, reference_space)
-    euler_output = QuatToEulerNode(f"{name}_euler")
+    euler_output = QuatToEulerNode.create(f"{name}_euler")
     _connect_twist_quat(decompose.output_quat, euler_output.input_quat, axis)
     return euler_output
 
@@ -88,7 +88,7 @@ def twist_extract_quat(transform: str, reference_space: str, axis: Axis) -> Quat
     """
     name = f"{get_short_name(transform)}_twist"
     decompose = localize_and_decompose_matrix(transform, reference_space)
-    output = QuatNormalizeNode(name)
+    output = QuatNormalizeNode.create(name)
     _connect_twist_quat(decompose.output_quat, output.input_quat, axis)
     return output.output_quat
 
@@ -107,9 +107,9 @@ def swing_extract_quat(transform: str, reference_space: str, axis: Axis) -> Quat
     """
     name = f"{get_short_name(transform)}_swing"
     decompose = localize_and_decompose_matrix(transform, reference_space)
-    inverse = QuatInvertNode(f"{get_short_name(transform)}_twist_inverse")
+    inverse = QuatInvertNode.create(f"{get_short_name(transform)}_twist_inverse")
     _connect_twist_quat(decompose.output_quat, inverse.input_quat, axis)
-    swing = QuatProdNode(name)
+    swing = QuatProdNode.create(name)
     inverse.output_quat.connect_to(swing.input1_quat)
     decompose.output_quat.connect_to(swing.input2_quat)
     return swing.output_quat
@@ -178,7 +178,7 @@ def relative_rotation(
     Uses Maya's row-vector matrix convention.
     """
 
-    relative = MultMatrixNode(f"{name}_relative_mm")
+    relative = MultMatrixNode.create(f"{name}_relative_mm")
 
     relative.matrix_in[0].connect_from(
         f"{driver}.worldMatrix[0]"
@@ -204,7 +204,7 @@ def relative_rotation(
     )
 
     # Extract live translation in reference space.
-    relative_decompose = DecomposeMatrixNode(
+    relative_decompose = DecomposeMatrixNode.create(
         f"{name}_relative_dm"
     )
     relative_decompose.input_matrix.connect_from(
@@ -213,7 +213,7 @@ def relative_rotation(
 
     # Rotation-only matrix. Strip translation, scale and shear
     # before extracting the rotational delta.
-    pick_rotation = cmds.createNode(
+    pick_rotation = cmds.createNode.create(
         "pickMatrix",
         name=f"{name}_rotation_pick",
     )
@@ -227,7 +227,7 @@ def relative_rotation(
     cmds.setAttr(f"{pick_rotation}.useScale", False)
     cmds.setAttr(f"{pick_rotation}.useShear", False)
 
-    rotation_delta = MultMatrixNode(
+    rotation_delta = MultMatrixNode.create(
         f"{name}_rotation_delta_mm"
     )
 
@@ -239,7 +239,7 @@ def relative_rotation(
         rest_rotation.inverse().asMatrix()
     )
 
-    rotation_decompose = DecomposeMatrixNode(
+    rotation_decompose = DecomposeMatrixNode.create(
         f"{name}_rotation_delta_dm"
     )
 
@@ -248,7 +248,7 @@ def relative_rotation(
     )
 
     # Subtract the rest-relative translation.
-    translation_delta = cmds.createNode(
+    translation_delta = cmds.createNode.create(
         "plusMinusAverage",
         name=f"{name}_translation_delta",
     )
@@ -290,7 +290,7 @@ def weighted_rotation_quat(
     The input should represent a rest-relative rotation.
     """
 
-    slerp = QuatSlerpNode(f"{name}_slerp")
+    slerp = QuatSlerpNode.create(f"{name}_slerp")
 
     slerp.input1_quat.x.set(0.0)
     slerp.input1_quat.y.set(0.0)
@@ -340,12 +340,12 @@ def signed_relative_twist(
     #
     # This implementation uses an expression for the signed angle.
 
-    expression_node = cmds.createNode(
+    expression_node = cmds.createNode.create(
         "expression",
         name=f"{name}_signed_twist_expr",
     )
 
-    output_node = cmds.createNode(
+    output_node = cmds.createNode.create(
         "network",
         name=f"{name}_signed_twist_output",
     )

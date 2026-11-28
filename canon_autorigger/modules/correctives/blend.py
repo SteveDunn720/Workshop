@@ -13,7 +13,7 @@ from Workshop.maya_api.node import MultiplyDivideNode, RemapValueNode
 
 from Workshop.canon_autorigger.build_management.dev import create_dev_attribute
 from Workshop.canon_autorigger.module_schema import ModuleRelationship, ModuleSetting
-from attribute_utils import connect_attributes, set_attribute
+from Workshop.maya_api.attribute_utils import connect_attributes, set_attribute
 
 from ..module_shared import module_prep
 
@@ -195,7 +195,7 @@ class Blend:
 
             self.activation_angle = activation_angle
 
-            activation = RemapValueNode(
+            activation = RemapValueNode.create(
                 name=f"{descriptor}_activation_remap"
             )
 
@@ -228,7 +228,7 @@ class Blend:
 
         if activation is not None:
 
-            rotation_mult = MultiplyDivideNode(
+            rotation_mult = MultiplyDivideNode.create(
                 name=f"{descriptor}_rotation_weight_mult"
             )
 
@@ -262,7 +262,7 @@ class Blend:
         # Relative translation
         # --------------------------------------------------
 
-        translation_mult = MultiplyDivideNode(
+        translation_mult = MultiplyDivideNode.create(
             name=f"{descriptor}_translation_mult"
         )
 
@@ -305,7 +305,7 @@ class Blend:
 
             self.pop_joint = pop_joint
 
-            pop_remap = RemapValueNode(
+            pop_remap = RemapValueNode.create(
                 name=f"{descriptor}_pop_remap"
             )
 

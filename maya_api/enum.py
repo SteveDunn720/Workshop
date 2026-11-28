@@ -1,16 +1,25 @@
+from __future__ import annotations
+
 from enum import IntEnum
 
+from maya.api.OpenMaya import MTransformationMatrix
+from maya.api.OpenMayaAnim import MFnAnimCurve
 
-class RotateOrder(IntEnum):
-    XYZ = 0
-    YZX = 1
-    ZXY = 2
-    XZY = 3
-    YXZ = 4
-    ZYX = 5
 
-    def __str__(self) -> str:
-        return self.name
+class AimMatrixAxisMode(IntEnum):
+    LOCK_AXIS = 0
+    AIM = 1
+    ALIGN = 2
+
+
+class AnimCurveStipplePattern(IntEnum):
+    SOLID = 0
+    DOTTED = 1
+    LONG_DOTTED = 2
+    SHORT_DOTTED = 3
+    DASHED = 4
+    LONG_DASHED = 5
+    SHORT_DASHED = 6
 
 
 class Axis(IntEnum):
@@ -22,7 +31,7 @@ class Axis(IntEnum):
     NEG_Z = 5
 
     @classmethod
-    def from_str(cls, value: str) -> "Axis":
+    def from_str(cls, value: str) -> Axis:
         match value.lower():
             case "x":
                 return cls.X
@@ -39,11 +48,85 @@ class Axis(IntEnum):
             case _:
                 raise ValueError(f"{value} is not a valid Axis. It should be x,y,z or -x,-y,-z.")
 
+    def to_tuple(self) -> tuple[int, int, int]:
+        match self:
+            case Axis.X:
+                return (1, 0, 0)
+            case Axis.Y:
+                return (0, 1, 0)
+            case Axis.Z:
+                return (0, 0, 1)
+            case Axis.NEG_X:
+                return (-1, 0, 0)
+            case Axis.NEG_Y:
+                return (0, -1, 0)
+            case Axis.NEG_Z:
+                return (0, 0, -1)
 
-class UnsignedAxis(IntEnum):
-    X = 0
-    Y = 1
-    Z = 2
+
+class BlendShapeDeformationOrder(IntEnum):
+    PRE_DEFORMATION = 0
+    POST_DEFORMATION = 1
+
+
+class BlendShapeInbetweenTargetType(IntEnum):
+    ABSOLUTE = 0
+    RELATIVE = 1
+
+
+class BlendShapeInterpolation(IntEnum):
+    LINEAR = 0
+    SMOOTH = 1
+    CUSTOM = 2
+
+
+class BlendShapeOrigin(IntEnum):
+    WORLD = 0
+    LOCAL = 1
+    USER = 2
+
+
+class BlendShapePostDeformationOrder(IntEnum):
+    NONE = 0
+    TANGENT_SPACE = 1
+    TRANSFORM_SPACE = 2
+
+
+class ConditionOperation(IntEnum):
+    EQUAL = 0
+    NOT_EQUAL = 1
+    GREATER_THAN = 2
+    GREATER_OR_EQUAL = 3
+    LESS_THAN = 4
+    LESS_OR_EQUAL = 5
+
+
+class RotateOrder(IntEnum):
+    XYZ = 0
+    YZX = 1
+    ZXY = 2
+    XZY = 3
+    YXZ = 4
+    ZYX = 5
+
+    def __str__(self) -> str:
+        return self.name
+
+    @property
+    def ktype(self) -> int:
+        match self:
+            case self.XYZ:
+                return MTransformationMatrix.kXYZ
+            case self.YZX:
+                return MTransformationMatrix.kYZX
+            case self.ZXY:
+                return MTransformationMatrix.kZXY
+            case self.XZY:
+                return MTransformationMatrix.kXZY
+            case self.YXZ:
+                return MTransformationMatrix.kYXZ
+            case self.ZYX:
+                return MTransformationMatrix.kZYX
 
 
 class MotionPathWorldUpType(IntEnum):
@@ -61,6 +144,246 @@ class MultiplyDivideOperation(IntEnum):
     POWER = 3
 
 
+class PlusMinusAverageOperation(IntEnum):
+    NO_OPERATION = 0
+    SUM = 1
+    SUBTRACT = 2
+    AVERAGE = 3
+
+
+class PoseInterpolatorInterpolation(IntEnum):
+    LINEAR = 0
+    GAUSSIAN = 1
+
+
+class PoseInterpolatorPoseType(IntEnum):
+    SWING_AND_TWIST = 0
+    SWING_ONLY = 1
+    TWIST_ONLY = 2
+
+
+class PoseInterpolatorPoseControllerDataItemType(IntEnum):
+    BOOL = 0
+    CHAR = 1
+    SHORT = 2
+    INT = 3
+    INT64 = 4
+    FLOAT = 5
+    DOUBLE = 6
+    STRING = 7
+    MOBJECT = 8
+
+
+class SkinClusterBindMethod(IntEnum):
+    CLOSEST_DISTANCE = 0
+    CLOSEST_JOINT_IN_HIERARCHY = 1
+    HEAT_MAP = 2
+    GEODESIC_VOXEL = 3
+
+
+class SkinClusterNormalizeWeights(IntEnum):
+    NONE = 0
+    INTERACTIVE = 1
+    POST = 2
+
+
+class SkinClusterRelativeSpaceMode(IntEnum):
+    WORLD = 0
+    LOCAL = 1
+    CUSTOM = 2
+
+
+class SkinClusterSkinningMethod(IntEnum):
+    CLASSIC_LINEAR = 0
+    DUAL_QUATERNION = 1
+    WEIGHT_BLENDED = 2
+
+
+class SkinClusterWeightDistribution(IntEnum):
+    DISTANCE = 0
+    NEIGHBORS = 1
+
+
+class KeyframeInfinityType(IntEnum):
+    CONSTANT = 0
+    LINEAR = 1
+    CYCLE = 3
+    CYCLE_WITH_OFFSET = 4
+    OSCILLATE = 5
+
+    @property
+    def usd_token(self) -> str:
+        match self:
+            case KeyframeInfinityType.CONSTANT:
+                return "constant"
+            case KeyframeInfinityType.LINEAR:
+                return "linear"
+            case KeyframeInfinityType.CYCLE:
+                return "cycle"
+            case KeyframeInfinityType.CYCLE_WITH_OFFSET:
+                return "cycleRelative"
+            case KeyframeInfinityType.OSCILLATE:
+                return "oscillate"
+
+    @classmethod
+    def from_usd_token(cls, token: str) -> KeyframeInfinityType:
+        for member in cls:
+            if member.usd_token == token:
+                return member
+        raise ValueError(f"Unknown infinity token: {token!r}")
+
+    @property
+    def ktype(self) -> int:
+        match self:
+            case self.CONSTANT:
+                return MFnAnimCurve.kConstant
+            case self.LINEAR:
+                return MFnAnimCurve.kLinear
+            case self.CYCLE:
+                return MFnAnimCurve.kCycle
+            case self.CYCLE_WITH_OFFSET:
+                return MFnAnimCurve.kCycleRelative
+            case self.OSCILLATE:
+                return MFnAnimCurve.kOscillate
+
+
+class KeyframeTangentType(IntEnum):
+    FIXED = 1
+    LINEAR = 2
+    FLAT = 3
+    STEPPED = 5
+    SLOW = 6
+    FAST = 7
+    SPLINE = 9
+    CLAMPED = 10
+    PLATEAU = 16
+    STEP_NEXT = 17
+    AUTO = 18
+    AUTO_MIX = 27
+    AUTO_EASE = 28
+    AUTO_CUSTOM = 29
+
+    @property
+    def usd_token(self) -> str:
+        match self:
+            case KeyframeTangentType.FIXED:
+                return "fixed"
+            case KeyframeTangentType.LINEAR:
+                return "linear"
+            case KeyframeTangentType.FLAT:
+                return "flat"
+            case KeyframeTangentType.STEPPED:
+                return "stepped"
+            case KeyframeTangentType.SLOW:
+                return "slow"
+            case KeyframeTangentType.FAST:
+                return "fast"
+            case KeyframeTangentType.SPLINE:
+                return "spline"
+            case KeyframeTangentType.CLAMPED:
+                return "clamped"
+            case KeyframeTangentType.PLATEAU:
+                return "plateau"
+            case KeyframeTangentType.STEP_NEXT:
+                return "stepNext"
+            case KeyframeTangentType.AUTO:
+                return "auto"
+            case KeyframeTangentType.AUTO_MIX:
+                return "autoMix"
+            case KeyframeTangentType.AUTO_EASE:
+                return "autoEase"
+            case KeyframeTangentType.AUTO_CUSTOM:
+                return "autoCustom"
+
+    @classmethod
+    def from_usd_token(cls, token: str) -> KeyframeTangentType:
+        for member in cls:
+            if member.usd_token == token:
+                return member
+        raise ValueError(f"Unknown tangent token: {token!r}")
+
+    @property
+    def ktype(self) -> int:
+        match self:
+            case KeyframeTangentType.FIXED:
+                return MFnAnimCurve.kTangentFixed
+            case KeyframeTangentType.LINEAR:
+                return MFnAnimCurve.kTangentLinear
+            case KeyframeTangentType.FLAT:
+                return MFnAnimCurve.kTangentFlat
+            case KeyframeTangentType.STEPPED:
+                return MFnAnimCurve.kTangentStep
+            case KeyframeTangentType.SLOW:
+                return MFnAnimCurve.kTangentSlow
+            case KeyframeTangentType.FAST:
+                return MFnAnimCurve.kTangentFast
+            case KeyframeTangentType.SPLINE:
+                return MFnAnimCurve.kTangentSmooth
+            case KeyframeTangentType.CLAMPED:
+                return MFnAnimCurve.kTangentClamped
+            case KeyframeTangentType.PLATEAU:
+                return MFnAnimCurve.kTangentPlateau
+            case KeyframeTangentType.STEP_NEXT:
+                return MFnAnimCurve.kTangentStepNext
+            case KeyframeTangentType.AUTO:
+                return MFnAnimCurve.kTangentAuto
+            case KeyframeTangentType.AUTO_MIX:
+                return MFnAnimCurve.kTangentAutoMix
+            case KeyframeTangentType.AUTO_EASE:
+                return MFnAnimCurve.kTangentAutoEase
+            case KeyframeTangentType.AUTO_CUSTOM:
+                return MFnAnimCurve.kTangentAutoCustom
+
+
+class KeyframeRotationInterpolation(IntEnum):
+    NONE = 1
+    EULER = 2
+    QUAT_TAN = 3
+    QUAT_SLERP = 4
+    QUAT_SQUAD = 5
+
+    @property
+    def maya_string(self) -> str:
+        match self:
+            case KeyframeRotationInterpolation.NONE:
+                return "none"
+            case KeyframeRotationInterpolation.EULER:
+                return "euler"
+            case KeyframeRotationInterpolation.QUAT_TAN:
+                return "quaternion"
+            case KeyframeRotationInterpolation.QUAT_SLERP:
+                return "quaternionSlerp"
+            case KeyframeRotationInterpolation.QUAT_SQUAD:
+                return "quaternionSquad"
+
+    @property
+    def usd_token(self) -> str:
+        match self:
+            case KeyframeRotationInterpolation.NONE:
+                return "none"
+            case KeyframeRotationInterpolation.EULER:
+                return "euler"
+            case KeyframeRotationInterpolation.QUAT_TAN:
+                return "quatTan"
+            case KeyframeRotationInterpolation.QUAT_SLERP:
+                return "quatSlerp"
+            case KeyframeRotationInterpolation.QUAT_SQUAD:
+                return "quatSquad"
+
+    @classmethod
+    def from_usd_token(cls, token: str) -> KeyframeRotationInterpolation:
+        for member in cls:
+            if member.usd_token == token:
+                return member
+        raise ValueError(f"Unknown rotation interpolation token: {token!r}")
+
+
+class UnsignedAxis(IntEnum):
+    X = 0
+    Y = 1
+    Z = 2
+
+
 class UvPinNormalOverride(IntEnum):
     AUTO = 0
     RAIL_CURVE = 1
@@ -70,19 +393,3 @@ class UvPinRelativeSpaceMode(IntEnum):
     WORLD = 0
     LOCAL = 1
     CUSTOM = 2
-
-
-class ConditionOperation(IntEnum):
-    EQUAL = 0
-    NOT_EQUAL = 1
-    GREATER_THAN = 2
-    GREATER_OR_EQUAL = 3
-    LESS_THAN = 4
-    LESS_OR_EQUAL = 5
-
-
-class PlusMinusAverageOperation(IntEnum):
-    NO_OPERATION = 0
-    SUM = 1
-    SUBTRACT = 2
-    AVERAGE = 3

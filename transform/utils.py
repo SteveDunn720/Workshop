@@ -395,7 +395,7 @@ def distance_reader(
     else:
         transform2_local = transform2_matrices[0]
 
-    distance_node = DistanceBetweenNode(distance_name)
+    distance_node = DistanceBetweenNode.create(distance_name)
     if isinstance(transform1_local, MatrixAttribute):
         distance_node.input_matrix1.connect_from(transform1_local)
     else:
@@ -406,7 +406,7 @@ def distance_reader(
         distance_node.input_matrix2.set(transform2_local)
 
     if zero_at_rest:
-        zero_at_rest_distance = SubtractNode(f"{distance_name}_zeroed")
+        zero_at_rest_distance = SubtractNode.create(f"{distance_name}_zeroed")
         zero_at_rest_distance.input1.connect_from(distance_node.distance)
         zero_at_rest_distance.input2.set(distance_node.distance.get())
         output = zero_at_rest_distance.output
@@ -488,7 +488,7 @@ def create_space_switch(
     weight_aliases = cmds.parentConstraint(parent_constraint, query=True, weightAliasList=True)
 
     for index, (parent, weight_attr) in enumerate(zip(parents, weight_aliases)):  # type:ignore
-        condition = ConditionNode(name=f"{target_transform}_{parent}_spaceSwitch_COND")
+        condition = ConditionNode.create(name=f"{target_transform}_{parent}_spaceSwitch_COND")
 
         # Equal operation
         # 0 == Equal in Maya condition node
@@ -530,11 +530,11 @@ def get_flat_y_aim_rotation(source: str, target: str) -> float:
 
 
 def rotation_blend(name:str, tfrom01:str, tform02:str, attr:bool=False, weight:float=.5,):
-    etq = EulerToQuatNode(name=f'{name}_etq')
+    etq = EulerToQuatNode.create(name=f'{name}_etq')
     etq.input_rotate.connect_from(f'{tfrom01}.rotate')
     etq.input_rotate_order.connect_from(f'{tfrom01}.rotateOrder')
 
-    qslerp = QuatSlerpNode(name=f'{name}_qslerp')
+    qslerp = QuatSlerpNode.create(name=f'{name}_qslerp')
     qslerp.input1_quat.connect_from(etq.output_quat)
     
     if attr:
@@ -543,7 +543,7 @@ def rotation_blend(name:str, tfrom01:str, tform02:str, attr:bool=False, weight:f
     else:
         qslerp.input_t.set(weight)
 
-    qte = QuatToEulerNode(name=f'{name}_etq')
+    qte = QuatToEulerNode.create(name=f'{name}_etq')
     qte.input_quat.connect_from(qslerp.output_quat)
     qte.input_rotate_order.connect_from(f'{tfrom01}.rotateOrder')
     qte.output_rotate.connect_to(f'{tform02}.rotate')

@@ -8,7 +8,7 @@ from Workshop.maya_api.node import BlendMatrixNode, MultMatrixNode
 from Workshop.transform.utils import create_transform
 
 from Workshop.guide.curve import GuideCurve
-from attribute_utils import add_attribute_header, add_proxy, connect_attributes, create_attribute, disconnect_attribute, set_attribute
+from Workshop.maya_api.attribute_utils import add_attribute_header, add_proxy, connect_attributes, create_attribute, disconnect_attribute, set_attribute
 from Workshop.skin.split.tag import tag_for_weight_split
 from Workshop.spline.matrix_spline.build import matrix_spline_from_transforms
 from Workshop.spline.matrix_spline.core import MatrixSpline
@@ -253,17 +253,17 @@ class Socket:
 
         constraint(drivers=self.control_space, driven=follow_pos)
 
-        """relative_mm = MultMatrixNode(name=f"socket_{self.side}_follow_relative_mm")
+        """relative_mm = MultMatrixNode.create(name=f"socket_{self.side}_follow_relative_mm")
         relative_mm.matrix_in[0].connect_from(f"{driver}.worldMatrix[0]")
         relative_mm.matrix_in[1].connect_from(f"{self.control_grp}.worldInverseMatrix[0]")
         rest_relative = MMatrix(relative_mm.matrix_sum.get())
-        delta_mm = MultMatrixNode(name=f"socket_{self.side}_follow_delta_mm")
+        delta_mm = MultMatrixNode.create(name=f"socket_{self.side}_follow_delta_mm")
         delta_mm.matrix_in[0].set(rest_relative.inverse())
         delta_mm.matrix_in[1].connect_from(relative_mm.matrix_sum)
-        blend = BlendMatrixNode(name=f"socket_{self.side}_follow_bm")
+        blend = BlendMatrixNode.create(name=f"socket_{self.side}_follow_bm")
         blend.target[0].target_matrix.connect_from(delta_mm.matrix_sum)
         blend.target[0].weight.connect_from(f"{driver}.socket_follow")
-        local_mm = MultMatrixNode(name=f"socket_{self.side}_follow_local_mm")
+        local_mm = MultMatrixNode.create(name=f"socket_{self.side}_follow_local_mm")
         local_mm.matrix_in[0].connect_from(f"{follow_pos}.matrix")
         local_mm.matrix_in[1].connect_from(f"{blend}.outputMatrix")
         local_mm.matrix_in[2].connect_from(f"{follow_pos}.inverseMatrix")

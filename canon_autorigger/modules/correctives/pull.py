@@ -10,7 +10,7 @@ from Workshop.maya_api.node import RemapValueNode
 
 from Workshop.canon_autorigger.build_management.dev import create_dev_attribute
 from Workshop.canon_autorigger.module_schema import ModuleRelationship, ModuleSetting
-from attribute_utils import set_attribute
+from Workshop.maya_api.attribute_utils import set_attribute
 
 from ..module_shared import module_prep
 
@@ -204,7 +204,7 @@ class Pull:
         # Pull remap
         # --------------------------------------------------
 
-        pull_remap = RemapValueNode(
+        pull_remap = RemapValueNode.create(
             name=f"{descriptor}_remap"
         )
 

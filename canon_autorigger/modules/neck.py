@@ -3,7 +3,7 @@ from dataclasses import dataclass
 import maya.cmds as cmds
 
 from Workshop.control.core import Control
-from attribute_utils import set_attribute
+from Workshop.maya_api.attribute_utils import set_attribute
 from Workshop.canon_autorigger.build_management.dev import create_dev_attribute
 from Workshop.canon_autorigger.module_schema import (
     ModuleRelationship, ModuleSetting, ModuleSplineGuide,
@@ -164,8 +164,8 @@ class Neck:
         for attrs in ['X', 'Y', 'Z']:
             set_attribute(f'{self.roll_ctrl.top}.rotate{attrs}', 0)
         module_space(control=self.roll_ctrl, space_list=[self.control_space])
-        self.rot_mult = MultiplyDivideNode(name='neck_rot_mult')
-        self.trans_mult = MultiplyDivideNode(name='neck_trans_mult')
+        self.rot_mult = MultiplyDivideNode.create(name='neck_rot_mult')
+        self.trans_mult = MultiplyDivideNode.create(name='neck_trans_mult')
         # The original computed multiplier becomes an editable rig-time parameter.
         rot_follow = create_dev_attribute(
             attribute_name=f"{self.part}_{self.side}_rotation_follow",

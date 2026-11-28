@@ -11,7 +11,7 @@ from Workshop.guide.core import SplineGuideInfo
 from Workshop.transform.utils import get_distance_between
 from Workshop.skin.split.tag import tag_for_weight_split
 from Workshop.nurbs.curve import get_curve_point_matrix
-from attribute_utils import add_proxy
+from Workshop.maya_api.attribute_utils import add_proxy
 
 from ..module_shared import create_module_switch,  module_prep, module_space
 

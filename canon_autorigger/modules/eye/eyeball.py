@@ -14,7 +14,7 @@ from Workshop.transform.utils import create_transform, match_location
 from Workshop.transform.utils import get_position
 from Workshop.nurbs.curve import get_nurbs_curve_radius
 from Workshop.control.core import Control
-from attribute_utils import connect_attributes, create_attribute, add_attribute_header, set_attribute
+from Workshop.maya_api.attribute_utils import connect_attributes, create_attribute, add_attribute_header, set_attribute
 from Workshop.skin.split.tag import tag_for_weight_split
 from Workshop.transform.matrix import matrix_constraint
 
@@ -137,7 +137,7 @@ class Eyeball:
                 attr_name=f"{circle_type}_{obj}_dilation",
             )  # type:ignore
 
-        dilation_mult = MultiplyDivideNode(
+        dilation_mult = MultiplyDivideNode.create(
             name=f"{circle_type}_{self.part}_dilation_mult_{self.side}_MD"
         )
 
@@ -146,17 +146,17 @@ class Eyeball:
 
         dilation_mult.input1.x.connect_from(dilation_attr)
 
-        etq_node = EulerToQuatNode(
+        etq_node = EulerToQuatNode.create(
             name=f"{circle_type}_{self.part}_dilation_mult_{self.side}_ETQ",
         )
         etq_node.input_rotate.x.connect_from(dilation_mult.output.x)
 
-        radius_adjust = MultiplyDivideNode(
+        radius_adjust = MultiplyDivideNode.create(
             name=f"{circle_type}_{self.part}_radius_adjust_{self.side}_MD"
         )
         radius_adjust.input1.x.connect_from(etq_node.output_quat.x)
 
-        z_trans_adl = SumNode(
+        z_trans_adl = SumNode.create(
             name=f"{circle_type}_{self.part}_translateZ_{self.side}_ADL"
         )
 
@@ -289,7 +289,7 @@ class Eyeball:
                 pass
             else:
                 # percents[i]
-                dilation_offset_node = SumNode(
+                dilation_offset_node = SumNode.create(
                     name=f"{circle_type}_dilation_mult_{self.side}_ADL"
                 )
                 dilation_offset_node.input[1].connect_from(f"{self.main_ctrl.ctrl}.{circle_type}_dilation")
@@ -339,8 +339,8 @@ class Eyeball:
                 blend = ["pupil", "pupil"]
                 blend_num = (x - pupil_percent) / (1.0 - pupil_percent)
 
-            blendnode = BlendColorsNode(name=f"blend_{self.part}_dilation_{i:02d}_{self.side}_BC")
-            blendnode2 = BlendColorsNode(name=f"blend_{self.part}_offset_{i:02d}_{self.side}_BC")
+            blendnode = BlendColorsNode.create(name=f"blend_{self.part}_dilation_{i:02d}_{self.side}_BC")
+            blendnode2 = BlendColorsNode.create(name=f"blend_{self.part}_offset_{i:02d}_{self.side}_BC")
             blendnode.color1.r.connect_from(
                 source_attr=f"{self.preview_circles[blend[0]]}.dilation_amount"
             )

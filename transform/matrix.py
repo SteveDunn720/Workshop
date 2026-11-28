@@ -221,7 +221,7 @@ def multiply_matrices(
     Create a ``multMatrix`` node that multiplies the given matrices in input order.
     Attributes and attribute paths are connected. Matrix values are assigned directly.
     """
-    mult_matrix_node = MultMatrixNode(name)
+    mult_matrix_node = MultMatrixNode.create(name)
     index: int = 0
     for matrix in matrices:
         if isinstance(matrix, (MatrixAttribute, str)):
@@ -236,7 +236,7 @@ def multiply_matrices(
 
 def localize_world_matrix(transform: str, target_space_transform: str) -> MultMatrixNode:
     """Create a multMatrix node localizing transform into target_space_transform's space."""
-    localize_matrix = node.MultMatrixNode(
+    localize_matrix = node.MultMatrixNode.create(
         f"{get_short_name(target_space_transform)}_local_{get_short_name(transform)}"
     )
     localize_matrix.matrix_in[0].connect_from(f"{transform}.worldMatrix[0]")
@@ -247,7 +247,7 @@ def localize_world_matrix(transform: str, target_space_transform: str) -> MultMa
 def localize_and_decompose_matrix(transform: str, parent: str) -> DecomposeMatrixNode:
     """Create a network that localizing transform into target_space_transform's space and connect it to a new decomposeMatrix node."""
     localize_matrix = localize_world_matrix(transform, parent)
-    decompose = DecomposeMatrixNode(f"{get_short_name(transform)}_decompose")
+    decompose = DecomposeMatrixNode.create(f"{get_short_name(transform)}_decompose")
     localize_matrix.matrix_sum.connect_to(decompose.input_matrix)
     return decompose
 
@@ -255,8 +255,8 @@ def localize_and_decompose_matrix(transform: str, parent: str) -> DecomposeMatri
 def _get_joint_orient_euler(joint: str) -> MEulerRotation:
     sel: MSelectionList = MSelectionList()
     sel.add(joint)
-    obj: MObject = sel.getDependNode(0)
-    fn: MFnDependencyNode = MFnDependencyNode(obj)
+    obj: MObject = sel.getDependNode.create(0)
+    fn: MFnDependencyNode = MFnDependencyNode.create(obj)
     plug: MPlug = fn.findPlug("jointOrient", False)
     # Radians
     x = plug.child(0).asDouble()
@@ -289,7 +289,7 @@ def drive_transform_with_matrix(
     constraint_name: str = get_short_name(transform)
 
     # Create the decomposed matrix and connect it's inputs
-    decompose_matrix = DecomposeMatrixNode(f"{constraint_name}_driver_decompose")
+    decompose_matrix = DecomposeMatrixNode.create(f"{constraint_name}_driver_decompose")
     decompose_matrix.input_matrix.connect_from(matrix_attr)
     decompose_matrix.input_rotate_order.connect_from(f"{transform}.rotateOrder")
 
@@ -314,10 +314,10 @@ def drive_transform_with_matrix(
                 # Only add the compensation if needed.
                 if not is_identity_matrix(matrix=joint_orient_matrix):
                     joint_orient_matrix_inverse: MMatrix = joint_orient_matrix.inverse()
-                    rotation_mult = MultMatrixNode(f"{constraint_name}_oriented_rotation")
+                    rotation_mult = MultMatrixNode.create(f"{constraint_name}_oriented_rotation")
                     rotation_mult.matrix_in[0].connect_from(matrix_attr)
                     rotation_mult.matrix_in[1].set(joint_orient_matrix_inverse)
-                    orient_matrix_decompose = DecomposeMatrixNode(
+                    orient_matrix_decompose = DecomposeMatrixNode.create(
                         f"{constraint_name}_orient_decompose"
                     )
                     orient_matrix_decompose.input_matrix.connect_from(rotation_mult.matrix_sum)

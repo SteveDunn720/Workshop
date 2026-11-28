@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 from Workshop.control.core import Control
-from attribute_utils import create_attribute
+from Workshop.maya_api.attribute_utils import create_attribute
 
 from Workshop.transform.constraint import constraint
 from Workshop.control import create_control
